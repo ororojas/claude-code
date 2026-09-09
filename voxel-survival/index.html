@@ -1,0 +1,496 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+    <title>Voxel Survival</title>
+    <style>
+      :root {
+        --ui-bg: rgba(14, 16, 20, 0.72);
+        --ui-border: rgba(255, 255, 255, 0.14);
+        --ui-text: #e8ecf2;
+        --ui-dim: #9aa4b2;
+        --accent: #f2f5f9;
+        --heart: #e0384a;
+        --heart-empty: #3b1f25;
+        --breath: #7fd4f5;
+        --slot: 52px;
+        /* Heart silhouette used as a CSS mask so fill level can be animated. */
+        --heart-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2C8 14.2 1.5 10.1 1.5 5.9C1.5 3.6 3.3 2 5.3 2C6.6 2 7.6 2.7 8 3.5C8.4 2.7 9.4 2 10.7 2C12.7 2 14.5 3.6 14.5 5.9C14.5 10.1 8 14.2 8 14.2Z'/%3E%3C/svg%3E");
+        --font: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0b0d11;
+        color: var(--ui-text);
+        font-family: var(--font);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #game {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        cursor: crosshair;
+        touch-action: none;
+      }
+
+      /* ---------- HUD scaffolding ---------- */
+      #hud {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        user-select: none;
+      }
+
+      /* ---------- Crosshair with mining-progress ring ---------- */
+      #crosshair {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 26px;
+        height: 26px;
+        transform: translate(-50%, -50%);
+      }
+      #crosshair .bar {
+        position: absolute;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 0 2px rgba(0, 0, 0, 0.9);
+      }
+      #crosshair .bar.h {
+        left: 5px;
+        top: 12px;
+        width: 16px;
+        height: 2px;
+      }
+      #crosshair .bar.v {
+        left: 12px;
+        top: 5px;
+        width: 2px;
+        height: 16px;
+      }
+      #mining-ring {
+        position: absolute;
+        inset: -6px;
+        transform: rotate(-90deg);
+      }
+      #mining-ring circle {
+        fill: none;
+        stroke-width: 2.5;
+      }
+      #mining-ring .track {
+        stroke: rgba(0, 0, 0, 0.35);
+      }
+      #mining-ring .fill {
+        stroke: #ffffff;
+        stroke-linecap: round;
+        transition: stroke-dashoffset 40ms linear;
+      }
+
+      /* ---------- Bottom cluster: status + hotbar ---------- */
+      #bottom {
+        position: absolute;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #held-name {
+        font-size: 13px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--accent);
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+        opacity: 0;
+        transition: opacity 220ms ease;
+        height: 16px;
+      }
+      #held-name.visible {
+        opacity: 1;
+      }
+
+      #status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        width: 100%;
+        min-height: 18px;
+        padding: 0 2px;
+      }
+
+      #hearts,
+      #breath {
+        display: flex;
+        gap: 2px;
+      }
+      #breath {
+        justify-content: flex-end;
+      }
+
+      .heart {
+        position: relative;
+        width: 17px;
+        height: 17px;
+        overflow: hidden;
+        background: var(--heart-empty);
+        -webkit-mask: var(--heart-mask);
+        mask: var(--heart-mask);
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
+      }
+      .heart > i {
+        position: absolute;
+        inset: 0;
+        background: var(--heart);
+        transition: width 140ms ease;
+      }
+      #hearts.hurt .heart > i {
+        background: #ff8b96;
+      }
+
+      .bubble {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--breath);
+        border: 2px solid rgba(255, 255, 255, 0.65);
+        filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.8));
+      }
+      .bubble.empty {
+        background: transparent;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      #hotbar {
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 10px;
+        backdrop-filter: blur(6px);
+      }
+
+      .slot {
+        position: relative;
+        width: var(--slot);
+        height: var(--slot);
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          border-color 120ms ease,
+          background 120ms ease;
+      }
+      .slot.selected {
+        border-color: var(--accent);
+        background: rgba(255, 255, 255, 0.14);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
+      }
+      .slot canvas {
+        width: 36px;
+        height: 36px;
+        image-rendering: pixelated;
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.45));
+      }
+      .slot.empty canvas {
+        opacity: 0;
+      }
+      .slot .count {
+        position: absolute;
+        right: 4px;
+        bottom: 2px;
+        font-size: 11px;
+        line-height: 1;
+        text-shadow:
+          0 1px 2px #000,
+          0 0 3px #000;
+      }
+      .slot .key {
+        position: absolute;
+        left: 4px;
+        top: 3px;
+        font-size: 9px;
+        color: var(--ui-dim);
+      }
+
+      /* ---------- Debug panel ---------- */
+      #debug {
+        position: absolute;
+        left: 14px;
+        top: 14px;
+        padding: 9px 12px;
+        font-size: 11.5px;
+        line-height: 1.6;
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        white-space: pre;
+        color: var(--ui-dim);
+        backdrop-filter: blur(6px);
+      }
+      #debug b {
+        color: var(--ui-text);
+        font-weight: 600;
+      }
+      #debug.hidden {
+        display: none;
+      }
+
+      /* ---------- Clock chip ---------- */
+      #clock {
+        position: absolute;
+        right: 14px;
+        top: 14px;
+        padding: 7px 12px;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        backdrop-filter: blur(6px);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      #clock .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #ffd77a;
+        box-shadow: 0 0 6px #ffd77a;
+        transition:
+          background 400ms ease,
+          box-shadow 400ms ease;
+      }
+      #clock .dot.night {
+        background: #8fa8d8;
+        box-shadow: 0 0 6px #8fa8d8;
+      }
+
+      /* ---------- Overlays ---------- */
+      .overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        text-align: center;
+        background: rgba(8, 10, 14, 0.78);
+        backdrop-filter: blur(3px);
+        pointer-events: auto;
+      }
+      .overlay.hidden {
+        display: none;
+      }
+      .overlay h1 {
+        margin: 0;
+        font-size: 30px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-weight: 600;
+      }
+      .overlay p {
+        margin: 0;
+        color: var(--ui-dim);
+        font-size: 13px;
+        line-height: 1.9;
+      }
+      .overlay button {
+        pointer-events: auto;
+        font-family: var(--font);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 12px 26px;
+        color: #0b0d11;
+        background: var(--accent);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition:
+          transform 120ms ease,
+          opacity 120ms ease;
+      }
+      .overlay button:hover {
+        transform: translateY(-1px);
+      }
+      .overlay button:active {
+        transform: translateY(0);
+        opacity: 0.85;
+      }
+
+      kbd {
+        display: inline-block;
+        min-width: 20px;
+        padding: 2px 6px;
+        margin: 0 1px;
+        font-family: var(--font);
+        font-size: 11px;
+        color: var(--ui-text);
+        background: rgba(255, 255, 255, 0.09);
+        border: 1px solid var(--ui-border);
+        border-radius: 4px;
+      }
+
+      #controls-grid {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 6px 20px;
+        font-size: 12px;
+        color: var(--ui-dim);
+        text-align: left;
+      }
+      #controls-grid span:nth-child(even) {
+        color: var(--ui-text);
+      }
+
+      #death-title {
+        color: #ff6b7a;
+      }
+
+      /* Red vignette on damage. */
+      #hurt {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(
+          ellipse at center,
+          transparent 35%,
+          rgba(190, 20, 40, 0.55) 100%
+        );
+        transition: opacity 160ms ease;
+      }
+
+      /* Blue tint while submerged. */
+      #underwater {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0;
+        background: linear-gradient(rgba(24, 88, 140, 0.35), rgba(12, 52, 94, 0.45));
+        transition: opacity 260ms ease;
+      }
+
+      #toast {
+        position: absolute;
+        left: 50%;
+        top: 22%;
+        transform: translateX(-50%);
+        padding: 8px 16px;
+        font-size: 12px;
+        letter-spacing: 0.05em;
+        background: var(--ui-bg);
+        border: 1px solid var(--ui-border);
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity 200ms ease;
+      }
+      #toast.visible {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <div id="hud">
+      <div id="underwater"></div>
+      <div id="hurt"></div>
+
+      <div id="crosshair">
+        <svg id="mining-ring" viewBox="0 0 38 38">
+          <circle
+            class="track"
+            cx="19"
+            cy="19"
+            r="15"
+            stroke-dasharray="94.2"
+            stroke-dashoffset="94.2"
+          />
+          <circle
+            class="fill"
+            cx="19"
+            cy="19"
+            r="15"
+            stroke-dasharray="94.2"
+            stroke-dashoffset="94.2"
+          />
+        </svg>
+        <div class="bar h"></div>
+        <div class="bar v"></div>
+      </div>
+
+      <div id="debug" class="hidden"></div>
+
+      <div id="clock"><span class="dot"></span><span id="clock-text">06:00</span></div>
+
+      <div id="bottom">
+        <div id="held-name"></div>
+        <div id="status-row">
+          <div id="hearts"></div>
+          <div id="breath"></div>
+        </div>
+        <div id="hotbar"></div>
+      </div>
+
+      <div id="toast"></div>
+
+      <div id="start" class="overlay">
+        <h1>Voxel Survival</h1>
+        <p>Mine, build and survive in an infinite procedural world.</p>
+        <button id="start-button">Click to play</button>
+        <div id="controls-grid">
+          <span>Move</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+          <span>Jump / swim up</span><span><kbd>Space</kbd></span> <span>Sprint</span
+          ><span><kbd>Ctrl</kbd></span> <span>Sneak</span><span><kbd>Shift</kbd></span>
+          <span>Break block</span><span>Hold <kbd>LMB</kbd></span> <span>Place block</span
+          ><span><kbd>RMB</kbd></span> <span>Select slot</span
+          ><span><kbd>1</kbd>–<kbd>9</kbd> / scroll</span> <span>Toggle flight</span
+          ><span><kbd>F</kbd></span> <span>Debug overlay</span><span><kbd>F3</kbd></span>
+          <span>Release cursor</span><span><kbd>Esc</kbd></span>
+        </div>
+      </div>
+
+      <div id="paused" class="overlay hidden">
+        <h1>Paused</h1>
+        <p>The world keeps its state while you are away.</p>
+        <button id="resume-button">Resume</button>
+      </div>
+
+      <div id="death" class="overlay hidden">
+        <h1 id="death-title">You Died</h1>
+        <p id="death-cause">Respawning restores your health.</p>
+        <button id="respawn-button">Respawn</button>
+      </div>
+
+      <div id="error" class="overlay hidden">
+        <h1>Cannot start</h1>
+        <p id="error-message"></p>
+      </div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
