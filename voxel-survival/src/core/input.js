@@ -4,6 +4,12 @@
  * Mouse movement is accumulated between frames and consumed by the game loop,
  * so a frame that takes longer than one mouse event still applies every bit of
  * motion exactly once.
+ *
+ * Pointer lock is not always available — a sandboxed iframe may withhold it,
+ * and some browsers refuse it outside a user gesture. When it fails, the input
+ * falls back to drag-to-look: the same motion is accumulated while a mouse
+ * button is held. Break and place also have keyboard aliases so they stay
+ * reachable when the mouse is busy steering.
  */
 export class Input {
   constructor(canvas) {
@@ -17,7 +23,13 @@ export class Input {
     /** Buttons pressed since the last consumeClicks(). */
     this.clicked = { left: false, right: false };
     this.pointerLocked = false;
+    /** True when pointer lock is unavailable and drag-to-look is in use. */
+    this.dragLook = false;
     this.onLockChange = () => {};
+    this._dragging = false;
+    this._lastX = 0;
+    this._lastY = 0;
+    this._lockAttempt = null;
     /** One-shot handlers by key code, for actions that must not auto-repeat. */
     this.keyHandlers = new Map();
 
@@ -48,6 +60,17 @@ export class Input {
     });
 
     canvas.addEventListener('mousedown', (e) => {
+      if (this.dragLook) {
+        // Left-drag steers the camera; right-click still places a block.
+        this._dragging = true;
+        this._lastX = e.clientX;
+        this._lastY = e.clientY;
+        if (e.button === 2) {
+          this.mouseDown.right = true;
+          this.clicked.right = true;
+        }
+        return;
+      }
       if (!this.pointerLocked) return;
       if (e.button === 0) {
         this.mouseDown.left = true;
@@ -60,6 +83,7 @@ export class Input {
     });
 
     window.addEventListener('mouseup', (e) => {
+      this._dragging = false;
       if (e.button === 0) this.mouseDown.left = false;
       if (e.button === 2) this.mouseDown.right = false;
     });
@@ -67,15 +91,24 @@ export class Input {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     document.addEventListener('mousemove', (e) => {
-      if (!this.pointerLocked) return;
-      this.mouseDX += e.movementX || 0;
-      this.mouseDY += e.movementY || 0;
+      if (this.pointerLocked) {
+        this.mouseDX += e.movementX || 0;
+        this.mouseDY += e.movementY || 0;
+        return;
+      }
+      if (this.dragLook && this._dragging) {
+        // movementX/Y is unreliable without a lock, so difference the position.
+        this.mouseDX += e.clientX - this._lastX;
+        this.mouseDY += e.clientY - this._lastY;
+        this._lastX = e.clientX;
+        this._lastY = e.clientY;
+      }
     });
 
     canvas.addEventListener(
       'wheel',
       (e) => {
-        if (!this.pointerLocked) return;
+        if (!this.pointerLocked && !this.dragLook) return;
         e.preventDefault();
         this.wheelDelta += e.deltaY;
       },
@@ -84,8 +117,23 @@ export class Input {
 
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
+      if (this.pointerLocked) {
+        this.dragLook = false;
+        clearTimeout(this._lockAttempt);
+      }
       this.onLockChange(this.pointerLocked);
     });
+
+    // A refused request fires this instead of pointerlockchange.
+    document.addEventListener('pointerlockerror', () => this._fallbackToDragLook());
+  }
+
+  /** Give up on pointer lock and drive the camera by dragging instead. */
+  _fallbackToDragLook() {
+    clearTimeout(this._lockAttempt);
+    if (this.pointerLocked || this.dragLook) return;
+    this.dragLook = true;
+    this.onLockChange(true);
   }
 
   /** Register a callback fired once per physical key press (no auto-repeat). */
@@ -94,7 +142,31 @@ export class Input {
   }
 
   requestPointerLock() {
-    if (!this.pointerLocked) this.canvas.requestPointerLock();
+    if (this.pointerLocked) return;
+    if (this.dragLook) {
+      this.onLockChange(true);
+      return;
+    }
+    try {
+      const result = this.canvas.requestPointerLock();
+      // Newer browsers return a promise that rejects when the request is denied.
+      if (result && typeof result.catch === 'function') {
+        result.catch(() => this._fallbackToDragLook());
+      }
+    } catch {
+      this._fallbackToDragLook();
+      return;
+    }
+    // Some environments neither resolve nor fire an error; time the attempt out.
+    clearTimeout(this._lockAttempt);
+    this._lockAttempt = setTimeout(() => {
+      if (!this.pointerLocked) this._fallbackToDragLook();
+    }, 600);
+  }
+
+  /** Release the cursor, whichever look mode is active. */
+  releasePointerLock() {
+    if (this.pointerLocked) document.exitPointerLock();
   }
 
   isDown(code) {

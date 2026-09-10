@@ -56,6 +56,7 @@ export class Game {
     this.miningTarget = null;
     this.placeCooldown = 0;
     this.fovScale = 1;
+    this.announcedDragLook = false;
     this.fps = 60;
     this.frameMs = 0;
     this.lastTime = 0;
@@ -69,7 +70,14 @@ export class Game {
     input.onLockChange = (locked) => {
       this.running = locked && !this.player.dead;
       if (!locked && !this.player.dead) hud.setOverlay('paused');
-      if (locked) hud.setOverlay(null);
+      if (locked) {
+        hud.setOverlay(null);
+        // Drag-look changes how you aim and mine, so say so the first time.
+        if (input.dragLook && !this.announcedDragLook) {
+          this.announcedDragLook = true;
+          hud.showToast('Drag to look · hold E to mine · Q to place', 5000);
+        }
+      }
     };
 
     for (let i = 0; i < 9; i++) {
@@ -84,6 +92,15 @@ export class Game {
     });
 
     input.onKey('F3', () => hud.toggleDebug());
+
+    // Escape releases a real pointer lock on its own, but in drag-look mode
+    // nothing would otherwise pause the game.
+    input.onKey('Escape', () => {
+      if (this.running && input.dragLook) {
+        this.running = false;
+        hud.setOverlay('paused');
+      }
+    });
 
     document.getElementById('start-button').addEventListener('click', () => this.play());
     document.getElementById('resume-button').addEventListener('click', () => this.play());
@@ -134,7 +151,7 @@ export class Game {
 
       if (this.player.dead) {
         this.running = false;
-        document.exitPointerLock();
+        this.input.releasePointerLock();
         this.hud.setOverlay('death');
       }
     } else {
@@ -189,14 +206,17 @@ export class Game {
 
     this.updateMining(dt);
 
-    if (clicks.right || (this.input.mouseDown.right && this.placeCooldown === 0)) {
+    const placing = this.input.mouseDown.right || this.input.isDown('KeyQ');
+    if (clicks.right || (placing && this.placeCooldown === 0)) {
       this.placeBlock();
       this.placeCooldown = PLACE_REPEAT;
     }
   }
 
   updateMining(dt) {
-    const holding = this.input.mouseDown.left;
+    // E mirrors the left button so mining stays reachable in drag-look mode,
+    // where holding the mouse is already steering the camera.
+    const holding = this.input.mouseDown.left || this.input.isDown('KeyE');
     const key = this.target ? `${this.target.x},${this.target.y},${this.target.z}` : null;
 
     // Moving the crosshair to a different block restarts the dig.
