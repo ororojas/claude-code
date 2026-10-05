@@ -3589,6 +3589,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   // ---------- Boot ----------
   async function boot() {
+    document.body.dataset.screen = 'home';
     setTool(prefs.tool);
     setColor(prefs.color, false);
     updateSizeUI();
