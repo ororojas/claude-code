@@ -354,3 +354,28 @@ test('an explosion throws nearby bodies outward', () => {
   assert.ok(near1.velocity.x > 1, 'near body pushed away');
   assert.equal(M.vlen(far.velocity), 0, 'far body untouched');
 });
+
+test('a steel hull floats because its ghost volume displaces water', () => {
+  const w = new World();
+  w.addPlane();
+  w.fluids.push({ min: M.v3(-5, 0, -5), max: M.v3(5, 2, 5), density: 1000 });
+  const t = 0.01, hx = 0.6, hy = 0.2, hz = 0.3;
+  const plate = (half, offset) => ({ type: 'box', half, offset });
+  const boat = w.createBody({
+    position: M.v3(0, 2.4, 0), material: MATERIALS.steel,
+    shapes: [
+      plate(M.v3(hx, t / 2, hz), M.v3(0, -hy + t / 2, 0)),
+      plate(M.v3(hx, hy, t / 2), M.v3(0, 0, hz - t / 2)),
+      plate(M.v3(hx, hy, t / 2), M.v3(0, 0, -hz + t / 2)),
+      plate(M.v3(t / 2, hy, hz - t), M.v3(hx - t / 2, 0, 0)),
+      plate(M.v3(t / 2, hy, hz - t), M.v3(-hx + t / 2, 0, 0)),
+      // the air enclosed by the plates
+      { type: 'box', half: M.v3(hx - t, hy - t / 2, hz - t), offset: M.v3(0, t / 2, 0), ghost: true },
+    ],
+  });
+  run(w, 12);
+  const draft = 2 - boat.aabb.min.y;
+  const expected = boat.mass / (1000 * (2 * hx) * (2 * hz));
+  assert.ok(boat.mass > 150 && boat.mass < 200, `hull mass ${boat.mass}`);
+  near(draft, expected, 0.04, 'draft');
+});

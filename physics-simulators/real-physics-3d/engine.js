@@ -182,6 +182,7 @@
     balloon:  { key: 'balloon',  name: 'Helium balloon', density: 0.37,  friction: 0.40, restitution: 0.55, rolling: 0.020 },
     bowling:  { key: 'bowling',  name: 'Urethane',       density: 1290,  friction: 0.25, restitution: 0.65, rolling: 0.004 },
     maple:    { key: 'maple',    name: 'Hard maple',     density: 900,   friction: 0.30, restitution: 0.55, rolling: 0.005 },
+    brick:    { key: 'brick',    name: 'Fired brick',    density: 1900,  friction: 0.60, restitution: 0.20, rolling: 0.010 },
     ground:   { key: 'ground',   name: 'Concrete slab',  density: 2400,  friction: 0.75, restitution: 0.20, rolling: 0.010 },
   };
 
@@ -206,6 +207,9 @@
       this.localQ = def.rotation ? qnormalize(def.rotation) : null;
       this.localR = this.localQ ? m3fromQuat(this.localQ) : null;
       this.hollow = !!def.hollow;
+      // A ghost shape has no mass and never collides, but it displaces fluid
+      // (the air-filled inside of a hull).
+      this.ghost = !!def.ghost;
       this.userData = def.userData || null;
       this.wpos = v3();
       this.wR = M3_ID;
@@ -308,7 +312,7 @@
       for (const d of defs) {
         const s = new Shape(this, d);
         const rho = d.density ?? density ?? s.material.density;
-        s.mass = d.mass ?? rho * s.volume;
+        s.mass = s.ghost ? 0 : d.mass ?? rho * s.volume;
         mass += s.mass;
         volume += s.volume;
         cx += s.offset.x * s.mass;
@@ -327,7 +331,7 @@
       }
       let I = M3_ZERO.slice();
       for (const s of shapes) {
-        if (s.type === 'plane') continue;
+        if (s.type === 'plane' || s.ghost) continue;
         let Is = s.inertia(s.mass);
         if (s.localR) Is = m3rotate(s.localR, Is);
         const o = s.offset, o2 = vlen2(o), m = s.mass;
@@ -1285,7 +1289,9 @@
       const sbB = B.invMass && !B.sleeping ? B.speedBound() : 0;
       const margin = this.baseMargin + (sbA + sbB) * dt;
       for (const sA of A.shapes) {
+        if (sA.ghost) continue;
         for (const sB of B.shapes) {
+          if (sB.ghost) continue;
           if (sA.type !== 'plane' && sB.type !== 'plane') {
             const a = sA.aabb, b = sB.aabb;
             if (a.min.x > b.max.x + margin || b.min.x > a.max.x + margin ||
