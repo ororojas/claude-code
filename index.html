@@ -12,7 +12,7 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: "Arial", sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             min-height: 100vh;
             display: flex;
@@ -303,26 +303,26 @@
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const statusMessage = document.getElementById('statusMessage');
-        const spinBtn = document.getElementById('spinBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const clearBetsBtn = document.getElementById('clearBetsBtn');
-        const addPlayerBtn = document.getElementById('addPlayerBtn');
-        const playerNameInput = document.getElementById('playerNameInput');
-        const playersList = document.getElementById('playersList');
-        const chipSelector = document.getElementById('chipSelector');
-        const resultModal = document.getElementById('resultModal');
-        const resultNumber = document.getElementById('resultNumber');
-        const resultWinners = document.getElementById('resultWinners');
-        const closeResultBtn = document.getElementById('closeResultBtn');
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const statusMessage = document.getElementById("statusMessage");
+        const spinBtn = document.getElementById("spinBtn");
+        const resetBtn = document.getElementById("resetBtn");
+        const clearBetsBtn = document.getElementById("clearBetsBtn");
+        const addPlayerBtn = document.getElementById("addPlayerBtn");
+        const playerNameInput = document.getElementById("playerNameInput");
+        const playersList = document.getElementById("playersList");
+        const chipSelector = document.getElementById("chipSelector");
+        const resultModal = document.getElementById("resultModal");
+        const resultNumber = document.getElementById("resultNumber");
+        const resultWinners = document.getElementById("resultWinners");
+        const closeResultBtn = document.getElementById("closeResultBtn");
 
         let selectedChipValue = 10;
         let isSpinning = false;
         let gameState = {
             players: [],
-            bets: {}, // { playerId: { number: value, ... } }
+            bets: {},
             wheelRotation: 0,
             ballX: 0,
             ballY: 0,
@@ -348,17 +348,17 @@
         }
 
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        window.addEventListener("resize", resizeCanvas);
 
-        chipSelector.addEventListener('click', (e) => {
-            if (e.target.classList.contains('chip')) {
-                document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-                e.target.classList.add('active');
+        chipSelector.addEventListener("click", (e) => {
+            if (e.target.classList.contains("chip")) {
+                document.querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+                e.target.classList.add("active");
                 selectedChipValue = parseInt(e.target.dataset.value);
             }
         });
 
-        addPlayerBtn.addEventListener('click', () => {
+        addPlayerBtn.addEventListener("click", () => {
             const name = playerNameInput.value.trim();
             if (name) {
                 gameState.players.push({
@@ -367,28 +367,28 @@
                     chips: 500,
                     bets: {}
                 });
-                playerNameInput.value = '';
+                playerNameInput.value = "";
                 updatePlayersList();
             }
         });
 
-        clearBetsBtn.addEventListener('click', () => {
+        clearBetsBtn.addEventListener("click", () => {
             gameState.players.forEach(p => p.bets = {});
             updatePlayersList();
         });
 
-        spinBtn.addEventListener('click', () => {
+        spinBtn.addEventListener("click", () => {
             if (isSpinning || gameState.players.length === 0) return;
             spinWheel();
         });
 
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener("click", () => {
             gameState.players = [];
             gameState.players.forEach(p => p.bets = {});
             updatePlayersList();
         });
 
-        canvas.addEventListener('click', (e) => {
+        canvas.addEventListener("click", (e) => {
             if (isSpinning) return;
 
             const rect = canvas.getBoundingClientRect();
@@ -401,13 +401,11 @@
 
             if (distance > gameState.wheelRadius * 0.9 || distance < gameState.wheelRadius * 0.1) return;
 
-            // Get the angle and find which number was clicked
             const angle = Math.atan2(dy, dx) * 180 / Math.PI;
             const normalizedAngle = (angle + 90 + gameState.wheelRotation + 360) % 360;
             const numberIndex = Math.floor((normalizedAngle / 360) * WHEEL_NUMBERS.length);
             const number = WHEEL_NUMBERS[numberIndex];
 
-            // Add bet for current player
             if (gameState.players.length > 0) {
                 const currentPlayer = gameState.players[gameState.players.length - 1];
                 if (!currentPlayer.bets[number]) {
@@ -422,16 +420,16 @@
 
         function updatePlayersList() {
             playersList.innerHTML = gameState.players.map((player, idx) => `
-                <div class="player-item ${idx === gameState.players.length - 1 ? 'active' : ''}">
+                <div class="player-item ${idx === gameState.players.length - 1 ? "active" : ""}">
                     <div class="player-name">${player.name}</div>
                     <div class="player-chips">💰 $${player.chips}</div>
                     <div class="player-bets">
-                        ${Object.entries(player.bets).length > 0
-                            ? Object.entries(player.bets).map(([num, val]) => `${num}: $${val}`).join(', ')
-                            : 'No bets'}
+                        ${Object.entries(player.bets).length > 0 
+                            ? Object.entries(player.bets).map(([num, val]) => `${num}: $${val}`).join(", ")
+                            : "No bets"}
                     </div>
                 </div>
-            `).join('');
+            `).join("");
         }
 
         function drawWheel() {
@@ -452,46 +450,41 @@
                 const number = WHEEL_NUMBERS[i];
                 const isRed = RED_NUMBERS.includes(number);
 
-                // Draw pocket
                 ctx.beginPath();
                 ctx.moveTo(0, 0);
                 ctx.arc(0, 0, r, angle - Math.PI / 2, nextAngle - Math.PI / 2);
                 ctx.closePath();
-                ctx.fillStyle = number === 0 ? '#2d5016' : (isRed ? '#c41e3a' : '#000');
+                ctx.fillStyle = number === 0 ? "#2d5016" : (isRed ? "#c41e3a" : "#000");
                 ctx.fill();
-                ctx.strokeStyle = '#daa520';
+                ctx.strokeStyle = "#daa520";
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Draw number
                 const midAngle = (angle + nextAngle) / 2;
                 const numX = Math.cos(midAngle) * (r * 0.7);
                 const numY = Math.sin(midAngle) * (r * 0.7);
 
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+                ctx.fillStyle = "#fff";
+                ctx.font = "bold 14px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
                 ctx.fillText(number, numX, numY);
             }
 
-            // Draw wheel border
             ctx.beginPath();
             ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.strokeStyle = '#daa520';
+            ctx.strokeStyle = "#daa520";
             ctx.lineWidth = 4;
             ctx.stroke();
 
-            // Draw center
             ctx.beginPath();
             ctx.arc(0, 0, 15, 0, Math.PI * 2);
-            ctx.fillStyle = '#daa520';
+            ctx.fillStyle = "#daa520";
             ctx.fill();
 
             ctx.restore();
 
-            // Draw ball pointer
-            ctx.fillStyle = '#e94560';
+            ctx.fillStyle = "#e94560";
             ctx.beginPath();
             ctx.moveTo(cx, cy - r - 30);
             ctx.lineTo(cx - 12, cy - r - 15);
@@ -503,25 +496,24 @@
         function drawBall() {
             ctx.beginPath();
             ctx.arc(gameState.ballX, gameState.ballY, gameState.ballRadius, 0, Math.PI * 2);
-            ctx.fillStyle = '#f0f0f0';
+            ctx.fillStyle = "#f0f0f0";
             ctx.fill();
-            ctx.strokeStyle = '#333';
+            ctx.strokeStyle = "#333";
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Ball shine
             ctx.beginPath();
             ctx.arc(gameState.ballX - 2, gameState.ballY - 2, 3, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
             ctx.fill();
         }
 
         function spinWheel() {
             isSpinning = true;
             spinBtn.disabled = true;
-            statusMessage.textContent = 'Spinning...';
+            statusMessage.textContent = "Spinning...";
 
-            const spinDuration = 4000; // 4 seconds
+            const spinDuration = 4000;
             const startTime = Date.now();
             const startRotation = gameState.wheelRotation;
             const spins = 5 + Math.random() * 3;
@@ -530,7 +522,7 @@
             function animate() {
                 const elapsed = Date.now() - startTime;
                 const progress = Math.min(elapsed / spinDuration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3); // Ease out
+                const easeProgress = 1 - Math.pow(1 - progress, 3);
 
                 gameState.wheelRotation = startRotation + finalRotation * easeProgress;
 
@@ -555,37 +547,36 @@
             const winners = [];
             gameState.players.forEach(player => {
                 if (player.bets[winningNumber]) {
-                    const winAmount = player.bets[winningNumber] * 36; // Simple payout
+                    const winAmount = player.bets[winningNumber] * 36;
                     player.chips += winAmount;
                     winners.push({ name: player.name, amount: winAmount });
                 }
                 player.bets = {};
             });
 
-            resultNumber.textContent = `Number: ${winningNumber} ${RED_NUMBERS.includes(winningNumber) ? '🔴' : '⚫'}`;
-
+            resultNumber.textContent = `Number: ${winningNumber} ${RED_NUMBERS.includes(winningNumber) ? "🔴" : "⚫"}`;
+            
             if (winners.length > 0) {
                 resultWinners.textContent = winners
                     .map(w => `${w.name} wins $${w.amount}!`)
-                    .join(' | ');
+                    .join(" | ");
             } else {
-                resultWinners.textContent = 'No winners this round';
+                resultWinners.textContent = "No winners this round";
             }
 
             statusMessage.textContent = `The ball landed on ${winningNumber}!`;
             updatePlayersList();
-            resultModal.classList.add('active');
+            resultModal.classList.add("active");
         }
 
-        closeResultBtn.addEventListener('click', () => {
-            resultModal.classList.remove('active');
+        closeResultBtn.addEventListener("click", () => {
+            resultModal.classList.remove("active");
         });
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw background
-            ctx.fillStyle = 'rgba(10, 25, 41, 0.5)';
+            ctx.fillStyle = "rgba(10, 25, 41, 0.5)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             drawWheel();
@@ -600,10 +591,9 @@
             requestAnimationFrame(animate);
         }
 
-        // Add sample players
         gameState.players.push(
-            { id: 1, name: 'Player 1', chips: 500, bets: {} },
-            { id: 2, name: 'Player 2', chips: 500, bets: {} }
+            { id: 1, name: "Player 1", chips: 500, bets: {} },
+            { id: 2, name: "Player 2", chips: 500, bets: {} }
         );
         updatePlayersList();
 
