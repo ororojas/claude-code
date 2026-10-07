@@ -447,6 +447,7 @@ wcv.addEventListener('pointercancel', () => { swipe = null; });
 
 let editing = null;
 let pickedColor = null;
+let removeArmed = false;
 
 function openPlayerSheet(p) {
   if (!p && state.players.length >= MAX_PLAYERS) return;
@@ -456,6 +457,8 @@ function openPlayerSheet(p) {
   $('psName').value = p ? p.name : '';
   $('psExtra').style.display = p ? 'flex' : 'none';
   $('psRemove').disabled = state.phase !== 'betting';
+  $('psRemove').textContent = 'Remove';
+  removeArmed = false;
   const taken = new Set(state.players.filter((x) => x !== p).map((x) => x.color));
   pickedColor = p ? p.color : COLORS.find((c) => !taken.has(c));
   const sw = $('psSwatches');
@@ -504,7 +507,11 @@ $('psTopup').addEventListener('click', () => {
 });
 $('psRemove').addEventListener('click', () => {
   if (!editing || state.phase !== 'betting') return;
-  if (!confirm(`Remove ${editing.name} from the table?`)) return;
+  if (!removeArmed) {
+    removeArmed = true;
+    $('psRemove').textContent = 'Tap again to remove';
+    return;
+  }
   state.players = state.players.filter((x) => x !== editing);
   if (state.activeId === editing.id) state.activeId = state.players[0]?.id ?? null;
   closePlayerSheet();
