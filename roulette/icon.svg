@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="70%"><stop offset="0" stop-color="#12693f"/><stop offset="1" stop-color="#05220f"/></radialGradient>
+    <radialGradient id="wood" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#8a4b1c"/><stop offset="1" stop-color="#3d1a06"/></radialGradient>
+    <radialGradient id="ball" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#b9c2cc"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="200" fill="url(#wood)" stroke="#e8c778" stroke-width="6"/>
+  <g id="seg">
+    <path d="M256 256 L256 86 A170 170 0 0 1 284.7 88.4 Z" fill="#c0141f"/>
+    <path d="M256 256 L284.7 88.4 A170 170 0 0 1 312.4 95.6 Z" fill="#141414"/>
+  </g>
+  <g fill="none">
+    <use href="#seg" transform="rotate(19.46 256 256)"/><use href="#seg" transform="rotate(38.92 256 256)"/><use href="#seg" transform="rotate(58.38 256 256)"/>
+    <use href="#seg" transform="rotate(77.84 256 256)"/><use href="#seg" transform="rotate(97.3 256 256)"/><use href="#seg" transform="rotate(116.76 256 256)"/>
+    <use href="#seg" transform="rotate(136.22 256 256)"/><use href="#seg" transform="rotate(155.68 256 256)"/><use href="#seg" transform="rotate(175.14 256 256)"/>
+    <use href="#seg" transform="rotate(194.6 256 256)"/><use href="#seg" transform="rotate(214.06 256 256)"/><use href="#seg" transform="rotate(233.52 256 256)"/>
+    <use href="#seg" transform="rotate(252.98 256 256)"/><use href="#seg" transform="rotate(272.44 256 256)"/><use href="#seg" transform="rotate(291.9 256 256)"/>
+    <use href="#seg" transform="rotate(311.36 256 256)"/><use href="#seg" transform="rotate(330.82 256 256)"/>
+  </g>
+  <path d="M256 256 L227.3 88.4 A170 170 0 0 1 256 86 Z" fill="#0d8a43"/>
+  <circle cx="256" cy="256" r="100" fill="url(#wood)" stroke="#e8c778" stroke-width="5"/>
+  <circle cx="256" cy="256" r="26" fill="#e1b24f"/>
+  <path d="M256 196v120M196 256h120" stroke="#e1b24f" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="330" cy="128" r="17" fill="url(#ball)"/>
+</svg>
