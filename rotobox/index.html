@@ -340,6 +340,15 @@ input[type="color"] { width: 60px; height: 40px; border: 1px solid var(--rule); 
 
 .imp-preview { display: grid; place-items: center; background: #000; border-radius: 14px; overflow: hidden; margin-bottom: 14px; }
 .imp-preview video, .imp-preview canvas { display: block; max-width: 100%; max-height: min(28vh, 260px); object-fit: contain; }
+.ph-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; margin-bottom: 4px; scrollbar-width: none; }
+.ph-strip::-webkit-scrollbar { display: none; }
+.ph-strip figure { position: relative; flex: none; width: 68px; height: 68px; margin: 0; border-radius: 12px; overflow: hidden; background: var(--tray-2); border: 1px solid var(--rule); }
+.ph-strip canvas { display: block; width: 100%; height: 100%; }
+.ph-strip figcaption { position: absolute; left: 4px; bottom: 4px; padding: 1px 5px; border-radius: 6px; background: rgba(0, 0, 0, 0.62); color: #fff; font: 500 10px/1.4 var(--font-mono); }
+.ph-strip .ph-more { display: grid; place-items: center; color: var(--muted); font: 500 12px var(--font-mono); }
+.ph-strip figure.bad { background: repeating-linear-gradient(135deg, var(--tray-2) 0 6px, var(--rule) 6px 8px); }
+.ph-strip figure.bad::after { content: "Can’t read"; position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font: 500 10px/1.2 var(--font-mono); color: var(--ink); }
+.ph-count { margin: 0 0 16px; color: var(--muted); }
 .trim { position: relative; height: 44px; margin: 0 14px; touch-action: none; cursor: pointer; }
 .trim-track {
   position: absolute; left: -14px; right: -14px; top: 50%; height: 12px; translate: 0 -50%; border-radius: 6px;
@@ -424,7 +433,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <canvas id="hero" class="hero" width="184" height="184" aria-hidden="true"></canvas>
       <div>
         <h1 class="wordmark">Rotobox</h1>
-        <p class="tagline">Trace over your own videos frame by frame, or draw a flipbook animation from a blank page.</p>
+        <p class="tagline">Trace over your own videos frame by frame, draw a flipbook from a blank page, or turn photos into stop motion.</p>
       </div>
     </header>
 
@@ -438,6 +447,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         <span class="ico"><svg class="i"><use href="#i-paper"/></svg></span>
         <b>Blank animation</b>
         <span>Start on empty paper and draw each frame yourself.</span>
+      </button>
+      <button type="button" class="start" id="btnPhotos">
+        <span class="ico"><svg class="i"><use href="#i-image"/></svg></span>
+        <b>Animate photos</b>
+        <span>Each photo you pick becomes a frame. Made for stop motion.</span>
       </button>
     </div>
 
@@ -461,6 +475,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   <input type="file" id="fileVideo" class="file-input" accept="video/*" tabindex="-1" aria-hidden="true">
   <input type="file" id="fileBackup" class="file-input" accept=".zip,application/zip" tabindex="-1" aria-hidden="true">
 </main>
+<!-- Outside both screens so the editor's frame menu can use it too. -->
+<input type="file" id="filePhotos" class="file-input" accept="image/*" multiple tabindex="-1" aria-hidden="true">
 
 <!-- ============ Editor ============ -->
 <div id="editor" class="screen" hidden>
@@ -571,6 +587,49 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   </div>
 </div>
 
+<div class="sheet" id="sheetPhotos" role="dialog" aria-modal="true" aria-labelledby="phTitle" data-sticky="1" hidden>
+  <h2 id="phTitle">Set up your photos</h2>
+  <div class="ph-strip" id="phStrip" aria-label="Your photos, in frame order"></div>
+  <p class="mono small ph-count" id="phCount"></p>
+  <div class="field" id="phModeField">
+    <span class="label" id="lblPhMode">Use them for</span>
+    <div class="chips" id="phMode" aria-labelledby="lblPhMode">
+      <button type="button" data-v="motion">Stop motion</button><button type="button" data-v="trace">Tracing</button>
+    </div>
+    <p class="hint" id="phModeHint"></p>
+  </div>
+  <div class="field">
+    <span class="label" id="lblPhOrder">Order</span>
+    <div class="chips" id="phOrder" aria-labelledby="lblPhOrder">
+      <button type="button" data-v="picked">As picked</button><button type="button" data-v="name">By name</button><button type="button" data-v="date">By date</button>
+    </div>
+  </div>
+  <div class="field" id="phFpsField">
+    <span class="label" id="lblPhFps">Frames per second</span>
+    <div class="chips mono" id="phFps" aria-labelledby="lblPhFps">
+      <button type="button" data-v="4">4</button><button type="button" data-v="6">6</button><button type="button" data-v="8">8</button><button type="button" data-v="10">10</button><button type="button" data-v="12">12</button><button type="button" data-v="15">15</button>
+    </div>
+    <p class="hint">Stop motion usually runs at 6 to 12. You can change it later.</p>
+  </div>
+  <div class="field">
+    <span class="label" id="lblPhFit">Framing</span>
+    <div class="chips" id="phFit" aria-labelledby="lblPhFit">
+      <button type="button" data-v="fill">Fill</button><button type="button" data-v="fit">Fit</button>
+    </div>
+    <p class="hint" id="phFitHint"></p>
+  </div>
+  <div class="field" id="phDetailField">
+    <span class="label" id="lblPhDetail">Detail</span>
+    <div class="chips" id="phDetail" aria-labelledby="lblPhDetail">
+      <button type="button" data-v="std">Standard</button><button type="button" data-v="hd">Sharp</button>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button type="button" class="btn-secondary" id="phCancel">Cancel</button>
+    <button type="button" class="btn-primary" id="phGo">Make frames</button>
+  </div>
+</div>
+
 <div class="sheet" id="sheetBlank" role="dialog" aria-modal="true" aria-labelledby="blankTitle" hidden>
   <h2 id="blankTitle">New animation</h2>
   <div class="field">
@@ -638,9 +697,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 <div class="sheet" id="sheetTable" role="dialog" aria-modal="true" aria-labelledby="tableTitle" hidden>
   <h2 id="tableTitle">Light table</h2>
   <div class="group" id="grpVideo">
-    <div class="row"><label for="swRef">Show the video under your drawing</label><button type="button" class="switch" role="switch" id="swRef" aria-checked="true"><span></span></button></div>
+    <div class="row"><label for="swRef" data-refl="Show the {all} under your drawing">Show the video under your drawing</label><button type="button" class="switch" role="switch" id="swRef" aria-checked="true"><span></span></button></div>
     <div class="field">
-      <div class="row tight"><label class="label" for="rgRefOp">Video opacity</label><output class="mono small" id="outRefOp" for="rgRefOp">60%</output></div>
+      <div class="row tight"><label class="label" for="rgRefOp" data-refl="{One} opacity">Video opacity</label><output class="mono small" id="outRefOp" for="rgRefOp">60%</output></div>
       <input type="range" id="rgRefOp" min="5" max="100" step="5">
     </div>
   </div>
@@ -697,7 +756,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" id="fmPaste"><svg class="i"><use href="#i-paste"/></svg>Paste drawing</button>
     <button type="button" id="fmEarlier"><svg class="i"><use href="#i-left"/></svg>Move earlier</button>
     <button type="button" id="fmLater"><svg class="i"><use href="#i-right"/></svg>Move later</button>
-    <button type="button" id="fmSketch"><svg class="i"><use href="#i-sketch"/></svg>Auto-sketch from the video</button>
+    <button type="button" id="fmPhotos"><svg class="i"><use href="#i-image"/></svg>Add photos after this frame</button>
+    <button type="button" id="fmSketch"><svg class="i"><use href="#i-sketch"/></svg><span data-refl="Auto-sketch from the {one}">Auto-sketch from the video</span></button>
     <button type="button" id="fmClear"><svg class="i"><use href="#i-eraser"/></svg>Clear drawing</button>
     <button type="button" id="fmDelete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Delete frame</button>
   </div>
@@ -705,7 +765,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
 <div class="sheet" id="sheetSketch" role="dialog" aria-modal="true" aria-labelledby="skTitle" hidden>
   <h2 id="skTitle">Auto-sketch</h2>
-  <p class="body">Finds the edges in the video and draws them as lines you can keep, erase or trace over. It uses your current color and brush.</p>
+  <p class="body" data-refl="Finds the edges in the {one} and draws them as lines you can keep, erase or trace over. It uses your current color and brush.">Finds the edges in the video and draws them as lines you can keep, erase or trace over. It uses your current color and brush.</p>
   <div class="sk-preview"><canvas id="skPreview" aria-label="Preview of the sketch for this frame"></canvas></div>
   <div class="field">
     <span class="label" id="lblSkDetail">Detail</span>
@@ -736,9 +796,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <div class="chips mono" id="expSize" aria-labelledby="lblExpSize"></div>
     </div>
     <div class="group" id="expVideoGrp">
-      <div class="row"><label for="swExpVideo">Keep the video behind the drawing</label><button type="button" class="switch" role="switch" id="swExpVideo" aria-checked="false"><span></span></button></div>
+      <div class="row"><label for="swExpVideo" data-refl="Keep the {all} behind the drawing">Keep the video behind the drawing</label><button type="button" class="switch" role="switch" id="swExpVideo" aria-checked="false"><span></span></button></div>
       <div class="field" id="expVideoStrength" style="margin-bottom:0">
-        <div class="row tight"><label class="label" for="rgExpVideo">Video strength</label><output class="mono small" id="outExpVideo" for="rgExpVideo">100%</output></div>
+        <div class="row tight"><label class="label" for="rgExpVideo" data-refl="{One} strength">Video strength</label><output class="mono small" id="outExpVideo" for="rgExpVideo">100%</output></div>
         <input type="range" id="rgExpVideo" min="10" max="100" step="5" value="100">
       </div>
     </div>
@@ -1667,7 +1727,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.fillStyle = E.project.paper;
     ctx.fillRect(0, 0, tw, th);
     if (f.refThumb && E.project.hasVideo && E.settings.showRef) {
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = E.settings.refOpacity;
       ctx.drawImage(f.refThumb, 0, 0, tw, th);
       ctx.globalAlpha = 1;
     }
@@ -1883,8 +1943,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const ctx = c.getContext('2d');
     ctx.fillStyle = p.paper;
     ctx.fillRect(0, 0, w, h);
-    if (p.hasVideo && f.ref) {
-      try { const bmp = await getRef(f); ctx.globalAlpha = 0.5; ctx.drawImage(bmp, 0, 0, w, h); ctx.globalAlpha = 1; } catch (e) { /* skip */ }
+    if (p.hasVideo && f.ref && E.settings.showRef) {
+      try { const bmp = await getRef(f); ctx.globalAlpha = E.settings.refOpacity; ctx.drawImage(bmp, 0, 0, w, h); ctx.globalAlpha = 1; } catch (e) { /* skip */ }
     }
     if (E.project !== p) { freeCanvas(c); return p.thumb; }
     if (f.ops.length) drawScaled(ctx, getDrawing(f), w, h);
@@ -2753,6 +2813,17 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   // ---------- Editor chrome ----------
+  // Photo projects use the same light-table machinery as videos, so only the words change.
+  function refWords() {
+    return E.project && E.project.source === 'photos'
+      ? { one: 'photo', all: 'photos', One: 'Photo', All: 'Photos' }
+      : { one: 'video', all: 'video', One: 'Video', All: 'Video' };
+  }
+  function applyRefLabels() {
+    const w = refWords();
+    for (const el of $$('[data-refl]')) el.textContent = el.dataset.refl.replace(/\{(\w+)\}/g, (m, k) => w[k] || m);
+    $('#btnRef').setAttribute('aria-label', 'Show ' + w.all);
+  }
   function updateEditorUI() {
     const p = E.project, s = E.settings;
     $('#projTitle').textContent = p.name;
@@ -2763,6 +2834,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     cvRef.style.opacity = s.refOpacity;
     stage.style.background = p.paper;
     $('#fmInsertLabel').textContent = p.hasVideo ? 'Insert a frame after this one' : 'Insert a blank frame after';
+    applyRefLabels();
     updateSoundUI();
     setTool(prefs.tool);
     setColor(prefs.color, false);
@@ -2810,7 +2882,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     paintRef(E.frames[E.cur]);
     queueAllThumbs();
     scheduleSave();
-    if (announce) toast(on ? 'Video showing' : 'Video hidden', 1200);
+    if (announce) toast(refWords().All + (on ? ' showing' : ' hidden'), 1200);
   }
 
   // Frame menu
@@ -2904,7 +2976,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   $('#btnPickCanvas').addEventListener('click', () => {
     closeSheet('sheetColor');
     setTool('picker');
-    toast('Tap the canvas to pick a color. Colors from the video work too.');
+    toast('Tap the canvas to pick a color.' + (E.project && E.project.hasVideo ? ' Colors from the ' + refWords().all + ' work too.' : ''));
   });
   const pickSwatch = (v) => {
     setColor(v);
@@ -3025,6 +3097,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#outRefOp').textContent = e.target.value + '%';
     scheduleSave();
   });
+  $('#rgRefOp').addEventListener('change', () => queueAllThumbs());
   bindSwitch($('#swOnion'), (on) => { E.settings.onion = on; $('#btnOnion').setAttribute('aria-pressed', String(on)); renderOnion(); scheduleSave(); });
   onPick($('#chBefore'), (v) => { E.settings.before = +v; setPressed($('#chBefore'), v); renderOnion(); scheduleSave(); });
   onPick($('#chAfter'), (v) => { E.settings.after = +v; setPressed($('#chAfter'), v); renderOnion(); scheduleSave(); });
@@ -3356,7 +3429,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (p.thumb) files.push({ name: 'cover.jpg', data: new Uint8Array(await p.thumb.arrayBuffer()) });
     const meta = {
       format: 'rotobox', version: 1, saved: new Date().toISOString(),
-      project: { name: p.name, w: p.w, h: p.h, fps: p.fps, paper: p.paper, hasVideo: !!p.hasVideo, settings: p.settings || {} },
+      project: { name: p.name, w: p.w, h: p.h, fps: p.fps, paper: p.paper, hasVideo: !!p.hasVideo, source: p.source || null, settings: p.settings || {} },
       frames, audio, cover: p.thumb ? 'cover.jpg' : null,
     };
     files.unshift({ name: 'rotobox.json', data: new TextEncoder().encode(JSON.stringify(meta, opsReplacer)) });
@@ -3436,6 +3509,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         settings: Object.assign(defaultSettings(hasVideo), pr.settings && typeof pr.settings === 'object' ? pr.settings : {}),
         cur: 0, hasAudio: false,
       };
+      if (pr.source === 'photos') p.source = 'photos';
       if (meta.audio && typeof meta.audio.file === 'string') {
         const blob = await zip.read(meta.audio.file, 'audio/mp4').catch(() => null);
         if (blob && blob.size) { await Store.kvSet(audioKey(pid), { blob, duration: +meta.audio.duration || 0 }); p.hasAudio = true; }
@@ -3938,17 +4012,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         const t = makeCanvas(td.pw, td.ph);
         t.getContext('2d').drawImage(c, 0, 0, td.pw, td.ph);
         thumbs.push(t);
-        if (i === 0) {
-          const s = 360 / Math.max(w, h);
-          const cv = makeCanvas(Math.round(w * s), Math.round(h * s));
-          const cctx = cv.getContext('2d');
-          cctx.fillStyle = '#fff';
-          cctx.fillRect(0, 0, cv.width, cv.height);
-          cctx.globalAlpha = 0.5;
-          drawScaled(cctx, c, cv.width, cv.height);
-          cover = await toBlob(cv, 'image/jpeg', 0.82).catch(() => null);
-          freeCanvas(cv);
-        }
+        if (i === 0) cover = await makeCover(c, defaultSettings(true).refOpacity, '#ffffff');
         i++;
         ctl.set(i / n, 'Frame ' + i + ' of ' + n, src.kind === 'element' ? null : c);
         if (i >= n) break;
@@ -3969,12 +4033,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         try { await Store.kvSet(audioKey(pid), { blob: audio.blob, duration: audio.duration }); p.hasAudio = true; } catch (e) { console.warn(e); }
       }
       await Store.save(p, frames);
-      const refThumbs = new Map();
-      for (let k = 0; k < frames.length; k++) {
-        let bmp = thumbs[k];
-        if ('createImageBitmap' in window) { try { bmp = await createImageBitmap(thumbs[k]); freeCanvas(thumbs[k]); } catch (e) { bmp = thumbs[k]; } }
-        refThumbs.set(frames[k].id, bmp);
-      }
+      const refThumbs = await toRefThumbs(frames, thumbs);
       ctl.close();
       src.close();
       imp.src = null;
@@ -3992,6 +4051,259 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       releaseWake(wake);
       freeCanvas(c);
       freeScaleTemps();
+    }
+  }
+
+  // A small card picture for the home screen, with the reference drawn the way the editor shows it.
+  async function makeCover(c, alpha, paper) {
+    const s = 360 / Math.max(c.width, c.height);
+    const cv = makeCanvas(Math.round(c.width * s), Math.round(c.height * s));
+    const cctx = cv.getContext('2d');
+    cctx.fillStyle = paper;
+    cctx.fillRect(0, 0, cv.width, cv.height);
+    cctx.globalAlpha = alpha;
+    drawScaled(cctx, c, cv.width, cv.height);
+    const b = await toBlob(cv, 'image/jpeg', 0.82).catch(() => null);
+    freeCanvas(cv);
+    return b;
+  }
+  // Filmstrip pictures made while importing, so the strip fills in at once.
+  async function toRefThumbs(frames, thumbs) {
+    const map = new Map();
+    for (let k = 0; k < frames.length; k++) {
+      let bmp = thumbs[k];
+      if ('createImageBitmap' in window) { try { bmp = await createImageBitmap(thumbs[k]); freeCanvas(thumbs[k]); } catch (e) { bmp = thumbs[k]; } }
+      map.set(frames[k].id, bmp);
+    }
+    return map;
+  }
+
+  // ---------- Photos ----------
+  // Each photo becomes a frame with the photo under it, just like a video frame. For stop motion
+  // the photos show at full strength and exports include them; for tracing they sit faintly below.
+  const ph = { files: [], adding: false, running: false, mode: 'motion', order: 'picked', fps: 8, fit: 'fill', detail: 'std' };
+  const phThumbs = new Map();
+  let phToken = 0;
+  $('#btnPhotos').addEventListener('click', () => pickPhotos(false));
+  $('#fmPhotos').addEventListener('click', () => { closeSheet('sheetFrame'); pickPhotos(true); });
+  function pickPhotos(adding) {
+    ph.adding = adding;
+    const i = $('#filePhotos');
+    i.value = '';
+    i.click();
+  }
+  $('#filePhotos').addEventListener('change', (e) => {
+    const files = [...(e.target.files || [])].filter((f) => !f.type || f.type.startsWith('image/'));
+    e.target.value = '';
+    if (!files.length || (ph.adding && !E.project)) return;
+    openPhotoSheet(files);
+  });
+  // An <img> applies the photo's camera orientation in every current browser.
+  function loadPhoto(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.decoding = 'async';
+      img._url = url;
+      img.onload = () => { const ok = () => res(img); if (img.decode) img.decode().then(ok, ok); else ok(); };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Couldn’t read ' + (file.name || 'a photo'))); };
+      img.src = url;
+    });
+  }
+  function releasePhoto(img) {
+    img.onload = img.onerror = null;
+    URL.revokeObjectURL(img._url);
+    img.removeAttribute('src');
+  }
+  function drawPhoto(ctx, img, w, h, fit, paper) {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const s = fit === 'fit' ? Math.min(w / nw, h / nh) : Math.max(w / nw, h / nh);
+    const dw = nw * s, dh = nh * s;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = paper;
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+  }
+  function sortedPhotos() {
+    const list = ph.files.slice();
+    if (ph.order === 'name') list.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
+    else if (ph.order === 'date') list.sort((a, b) => (a.lastModified || 0) - (b.lastModified || 0));
+    return list;
+  }
+  const photoRoom = () => (ph.adding && E.project ? MAX_FRAMES - E.frames.length : MAX_FRAMES);
+  function openPhotoSheet(files) {
+    ph.files = files;
+    ph.mode = Prefs.get('phMode', 'motion');
+    ph.order = Prefs.get('phOrder', 'picked');
+    ph.fps = Prefs.get('phFps', 8);
+    ph.fit = Prefs.get('phFit', 'fill');
+    ph.detail = Prefs.get('impDetail', 'std');
+    $('#phTitle').textContent = ph.adding ? 'Add photos' : 'Set up your photos';
+    $('#phModeField').hidden = $('#phFpsField').hidden = $('#phDetailField').hidden = ph.adding;
+    setPressed($('#phMode'), ph.mode);
+    setPressed($('#phOrder'), ph.order);
+    setPressed($('#phFps'), ph.fps);
+    setPressed($('#phFit'), ph.fit);
+    setPressed($('#phDetail'), ph.detail);
+    renderPhotoSheet(true);
+    openSheet('sheetPhotos')._onClose = () => {
+      phToken++;
+      $('#phStrip').textContent = '';
+      phThumbs.forEach(freeCanvas);
+      phThumbs.clear();
+      if (!ph.running) ph.files = [];
+    };
+  }
+  function renderPhotoSheet(strip) {
+    const list = sortedPhotos();
+    const n = Math.min(list.length, Math.max(0, photoRoom()));
+    const fps = ph.adding && E.project ? E.project.fps : ph.fps;
+    let text = n + (n === 1 ? ' photo · ' : ' photos · ') + (n / fps).toFixed(1) + ' s at ' + fps + ' fps';
+    if (list.length > n) text += ' · ' + (list.length - n) + ' won’t fit';
+    $('#phCount').textContent = text;
+    $('#phModeHint').textContent = ph.mode === 'motion'
+      ? 'The photos play as the animation, and exports include them. Draw on top to add effects.'
+      : 'The photos sit faintly under your paper, and exports show only your drawing.';
+    $('#phFitHint').textContent = ph.fit === 'fill'
+      ? 'Photos that don’t match the frame’s shape get cropped to fill it.'
+      : 'Every photo shows in full, with bars where it doesn’t fill the frame.';
+    $('#phGo').textContent = ph.adding ? 'Add ' + n + (n === 1 ? ' frame' : ' frames') : 'Make ' + n + (n === 1 ? ' frame' : ' frames');
+    $('#phGo').disabled = n < 1;
+    if (strip) renderPhotoStrip(list);
+  }
+  // Small previews, decoded one photo at a time so a phone never holds several full-size photos.
+  function renderPhotoStrip(list) {
+    const token = ++phToken;
+    const box = $('#phStrip');
+    box.textContent = '';
+    const show = Math.min(list.length, 10);
+    const figs = [];
+    for (let i = 0; i < show; i++) {
+      const fig = document.createElement('figure');
+      const cap = document.createElement('figcaption');
+      cap.textContent = i + 1;
+      fig.append(cap);
+      box.append(fig);
+      figs.push(fig);
+    }
+    if (list.length > show) {
+      const more = document.createElement('figure');
+      more.className = 'ph-more';
+      more.textContent = '+' + (list.length - show);
+      box.append(more);
+    }
+    (async () => {
+      for (let i = 0; i < show; i++) {
+        let c = phThumbs.get(list[i]);
+        if (!c) {
+          const img = await loadPhoto(list[i]).catch(() => null);
+          c = makeCanvas(136, 136);
+          if (img && img.naturalWidth) drawPhoto(c.getContext('2d'), img, 136, 136, 'fill', '#000');
+          else c.dataset.bad = '1';
+          if (img) releasePhoto(img);
+          if (token !== phToken) { freeCanvas(c); return; }
+          phThumbs.set(list[i], c);
+        }
+        if (token !== phToken) return;
+        if (c.dataset.bad) figs[i].classList.add('bad');
+        else figs[i].prepend(c);
+      }
+    })();
+  }
+  onPick($('#phMode'), (v) => { ph.mode = v; Prefs.set('phMode', v); setPressed($('#phMode'), v); renderPhotoSheet(false); });
+  onPick($('#phOrder'), (v) => { ph.order = v; Prefs.set('phOrder', v); setPressed($('#phOrder'), v); renderPhotoSheet(true); });
+  onPick($('#phFps'), (v) => { ph.fps = +v; Prefs.set('phFps', ph.fps); setPressed($('#phFps'), v); renderPhotoSheet(false); });
+  onPick($('#phFit'), (v) => { ph.fit = v; Prefs.set('phFit', v); setPressed($('#phFit'), v); renderPhotoSheet(false); });
+  onPick($('#phDetail'), (v) => { ph.detail = v; Prefs.set('impDetail', v); setPressed($('#phDetail'), v); });
+  $('#phCancel').addEventListener('click', () => closeSheet('sheetPhotos'));
+  $('#phGo').addEventListener('click', runPhotos);
+
+  async function runPhotos() {
+    if (ph.running) return;
+    const adding = ph.adding && !!E.project;
+    const files = sortedPhotos().slice(0, Math.max(0, photoRoom()));
+    if (!files.length) return;
+    const { mode, fps, fit } = ph;
+    const long = ph.detail === 'hd' ? 1920 : 1280;
+    const motion = mode === 'motion';
+    const paper = adding ? E.project.paper : '#ffffff';
+    ph.running = true;
+    closeSheet('sheetPhotos');
+    const ctl = busyOpen(adding ? 'Adding your photos' : 'Turning photos into frames', { cancel: true });
+    const wake = await holdWake();
+    const refs = [], thumbs = [];
+    let c = null, cover = null, failed = 0;
+    let w = adding ? E.W : 0, h = adding ? E.H : 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        if (ctl.signal.aborted) throw abortError();
+        const img = await loadPhoto(files[i]).catch(() => null);
+        if (!img || !img.naturalWidth) { failed++; if (img) releasePhoto(img); continue; }
+        if (!w) {
+          // The first photo that opens sets the frame's shape.
+          const sc = Math.min(1, long / Math.max(img.naturalWidth, img.naturalHeight));
+          w = even(img.naturalWidth * sc);
+          h = even(img.naturalHeight * sc);
+        }
+        if (!c) c = makeCanvas(w, h);
+        drawPhoto(c.getContext('2d'), img, w, h, fit, paper);
+        releasePhoto(img);
+        refs.push(await toBlob(c, 'image/jpeg', 0.86));
+        const td = thumbDims(w, h);
+        const t = makeCanvas(td.pw, td.ph);
+        t.getContext('2d').drawImage(c, 0, 0, td.pw, td.ph);
+        thumbs.push(t);
+        if (!adding && !cover) cover = await makeCover(c, motion ? 1 : defaultSettings(true).refOpacity, paper);
+        ctl.set((i + 1) / files.length, 'Photo ' + (i + 1) + ' of ' + files.length, c);
+        await yieldUI();
+      }
+      if (ctl.signal.aborted) throw abortError();
+      if (!refs.length) { const e = new Error('No photo could be read'); e.noPhotos = true; throw e; }
+      const skipped = failed ? ' ' + failed + (failed === 1 ? ' photo couldn’t be read and was skipped.' : ' photos couldn’t be read and were skipped.') : '';
+      if (adding) {
+        const nfs = refs.map((ref) => newFrame(ref));
+        const bmps = await toRefThumbs(nfs, thumbs);
+        nfs.forEach((f) => { f.refThumb = bmps.get(f.id); });
+        ctl.close();
+        if (!E.project.hasVideo) {
+          E.project.hasVideo = true;
+          if (!E.project.source) E.project.source = 'photos';
+          updateEditorUI();
+        }
+        const list = E.frames.slice();
+        list.splice(E.cur + 1, 0, ...nfs);
+        changeFrames(list, E.cur + 1);
+        toast('Added ' + nfs.length + (nfs.length === 1 ? ' frame.' : ' frames.') + skipped, skipped ? 4200 : 2400);
+        return;
+      }
+      const pid = uid();
+      const frames = refs.map((ref) => ({ id: uid(), project: pid, ref, ops: [] }));
+      const now = Date.now();
+      const p = {
+        id: pid, name: motion ? 'Stop motion' : 'Traced photos', w, h, fps, paper, hasVideo: true, source: 'photos',
+        frames: frames.map((f) => f.id), created: now, updated: now, thumb: cover, cur: 0, hasAudio: false,
+        settings: Object.assign(defaultSettings(true), motion ? { refOpacity: 1, expRef: true } : {}),
+      };
+      await Store.save(p, frames);
+      const refThumbs = await toRefThumbs(frames, thumbs);
+      ctl.close();
+      await openProject(pid, { refThumbs });
+      toast((motion ? 'Press play to watch it.' : 'Trace frame 1, then step forward with the arrow.') + skipped, 4200);
+    } catch (e) {
+      ctl.close();
+      thumbs.forEach(freeCanvas);
+      if (e.name === 'AbortError') toast('Stopped. Nothing was added.');
+      else if (e.noPhotos) showError('These photos wouldn’t open', 'Your browser couldn’t read them. Try again with photos saved as JPEG or PNG.');
+      else { console.error(e); showError('Couldn’t make frames from these photos', 'Try fewer photos at a time, or the Standard detail setting.'); }
+    } finally {
+      ph.running = false;
+      ph.files = [];
+      releaseWake(wake);
+      freeCanvas(c);
     }
   }
 
@@ -4193,7 +4505,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const f = E.frames[E.cur];
     closeSheet('sheetSketch');
     const bmp = f && f.ref ? await getRef(f).catch(() => null) : null;
-    if (!bmp) { toast('This frame has no video to sketch from.'); return; }
+    if (!bmp) { toast('This frame has no ' + refWords().one + ' to sketch from.'); return; }
     const ops = sketchOps(bmp, E.W, E.H, sk.detail, sk.weight, prefs.color);
     if (!ops.length) { toast('No clear edges found. Try More detail.'); return; }
     if (!E.project || !E.frames.includes(f)) return;
@@ -4290,16 +4602,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (E.playing) stopPlay();
     $('#expOptions').hidden = false;
     $('#expResult').hidden = true;
+    X.video = !!E.settings.expRef;
+    X.strength = E.settings.expRefStrength || 100;
     renderExportOptions();
     openSheet('sheetExport')._onClose = clearExportResult;
   });
   onPick($('#expFmt'), (v) => { X.fmt = v; Prefs.set('expFmt', v); renderExportOptions(); });
   onPick($('#expSize'), (v) => { X.size[X.fmt] = v; setPressed($('#expSize'), v); });
   onPick($('#expLoops'), (v) => { X.loops = +v; setPressed($('#expLoops'), v); });
-  bindSwitch($('#swExpVideo'), (on) => { X.video = on; renderExportOptions(); });
+  bindSwitch($('#swExpVideo'), (on) => { X.video = on; E.settings.expRef = on; scheduleSave(); renderExportOptions(); });
   bindSwitch($('#swExpTrans'), (on) => { X.transparent = on; });
   bindSwitch($('#swExpSound'), (on) => { X.sound = on; });
-  $('#rgExpVideo').addEventListener('input', (e) => { X.strength = +e.target.value; $('#outExpVideo').textContent = X.strength + '%'; });
+  $('#rgExpVideo').addEventListener('input', (e) => { X.strength = +e.target.value; E.settings.expRefStrength = X.strength; $('#outExpVideo').textContent = X.strength + '%'; scheduleSave(); });
   $('#btnExpBack').addEventListener('click', () => { clearExportResult(); $('#expOptions').hidden = false; $('#expResult').hidden = true; });
   $('#btnMake').addEventListener('click', runExport);
   $('#btnSave').addEventListener('click', async () => {
