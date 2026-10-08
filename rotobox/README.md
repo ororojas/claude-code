@@ -36,7 +36,7 @@ The sliders button opens the **light table** settings: video opacity, onion skin
 
 On a touch screen:
 
-- Pinch to zoom and pan.
+- Pinch to zoom and pan. Twist two fingers to rotate the canvas, like turning paper on a desk. It snaps back to straight when you're close, and the corner chip resets it.
 - Tap with two fingers to undo, three fingers to redo.
 - If you draw with a stylus (like an Apple Pencil), Rotobox switches to stylus-only mode so your hand and fingers can rest on the screen and move the canvas without leaving marks.
 
@@ -54,6 +54,7 @@ On a keyboard:
 | `O` / `V` | Onion skin / video on or off |
 | `Ctrl+Z`, `Ctrl+Shift+Z` | Undo / redo |
 | `0`, `+`, `-` | Fit to screen / zoom in / zoom out |
+| `R` | Straighten a rotated canvas |
 
 ## Saving to your camera roll
 

@@ -1715,11 +1715,32 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   window.addEventListener('pagehide', () => saveNow());
 
   // ---------- View: fit, zoom, pan ----------
-  const view = { s: 1, tx: 0, ty: 0, fit: 1, fitted: true };
+  // Screen position = t + s * R(r) * canvas position, with the stage's transform origin at 0,0.
+  const view = { s: 1, r: 0, tx: 0, ty: 0, fit: 1, fitted: true };
   let vpRect = null;
   function toCanvas(cx, cy) {
-    const r = vpRect || vp.getBoundingClientRect();
-    return { x: (cx - r.left - view.tx) / view.s, y: (cy - r.top - view.ty) / view.s };
+    const rc = vpRect || vp.getBoundingClientRect();
+    const px = cx - rc.left - view.tx, py = cy - rc.top - view.ty;
+    const cos = Math.cos(view.r), sin = Math.sin(view.r);
+    return { x: (cos * px + sin * py) / view.s, y: (-sin * px + cos * py) / view.s };
+  }
+  // Wraps an angle into (-pi, pi] and snaps it to the nearest right angle within 5 degrees.
+  function snapRotation(r) {
+    r = Math.atan2(Math.sin(r), Math.cos(r));
+    const deg = (r * 180) / Math.PI, near = Math.round(deg / 90) * 90;
+    return Math.abs(deg - near) < 5 ? (near * Math.PI) / 180 : r;
+  }
+  // Turns the view to angle r while keeping the canvas point under (cx, cy) in place.
+  function rotateAt(cx, cy, r) {
+    const rc = vpRect || vp.getBoundingClientRect();
+    const c = toCanvas(cx, cy);
+    r = snapRotation(r);
+    const cos = Math.cos(r), sin = Math.sin(r);
+    view.r = r;
+    view.tx = cx - rc.left - view.s * (cos * c.x - sin * c.y);
+    view.ty = cy - rc.top - view.s * (sin * c.x + cos * c.y);
+    view.fitted = false;
+    applyView();
   }
   function fitView() {
     if (!E.project) return;
@@ -1729,14 +1750,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const pad = Math.min(20, r.width * 0.04);
     const s = Math.min((r.width - pad * 2) / E.W, (r.height - pad * 2) / E.H);
     view.s = view.fit = s;
+    view.r = 0;
     view.tx = (r.width - E.W * s) / 2;
     view.ty = (r.height - E.H * s) / 2;
     view.fitted = true;
     applyView();
   }
   function applyView() {
-    stage.style.transform = 'translate(' + view.tx + 'px,' + view.ty + 'px) scale(' + view.s + ')';
-    $('#zoomLabel').textContent = Math.round((view.s / view.fit) * 100) + '%';
+    stage.style.transform = 'translate(' + view.tx + 'px,' + view.ty + 'px) rotate(' + view.r + 'rad) scale(' + view.s + ')';
+    const deg = Math.round((view.r * 180) / Math.PI);
+    $('#zoomLabel').textContent = Math.round((view.s / view.fit) * 100) + '%' + (deg ? ' · ' + deg + '°' : '');
     $('#btnFit').hidden = view.fitted;
     if (sel || (gesture && gesture.kind === 'lasso')) renderSelUI();
   }
@@ -1912,23 +1935,26 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   function startPinch(a, b) {
+    const mx0 = (a.x + b.x) / 2, my0 = (a.y + b.y) / 2;
     gesture = {
       kind: 'pinch', type: 'touch', a, b,
       d0: Math.hypot(a.x - b.x, a.y - b.y) || 1,
-      mx0: (a.x + b.x) / 2, my0: (a.y + b.y) / 2,
-      s0: view.s, tx0: view.tx, ty0: view.ty,
+      a0: Math.atan2(b.y - a.y, b.x - a.x),
+      s0: view.s, r0: view.r,
+      c: toCanvas(mx0, my0), // the canvas point between the fingers stays between them
     };
   }
   function movePinch() {
-    const g = gesture, a = g.a, b = g.b, r = vpRect;
+    const g = gesture, a = g.a, b = g.b, rc = vpRect;
     const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     const s = zoomLimits((g.s0 * d) / g.d0);
-    const cx = (g.mx0 - r.left - g.tx0) / g.s0;
-    const cy = (g.my0 - r.top - g.ty0) / g.s0;
+    const r = snapRotation(g.r0 + Math.atan2(b.y - a.y, b.x - a.x) - g.a0);
+    const cos = Math.cos(r), sin = Math.sin(r);
     view.s = s;
-    view.tx = mx - r.left - cx * s;
-    view.ty = my - r.top - cy * s;
+    view.r = r;
+    view.tx = mx - rc.left - s * (cos * g.c.x - sin * g.c.y);
+    view.ty = my - rc.top - s * (sin * g.c.x + cos * g.c.y);
     view.fitted = false;
     applyView();
   }
@@ -1946,14 +1972,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
   }, { passive: false });
   // Safari trackpad pinch arrives as gesture events; touch pinches are handled above.
-  let gestureScale = 1;
-  vp.addEventListener('gesturestart', (e) => { e.preventDefault(); gestureScale = 1; });
+  let gestureScale = 1, gestureRot = 0;
+  vp.addEventListener('gesturestart', (e) => { e.preventDefault(); gestureScale = 1; gestureRot = view.r; });
   vp.addEventListener('gesturechange', (e) => {
     e.preventDefault();
     if (touchList().length || !E.project) return;
     vpRect = vp.getBoundingClientRect();
     zoomAt(e.clientX, e.clientY, e.scale / gestureScale);
     gestureScale = e.scale;
+    if (e.rotation) rotateAt(e.clientX, e.clientY, gestureRot + (e.rotation * Math.PI) / 180);
   });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
 
@@ -2806,6 +2833,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       case 'n': insertFrame(); break;
       case 'enter': e.preventDefault(); togglePlay(); break;
       case '0': fitView(); break;
+      case 'r': { const rc = vp.getBoundingClientRect(); vpRect = rc; rotateAt(rc.left + rc.width / 2, rc.top + rc.height / 2, 0); break; }
       case '=': case '+': zoomCenter(1.25); break;
       case '-': zoomCenter(0.8); break;
       default: return;
