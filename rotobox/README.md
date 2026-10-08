@@ -35,6 +35,8 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 
 Any animation can have a sound, not just a traced clip. Tap the frame counter under the canvas to open **Speed and sound**, then tap **Add a sound** and pick a song, a voice memo, or a video whose sound you want. Drag **Starts at** to choose the part you'll hear, tap **Listen** to check it, then **Use this sound**. It plays from frame 1 and starts over each time the animation loops. **Change sound** and **Remove** live in the same place.
 
+To use your own voice, tap **Record** in the same place. After a short count-in the animation plays from frame 1 while the microphone listens, so you can time your words to the drawings. Any sound the animation already has stays quiet while you record. Tap **Stop** when you're done (it stops by itself after a minute). The take then opens like any added sound: listen to it, pick where it starts, record again, or use it in place of the current sound. Recording needs microphone access, which some app viewers don't allow, so if it's blocked, open Rotobox on its own.
+
 When an animation has sound, a small waveform runs under each frame in the filmstrip, showing what you'll hear while that frame is on screen, and stepping from frame to frame plays that bit of sound. That makes it easier to land a drawing on a beat or a word. **Hear each frame as you step** in Speed and sound turns the stepping sound off.
 
 Rotobox keeps only the part that plays, plus up to a minute more so it still covers frames you add later. Sounds that aren't AAC or MP3 are converted to AAC when the browser can do it, so exported videos play almost anywhere.
