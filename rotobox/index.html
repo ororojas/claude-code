@@ -359,6 +359,7 @@ input[type="color"] { width: 60px; height: 40px; border: 1px solid var(--rule); 
 .ph-strip figure.bad { background: repeating-linear-gradient(135deg, var(--tray-2) 0 6px, var(--rule) 6px 8px); }
 .ph-strip figure.bad::after { content: "Can’t read"; position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font: 500 10px/1.2 var(--font-mono); color: var(--ink); }
 .ph-count { margin: 0 0 16px; color: var(--muted); }
+.snd-name { margin: 8px 0 4px; font-weight: 600; overflow-wrap: anywhere; }
 .tips { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 14px; }
 .tips li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
 .tips .ti { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--tray-2); }
@@ -502,6 +503,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 </main>
 <!-- Outside both screens so the editor's frame menu can use it too. -->
 <input type="file" id="filePhotos" class="file-input" accept="image/*" multiple tabindex="-1" aria-hidden="true">
+<input type="file" id="fileSound" class="file-input" accept="audio/*,video/*" tabindex="-1" aria-hidden="true">
 
 <!-- ============ Editor ============ -->
 <div id="editor" class="screen" hidden>
@@ -790,11 +792,38 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 </div>
 
 <div class="sheet" id="sheetFps" role="dialog" aria-modal="true" aria-labelledby="fpsTitle" hidden>
-  <h2 id="fpsTitle">Playback speed</h2>
-  <div class="chips mono" id="fpsChips">
-    <button type="button" data-v="6">6</button><button type="button" data-v="8">8</button><button type="button" data-v="10">10</button><button type="button" data-v="12">12</button><button type="button" data-v="15">15</button><button type="button" data-v="24">24</button><button type="button" data-v="30">30</button>
+  <h2 id="fpsTitle">Speed and sound</h2>
+  <div class="field">
+    <span class="label" id="lblFps">Frames per second</span>
+    <div class="chips mono" id="fpsChips" aria-labelledby="lblFps">
+      <button type="button" data-v="6">6</button><button type="button" data-v="8">8</button><button type="button" data-v="10">10</button><button type="button" data-v="12">12</button><button type="button" data-v="15">15</button><button type="button" data-v="24">24</button><button type="button" data-v="30">30</button>
+    </div>
+    <p class="hint">This changes how fast your frames play. It doesn’t add or remove any.</p>
   </div>
-  <p class="hint" style="margin-top:12px">Frames per second. This changes how fast your frames play. It doesn’t add or remove any.</p>
+  <div class="group last">
+    <span class="label">Sound</span>
+    <p class="snd-name" id="sndName">No sound yet</p>
+    <p class="hint" id="sndHint"></p>
+    <div class="btn-row" id="sndRow" style="margin-top:12px">
+      <button type="button" class="btn-secondary" id="sndRemove">Remove</button>
+      <button type="button" class="btn-primary" id="sndAdd">Add a sound</button>
+    </div>
+  </div>
+</div>
+
+<div class="sheet" id="sheetSound" role="dialog" aria-modal="true" aria-labelledby="sndTitle" data-sticky="1" hidden>
+  <h2 id="sndTitle">Pick the part to use</h2>
+  <p class="body" id="sndFile"></p>
+  <div class="field">
+    <div class="row tight"><label class="label" for="rgSndStart">Starts at</label><output class="mono small" id="outSndStart" for="rgSndStart">0:00.0</output></div>
+    <input type="range" id="rgSndStart" min="0" max="1" step="0.1" value="0">
+    <p class="hint" id="sndSpan"></p>
+  </div>
+  <button type="button" class="btn-secondary" id="sndListen" style="gap:8px"><svg class="i sm"><use id="sndListenUse" href="#i-play"/></svg><span id="sndListenLabel">Listen</span></button>
+  <div class="btn-row" style="margin-top:12px">
+    <button type="button" class="btn-secondary" id="sndCancel">Cancel</button>
+    <button type="button" class="btn-primary" id="sndUse">Use this sound</button>
+  </div>
 </div>
 
 <div class="sheet" id="sheetFrame" role="dialog" aria-modal="true" aria-labelledby="fmTitle" hidden>
@@ -2919,14 +2948,42 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const ctx = ensureAudioContext();
       if (!rec || !rec.blob || !ctx) return null;
       const data = await rec.blob.arrayBuffer();
-      const buf = await new Promise((res, rej) => {
-        const pr = ctx.decodeAudioData(data, res, rej);
-        if (pr && pr.catch) pr.catch(rej);
-      });
+      let buf;
+      try {
+        buf = await new Promise((res, rej) => {
+          const pr = ctx.decodeAudioData(data, res, rej);
+          if (pr && pr.catch) pr.catch(rej);
+        });
+      } catch (e) {
+        buf = await decodeWithLibrary(rec.blob, ctx);
+      }
       if (A.pid === p.id) A.buffer = buf;
       return buf;
     })().catch((e) => { console.warn('The sound could not be played here', e); return null; });
     return A.loading;
+  }
+  // Some browsers' audio decoders turn down a format the video library can still decode.
+  async function decodeWithLibrary(blob, ctx) {
+    const MB = await loadMediabunny();
+    const input = new MB.Input({ formats: MB.ALL_FORMATS, source: new MB.BlobSource(blob) });
+    try {
+      const track = await input.getPrimaryAudioTrack();
+      if (!track || !(await track.canDecode())) throw new Error('No decoder for this sound');
+      const parts = [];
+      let length = 0;
+      for await (const { buffer } of new MB.AudioBufferSink(track).buffers()) { parts.push(buffer); length += buffer.length; }
+      if (!parts.length) throw new Error('The sound is empty');
+      const channels = Math.max(...parts.map((b) => b.numberOfChannels));
+      const out = ctx.createBuffer(channels, length, parts[0].sampleRate);
+      let at = 0;
+      for (const b of parts) {
+        for (let c = 0; c < channels; c++) out.getChannelData(c).set(b.getChannelData(Math.min(c, b.numberOfChannels - 1)), at);
+        at += b.length;
+      }
+      return out;
+    } finally {
+      try { input.dispose(); } catch (e) { /* ignore */ }
+    }
   }
   function startSound(offset) {
     stopSound();
@@ -2964,15 +3021,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   });
 
   // Copy the trimmed sound out of a video without re-encoding it when possible.
-  async function extractAudio(file, start, end) {
+  // With preferAac, sounds that aren't AAC or MP3 (which play and export almost everywhere) are
+  // re-encoded to AAC when this browser can, and copied as they are when it can't.
+  async function extractAudio(file, start, end, preferAac = false) {
     const MB = await loadMediabunny();
     const input = new MB.Input({ formats: MB.ALL_FORMATS, source: new MB.BlobSource(file) });
     try {
       const track = await input.getPrimaryAudioTrack();
       if (!track) return null;
+      const codec = await track.getCodec();
+      const toAac = preferAac && codec !== 'aac' && codec !== 'mp3' && (await MB.canEncodeAudio('aac').catch(() => false));
       const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new MB.BufferTarget() });
       const conv = await MB.Conversion.init({
         input, output, tracks: 'primary', video: { discard: true }, trim: { start, end },
+        audio: toAac ? { codec: 'aac', quality: MB.QUALITY_HIGH } : undefined,
         copy: { mode: 'preferred', shiftTolerance: Infinity, boundaryPolicy: 'expand' }, showWarnings: false,
       });
       if (!conv.isValid || !conv.utilizedTracks.some((t) => t.type === 'audio')) return null;
@@ -2984,6 +3046,154 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       try { input.dispose(); } catch (e) { /* ignore */ }
     }
   }
+
+  // ---------- Adding a sound ----------
+  // Any animation can have a sound: a song, a voice clip, or the sound from another video.
+  // You pick where it starts, and only the part that plays (plus some room to grow) is kept.
+  const snd = { file: null, duration: 0, start: 0, audio: null, url: null };
+  const lapSeconds = () => totalBeats() / E.project.fps;
+  function renderSoundGroup() {
+    const p = E.project;
+    const has = !!p.hasAudio;
+    const info = p.soundInfo;
+    $('#sndName').textContent = !has ? 'No sound yet'
+      : (info && info.name ? info.name : 'The clip’s own sound') + (info && info.from > 0.05 ? ', from ' + fmtTime(info.from) : '');
+    $('#sndHint').textContent = has
+      ? 'It plays from frame 1 and starts over each time the animation loops.'
+      : 'Add a song, a voice clip, or the sound from another video.';
+    $('#sndRemove').hidden = !has;
+    $('#sndRow').style.gridTemplateColumns = has ? '' : '1fr';
+    $('#sndAdd').textContent = has ? 'Change sound' : 'Add a sound';
+  }
+  $('#sndAdd').addEventListener('click', () => {
+    if (E.playing) stopPlay();
+    const i = $('#fileSound');
+    i.value = '';
+    i.click();
+  });
+  $('#fileSound').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (file && E.project) beginSound(file);
+  });
+  async function beginSound(file) {
+    const ctl = busyOpen('Opening the sound', { cancel: false });
+    let duration = 0;
+    try {
+      const MB = await loadMediabunny();
+      const input = new MB.Input({ formats: MB.ALL_FORMATS, source: new MB.BlobSource(file) });
+      try {
+        const track = await input.getPrimaryAudioTrack();
+        if (track) duration = await track.computeDuration();
+      } finally {
+        try { input.dispose(); } catch (e) { /* ignore */ }
+      }
+    } catch (e) { console.warn('Could not read that sound', e); }
+    ctl.close();
+    if (!(duration > 0.1)) {
+      showError('No sound found', 'That file has no sound this browser can read. Try a song, a voice memo, or a video with sound.');
+      return;
+    }
+    snd.file = file;
+    snd.duration = duration;
+    snd.start = 0;
+    $('#sndFile').textContent = (baseName(file.name) || 'Sound') + ' · ' + fmtTime(duration);
+    const rg = $('#rgSndStart');
+    rg.max = String(Math.max(0, Math.floor((duration - 0.1) * 10) / 10));
+    rg.value = '0';
+    renderSoundSpan();
+    closeSheet('sheetFps');
+    openSheet('sheetSound')._onClose = () => { stopListen(); snd.file = null; };
+  }
+  function renderSoundSpan() {
+    const lap = lapSeconds();
+    const from = snd.start, to = Math.min(snd.duration, from + lap);
+    $('#outSndStart').textContent = fmtTime(from);
+    $('#sndSpan').textContent = to - from < lap - 0.05
+      ? 'Your animation runs ' + lap.toFixed(1) + ' s. The sound ends at ' + fmtTime(snd.duration) + ', so the rest of each loop is quiet.'
+      : 'Your animation runs ' + lap.toFixed(1) + ' s, so you’ll hear ' + fmtTime(from) + ' to ' + fmtTime(to) + ', starting over with each loop.';
+  }
+  $('#rgSndStart').addEventListener('input', (e) => {
+    snd.start = +e.target.value;
+    renderSoundSpan();
+    if (snd.audio) snd.audio.currentTime = snd.start;
+  });
+  function setListenUI(on) {
+    $('#sndListenUse').setAttribute('href', on ? '#i-pause' : '#i-play');
+    $('#sndListenLabel').textContent = on ? 'Stop' : 'Listen';
+  }
+  // The preview plays just the part you'd hear, then stops.
+  function startListen() {
+    stopListen();
+    const a = new Audio();
+    snd.url = URL.createObjectURL(snd.file);
+    a.src = snd.url;
+    a.currentTime = snd.start;
+    a.addEventListener('loadedmetadata', () => { if (Math.abs(a.currentTime - snd.start) > 0.25) a.currentTime = snd.start; });
+    a.addEventListener('timeupdate', () => { if (a.currentTime >= snd.start + lapSeconds()) stopListen(); });
+    a.addEventListener('ended', () => stopListen());
+    snd.audio = a;
+    setListenUI(true);
+    a.play().catch(() => {
+      if (snd.audio !== a) return;
+      stopListen();
+      toast('This browser can’t preview that file, but you can still use it.');
+    });
+  }
+  function stopListen() {
+    const a = snd.audio;
+    snd.audio = null;
+    if (a) { a.pause(); a.removeAttribute('src'); try { a.load(); } catch (e) { /* ignore */ } }
+    if (snd.url) { URL.revokeObjectURL(snd.url); snd.url = null; }
+    setListenUI(false);
+  }
+  $('#sndListen').addEventListener('click', () => { if (snd.audio) stopListen(); else startListen(); });
+  $('#sndCancel').addEventListener('click', () => closeSheet('sheetSound'));
+  $('#sndUse').addEventListener('click', useSound);
+  async function useSound() {
+    const p = E.project;
+    const file = snd.file;
+    if (!p || !file) return;
+    const from = snd.start;
+    // Keep at least the whole animation, and up to a minute, so adding frames later still has sound.
+    const to = Math.min(snd.duration, from + Math.max(lapSeconds(), 60));
+    closeSheet('sheetSound');
+    const ctl = busyOpen('Adding the sound', { cancel: false });
+    let rec = null;
+    try { rec = await extractAudio(file, from, to, true); } catch (e) { console.warn('Could not keep that sound', e); }
+    if (!rec) { ctl.close(); showError('That sound didn’t work', 'This browser couldn’t read the sound in that file. Try another song or clip.'); return; }
+    if (E.project !== p) { ctl.close(); return; }
+    try {
+      await Store.kvSet(audioKey(p.id), rec);
+    } catch (e) {
+      ctl.close();
+      showError('Couldn’t save the sound', 'There may not be enough space on this device.');
+      return;
+    }
+    ctl.close();
+    p.hasAudio = true;
+    p.soundInfo = { name: baseName(file.name) || 'Sound', from };
+    E.settings.sound = true;
+    resetAudio();
+    updateSoundUI();
+    scheduleSave(100);
+    toast('Sound added. Press play to hear it with your animation.');
+  }
+  $('#sndRemove').addEventListener('click', async () => {
+    const p = E.project;
+    if (!p || !p.hasAudio) return;
+    const ok = await confirmSheet({ title: 'Remove the sound?', body: 'Your frames stay as they are. You can add a sound again any time.', ok: 'Remove', danger: true });
+    if (!ok || E.project !== p) return;
+    await Store.kvDel(audioKey(p.id)).catch(() => {});
+    p.hasAudio = false;
+    delete p.soundInfo;
+    if (E.playing) stopPlay();
+    resetAudio();
+    updateSoundUI();
+    renderSoundGroup();
+    scheduleSave(100);
+    toast('Sound removed');
+  });
 
   // ---------- Editor chrome ----------
   // Photo projects use the same light-table machinery as videos, so only the words change.
@@ -3093,7 +3303,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   $('#fmDelete').addEventListener('click', frameAction(deleteFrame));
 
   // FPS
-  $('#btnFps').addEventListener('click', () => { setPressed($('#fpsChips'), E.project.fps); openSheet('sheetFps'); });
+  $('#btnFps').addEventListener('click', () => { setPressed($('#fpsChips'), E.project.fps); renderSoundGroup(); openSheet('sheetFps'); });
   onPick($('#fpsChips'), (v) => {
     const playing = E.playing;
     if (playing) stopPlay();
@@ -3623,7 +3833,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     let audio = null;
     if (p.hasAudio) {
       const a = await Store.kvGet(audioKey(p.id)).catch(() => null);
-      if (a && a.blob) { files.push({ name: 'sound.m4a', data: new Uint8Array(await a.blob.arrayBuffer()) }); audio = { file: 'sound.m4a', duration: a.duration }; }
+      if (a && a.blob) {
+        files.push({ name: 'sound.m4a', data: new Uint8Array(await a.blob.arrayBuffer()) });
+        audio = { file: 'sound.m4a', duration: a.duration, name: (p.soundInfo && p.soundInfo.name) || null };
+      }
     }
     if (p.thumb) files.push({ name: 'cover.jpg', data: new Uint8Array(await p.thumb.arrayBuffer()) });
     const meta = {
@@ -3711,7 +3924,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (pr.source === 'photos') p.source = 'photos';
       if (meta.audio && typeof meta.audio.file === 'string') {
         const blob = await zip.read(meta.audio.file, 'audio/mp4').catch(() => null);
-        if (blob && blob.size) { await Store.kvSet(audioKey(pid), { blob, duration: +meta.audio.duration || 0 }); p.hasAudio = true; }
+        if (blob && blob.size) {
+          await Store.kvSet(audioKey(pid), { blob, duration: +meta.audio.duration || 0 });
+          p.hasAudio = true;
+          if (typeof meta.audio.name === 'string') p.soundInfo = { name: meta.audio.name.slice(0, 80) };
+        }
       }
       await Store.save(p, frames);
       ctl.close();
