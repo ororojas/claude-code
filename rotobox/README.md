@@ -27,6 +27,7 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 | Eraser | Erases your drawing. It never touches the video underneath. |
 | Fill | Tap an empty area to fill it under your lines, or tap a filled area to recolor it. |
 | Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |
+| Lasso | Draw a loop around part of a frame, then drag it, resize it from the corner handle, rotate it from the top handle, flip it or delete it. **Select all** grabs the whole frame. |
 | Color | Pick a swatch, mix your own, or use **Pick a color from the canvas** to grab one from your drawing or the video. |
 
 The sliders button opens the **light table** settings: video opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode.
@@ -45,6 +46,7 @@ On a keyboard:
 | --- | --- |
 | `B` / `E` / `G` / `U` / `I` | Pencil / eraser / fill / shapes / color picker |
 | `Shift` while drawing a shape | Square, circle, or a line at 45° steps |
+| `L` | Lasso select. With a selection: arrow keys nudge it (`Shift` for 10 px), `Enter` keeps it, `Delete` removes it, `Esc` cancels |
 | `[` and `]` | Smaller / bigger brush |
 | `←` `→` | Previous / next frame |
 | `Space` | Play or pause (hold and drag to pan) |

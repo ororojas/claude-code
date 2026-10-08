@@ -183,6 +183,19 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75); pointer-events: none; }
 .hud { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
 .hud-left { right: auto; left: 10px; }
+.sel-bar { top: 10px; bottom: auto; left: 50%; right: auto; translate: -50% 0; align-items: center; justify-content: center; flex-wrap: wrap; width: max-content; max-width: calc(100% - 20px); }
+.sel-bar .chip { font: 600 13px var(--font-ui); }
+.chip-accent { background: var(--lamp-fill); border-color: transparent; color: var(--on-lamp); }
+.sel-hint { font-size: 13px; color: var(--muted); background: var(--tray); padding: 7px 12px; border-radius: 99px; border: 1px solid var(--rule); box-shadow: var(--lift); }
+.fx { --u: 1; position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.fx polyline, .fx polygon, .fx line, .fx circle { fill: none; stroke-linejoin: round; }
+.fx .fx-under { stroke: rgba(255, 255, 255, 0.92); stroke-width: calc(3.5px * var(--u)); }
+.fx polygon.fx-under { fill: rgba(242, 162, 58, 0.08); }
+.fx .fx-ants { stroke: #1b1b1f; stroke-width: calc(1.5px * var(--u)); stroke-dasharray: calc(6px * var(--u)) calc(5px * var(--u)); animation: ants 0.7s linear infinite; }
+.fx .fx-thin { stroke: #1b1b1f; stroke-width: calc(1.5px * var(--u)); }
+.fx .fx-handle { fill: #fff; stroke: #1b1b1f; stroke-width: calc(1.5px * var(--u)); }
+@keyframes ants { to { stroke-dashoffset: calc(-11px * var(--u)); } }
+@media (prefers-reduced-motion: reduce) { .fx .fx-ants { animation: none; } }
 .chip {
   height: 34px; padding: 0 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px;
   background: var(--tray); border: 1px solid var(--rule); font: 500 12px var(--font-mono); box-shadow: var(--lift);
@@ -196,6 +209,7 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .tool[aria-pressed="true"] { color: var(--ink); background: var(--tray-2); }
 .tool[aria-pressed="true"]::after { content: ""; position: absolute; left: 15px; right: 15px; bottom: 4px; height: 3px; border-radius: 3px; background: var(--lamp-fill); }
 .bar-sep { width: 1px; height: 26px; background: var(--rule); margin: 0 6px; flex: none; }
+@media (max-width: 420px) { .toolbar { gap: 1px; } .tool { width: 40px; } .bar-sep { margin: 0 3px; } }
 .color-btn .dot { width: 28px; height: 28px; border-radius: 50%; box-shadow: 0 0 0 2px var(--tray), 0 0 0 3.5px var(--muted); }
 .size-btn { display: grid; place-items: center; align-content: center; gap: 3px; }
 .size-btn .dot { border-radius: 50%; background: var(--ink); }
@@ -390,6 +404,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
     <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3.5" y="10.5" width="10" height="10" rx="1.5"/><circle cx="15.5" cy="8.5" r="5"/></symbol>
+    <symbol id="i-lasso" viewBox="0 0 24 24"><ellipse cx="12.5" cy="10" rx="8.5" ry="5.5" stroke-dasharray="3 2.4"/><path d="M6.5 14.2c-1.6.8-2.3 2.2-1.6 3.4.7 1.2 2.4 1.3 3.4.3M7.6 18l-.9 3"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -450,8 +465,21 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <canvas id="cvRef" hidden></canvas>
       <canvas id="cvOnion"></canvas>
       <canvas id="cvDraw"></canvas>
+      <svg class="fx" id="fx" hidden aria-hidden="true">
+        <polyline id="fxLassoA" class="fx-under"/><polyline id="fxLassoB" class="fx-ants"/>
+        <polygon id="fxBoxA" class="fx-under"/><polygon id="fxBoxB" class="fx-ants"/>
+        <line id="fxRotLine" class="fx-thin"/>
+        <circle id="fxScale" class="fx-handle"/><circle id="fxRot" class="fx-handle"/>
+      </svg>
     </div>
     <div class="ring" id="ring" hidden></div>
+    <div class="hud sel-bar" id="selBar" hidden>
+      <span class="sel-hint" id="selHint">Draw a loop around part of your drawing</span>
+      <button type="button" class="chip" id="selAll">Select all</button>
+      <button type="button" class="chip" id="selFlip">Flip</button>
+      <button type="button" class="chip" id="selDelete">Delete</button>
+      <button type="button" class="chip chip-accent" id="selDone">Done</button>
+    </div>
     <div class="hud hud-left">
       <button type="button" class="chip" id="btnSound" hidden aria-pressed="true"><svg class="i sm"><use id="soundUse" href="#i-sound"/></svg><span id="soundLabel">Sound on</span></button>
     </div>
@@ -465,6 +493,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" class="tool" data-tool="eraser" aria-pressed="false" aria-label="Eraser"><svg class="i"><use href="#i-eraser"/></svg></button>
     <button type="button" class="tool" data-tool="fill" aria-pressed="false" aria-label="Fill"><svg class="i"><use href="#i-fill"/></svg></button>
     <button type="button" class="tool" data-tool="shape" aria-pressed="false" aria-label="Shapes"><svg class="i"><use href="#i-shape"/></svg></button>
+    <button type="button" class="tool" data-tool="select" aria-pressed="false" aria-label="Lasso select"><svg class="i"><use href="#i-lasso"/></svg></button>
     <span class="bar-sep" aria-hidden="true"></span>
     <button type="button" class="tool color-btn" id="btnColor" aria-label="Color"><span class="dot" id="colorDot"></span></button>
     <button type="button" class="tool size-btn" id="btnSize" aria-label="Brush size"><span class="dot" id="sizeDot"></span><span class="num" id="sizeNum">6</span></button>
@@ -822,6 +851,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   const sheetStack = [];
   function openSheet(id) {
+    if (sel) finishSelection(true);
     const el = document.getElementById(id);
     if (sheetStack.includes(el)) return el;
     sheetStack.push(el);
@@ -1099,8 +1129,66 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         drawStrokeEnd(ctx, P, op.w);
       } else if (op.t === 'f') {
         renderFill(ctx, op);
+      } else if (op.t === 'x') {
+        applySelectionOp(ctx, op);
       }
     }
+    ctx.restore();
+  }
+
+  // Lasso edits are stored as one op: { t: 'x', p: loop points [x, y, ...], m: 2D matrix, or null to delete }.
+  // Replay cuts the loop out of the canvas so far and draws it back with the matrix.
+  function lassoPath(ctx, P) {
+    ctx.beginPath();
+    ctx.moveTo(P[0], P[1]);
+    for (let i = 2; i < P.length; i += 2) ctx.lineTo(P[i], P[i + 1]);
+    ctx.closePath();
+  }
+  function lassoBounds(P, W, H) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < P.length; i += 2) {
+      if (P[i] < x0) x0 = P[i];
+      if (P[i] > x1) x1 = P[i];
+      if (P[i + 1] < y0) y0 = P[i + 1];
+      if (P[i + 1] > y1) y1 = P[i + 1];
+    }
+    const x = clamp(Math.floor(x0), 0, W), y = clamp(Math.floor(y0), 0, H);
+    return { x, y, w: clamp(Math.ceil(x1), 0, W) - x, h: clamp(Math.ceil(y1), 0, H) - y };
+  }
+  function cutSelection(src, P) {
+    const b = lassoBounds(P, src.width, src.height);
+    if (b.w < 1 || b.h < 1) return null;
+    const piece = makeCanvas(b.w, b.h);
+    const pc = piece.getContext('2d');
+    pc.translate(-b.x, -b.y);
+    lassoPath(pc, P);
+    pc.clip();
+    pc.drawImage(src, 0, 0);
+    return { piece, bx: b.x, by: b.y };
+  }
+  function eraseSelection(ctx, P) {
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000';
+    lassoPath(ctx, P);
+    ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  function drawPiece(ctx, cut, m) {
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.setTransform(m[0], m[1], m[2], m[3], m[4], m[5]);
+    ctx.drawImage(cut.piece, cut.bx, cut.by);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+  }
+  function applySelectionOp(ctx, op) {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const cut = op.m ? cutSelection(ctx.canvas, op.p) : null;
+    eraseSelection(ctx, op.p);
+    if (cut) { drawPiece(ctx, cut, op.m); freeCanvas(cut.piece); }
     ctx.restore();
   }
 
@@ -1293,6 +1381,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function showFrame(i, scroll = true) {
     if (!E.project) return;
+    if (sel) finishSelection(true);
     E.cur = clamp(i, 0, E.frames.length - 1);
     const f = E.frames[E.cur];
     paintDrawing(f);
@@ -1500,6 +1589,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function undo() {
     if (!E.project) return;
+    if (sel) { const changed = sel.changed; finishSelection(false); if (changed) return; }
     if (E.playing) stopPlay();
     if (gesture && gesture.kind === 'draw') return;
     const h = E.undo.pop();
@@ -1510,6 +1600,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function redo() {
     if (!E.project) return;
+    if (sel) finishSelection(true);
     if (E.playing) stopPlay();
     if (gesture && gesture.kind === 'draw') return;
     const h = E.redo.pop();
@@ -1647,6 +1738,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     stage.style.transform = 'translate(' + view.tx + 'px,' + view.ty + 'px) scale(' + view.s + ')';
     $('#zoomLabel').textContent = Math.round((view.s / view.fit) * 100) + '%';
     $('#btnFit').hidden = view.fitted;
+    if (sel || (gesture && gesture.kind === 'lasso')) renderSelUI();
   }
   const zoomLimits = (s) => clamp(s, view.fit * 0.4, Math.max(view.fit * 12, 4));
   function zoomAt(cx, cy, factor) {
@@ -1734,6 +1826,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const t = prefs.tool;
     if (t === 'pen' || t === 'eraser') beginStroke(e);
     else if (t === 'shape') beginShape(e);
+    else if (t === 'select') {
+      if (sel && grabSelection(e)) return;
+      if (sel) finishSelection(true);
+      beginLasso(e);
+    }
     else if (t === 'fill') gesture = { kind: 'fill', id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY };
     else if (t === 'picker') { gesture = { kind: 'pick', id: e.pointerId, type: e.pointerType }; pickAt(e.clientX, e.clientY, false); }
   }
@@ -1755,6 +1852,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     } else if (gesture.kind === 'pinch') movePinch();
     else if (gesture.kind === 'pick' && e.pointerId === gesture.id) pickAt(e.clientX, e.clientY, false);
     else if (gesture.kind === 'shape' && e.pointerId === gesture.id) moveShape(e);
+    else if (gesture.kind === 'lasso' && e.pointerId === gesture.id) moveLasso(e);
+    else if (gesture.kind.startsWith('sel') && e.pointerId === gesture.id) moveSelection(e);
   }
   function onUp(e, cancelled) {
     const p = ptrs.get(e.pointerId);
@@ -1774,6 +1873,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       } else if (g.kind === 'shape' && e.pointerId === g.id) {
         if (cancelled) paintDrawing(g.frame); else endShape(e);
         gesture = null;
+      } else if (g.kind === 'lasso' && e.pointerId === g.id) {
+        if (cancelled) { gesture = null; renderSelUI(); } else endLasso();
+      } else if (g.kind.startsWith('sel') && e.pointerId === g.id) {
+        gesture = null;
+        renderSelUI();
       } else if (g.kind === 'pan' && e.pointerId === g.id) {
         gesture = null;
         vp.classList.remove('panning');
@@ -1923,6 +2027,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (!gesture) return;
     if (gesture.kind === 'draw') cancelStroke();
     else if (gesture.kind === 'shape') { const f = gesture.frame; gesture = null; paintDrawing(f); }
+    else if (gesture.kind === 'lasso' || gesture.kind.startsWith('sel')) { gesture = null; renderSelUI(); }
   }
   function beginShape(e) {
     const pt = toCanvas(e.clientX, e.clientY);
@@ -1988,6 +2093,192 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     return strokeFrom(color, width, ellipsePts(cx, cy, rx, ry, clamp(Math.ceil(perim / 4), 24, 720)));
   }
   const SHAPE_NAMES = { line: 'line', rect: 'rectangle', ellipse: 'ellipse' };
+
+  // ---------- Lasso select ----------
+  let sel = null;
+  function beginLasso(e) {
+    const pt = toCanvas(e.clientX, e.clientY);
+    gesture = { kind: 'lasso', id: e.pointerId, type: e.pointerType, pts: [pt.x, pt.y] };
+    renderSelUI();
+  }
+  function moveLasso(e) {
+    const g = gesture;
+    const list = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+    for (const ev of list && list.length ? list : [e]) {
+      const pt = toCanvas(ev.clientX, ev.clientY);
+      const n = g.pts.length;
+      if (Math.hypot(pt.x - g.pts[n - 2], pt.y - g.pts[n - 1]) * view.s < 3) continue;
+      g.pts.push(pt.x, pt.y);
+    }
+    renderSelUI();
+  }
+  function endLasso() {
+    const P = new Float32Array(gesture.pts);
+    gesture = null;
+    const b = lassoBounds(P, E.W, E.H);
+    if (P.length >= 6 && b.w * b.h >= 16) beginSelection(P);
+    else renderSelUI();
+  }
+  function hasInk(c) {
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i]) return true;
+    return false;
+  }
+  function beginSelection(P) {
+    const f = E.frames[E.cur];
+    const src = getDrawing(f);
+    const cut = cutSelection(src, P);
+    if (!cut || !hasInk(cut.piece)) {
+      if (cut) freeCanvas(cut.piece);
+      toast('Nothing is drawn inside that loop.');
+      renderSelUI();
+      return false;
+    }
+    const base = makeCanvas(E.W, E.H);
+    const bctx = base.getContext('2d');
+    bctx.drawImage(src, 0, 0);
+    eraseSelection(bctx, P);
+    sel = {
+      frame: f, path: P, cut, base, cx: cut.bx + cut.piece.width / 2, cy: cut.by + cut.piece.height / 2,
+      dx: 0, dy: 0, s: 1, r: 0, flip: false, changed: false, deleted: false,
+    };
+    renderSelection();
+    renderSelUI();
+    return true;
+  }
+  function selMatrix(q) {
+    const cos = Math.cos(q.r), sin = Math.sin(q.r);
+    const sx = q.s * (q.flip ? -1 : 1), sy = q.s;
+    const a = cos * sx, b = sin * sx, c = -sin * sy, d = cos * sy;
+    let dx = q.dx, dy = q.dy;
+    if (q.s === 1 && q.r === 0) { dx = Math.round(dx); dy = Math.round(dy); }
+    return [a, b, c, d, q.cx + dx - (a * q.cx + c * q.cy), q.cy + dy - (b * q.cx + d * q.cy)];
+  }
+  const applyM = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  function invertM(m, x, y) {
+    const det = m[0] * m[3] - m[1] * m[2];
+    const ix = x - m[4], iy = y - m[5];
+    return [(m[3] * ix - m[2] * iy) / det, (-m[1] * ix + m[0] * iy) / det];
+  }
+  function selGeometry(q) {
+    const m = selMatrix(q);
+    const x0 = q.cut.bx, y0 = q.cut.by, x1 = x0 + q.cut.piece.width, y1 = y0 + q.cut.piece.height;
+    const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => applyM(m, x, y));
+    const lift = 34 / (view.s * q.s);
+    return {
+      m, x0, y0, x1, y1, corners, scale: corners[2],
+      rot: applyM(m, (x0 + x1) / 2, y0 - lift), topMid: applyM(m, (x0 + x1) / 2, y0),
+      center: [q.cx + q.dx, q.cy + q.dy],
+    };
+  }
+  function renderSelection() {
+    if (!sel) return;
+    ctxDraw.setTransform(1, 0, 0, 1, 0, 0);
+    ctxDraw.globalAlpha = 1;
+    ctxDraw.globalCompositeOperation = 'copy';
+    ctxDraw.drawImage(sel.base, 0, 0);
+    ctxDraw.globalCompositeOperation = 'source-over';
+    if (!sel.deleted) drawPiece(ctxDraw, sel.cut, selMatrix(sel));
+  }
+  function finishSelection(commit) {
+    if (!sel) return;
+    const q = sel;
+    sel = null;
+    if (gesture && (gesture.kind === 'lasso' || gesture.kind.startsWith('sel'))) gesture = null;
+    const here = E.project && q.frame === E.frames[E.cur];
+    if (commit && q.changed && here) {
+      sel = q;
+      renderSelection();
+      sel = null;
+      pushOp({ t: 'x', p: q.path, m: q.deleted ? null : selMatrix(q) });
+    } else if (here) paintDrawing(q.frame);
+    freeCanvas(q.base);
+    freeCanvas(q.cut.piece);
+    renderSelUI();
+  }
+  function grabSelection(e) {
+    const pt = toCanvas(e.clientX, e.clientY);
+    const g = selGeometry(sel);
+    const tol = 26 / view.s;
+    const [cx, cy] = g.center;
+    if (Math.hypot(pt.x - g.rot[0], pt.y - g.rot[1]) < tol) {
+      gesture = { kind: 'selRotate', id: e.pointerId, type: e.pointerType, a0: Math.atan2(pt.y - cy, pt.x - cx), r0: sel.r };
+      return true;
+    }
+    if (Math.hypot(pt.x - g.scale[0], pt.y - g.scale[1]) < tol) {
+      gesture = { kind: 'selScale', id: e.pointerId, type: e.pointerType, d0: Math.max(1, Math.hypot(pt.x - cx, pt.y - cy)), s0: sel.s };
+      return true;
+    }
+    const [lx, ly] = invertM(g.m, pt.x, pt.y);
+    const pad = 12 / (view.s * sel.s);
+    if (lx >= g.x0 - pad && lx <= g.x1 + pad && ly >= g.y0 - pad && ly <= g.y1 + pad) {
+      gesture = { kind: 'selMove', id: e.pointerId, type: e.pointerType, x0: pt.x, y0: pt.y, dx0: sel.dx, dy0: sel.dy };
+      return true;
+    }
+    return false;
+  }
+  function moveSelection(e) {
+    const g = gesture;
+    const pt = toCanvas(e.clientX, e.clientY);
+    const cx = sel.cx + sel.dx, cy = sel.cy + sel.dy;
+    if (g.kind === 'selMove') {
+      sel.dx = g.dx0 + pt.x - g.x0;
+      sel.dy = g.dy0 + pt.y - g.y0;
+    } else if (g.kind === 'selScale') {
+      sel.s = clamp((g.s0 * Math.hypot(pt.x - cx, pt.y - cy)) / g.d0, 0.05, 20);
+    } else if (g.kind === 'selRotate') {
+      let r = g.r0 + Math.atan2(pt.y - cy, pt.x - cx) - g.a0;
+      const deg = (r * 180) / Math.PI, near = Math.round(deg / 90) * 90;
+      if (Math.abs(deg - near) < 4) r = (near * Math.PI) / 180;
+      sel.r = r;
+    }
+    sel.changed = true;
+    renderSelection();
+    renderSelUI();
+  }
+  function nudgeSelection(dx, dy) {
+    sel.dx += dx;
+    sel.dy += dy;
+    sel.changed = true;
+    renderSelection();
+    renderSelUI();
+  }
+  const fxEl = (id) => document.getElementById(id);
+  function showFx(id, on) { fxEl(id).style.display = on ? '' : 'none'; }
+  function renderSelUI() {
+    const active = !!E.project && prefs.tool === 'select';
+    $('#selBar').hidden = !active;
+    if (active) {
+      $('#selHint').hidden = !!sel;
+      $('#selAll').hidden = !!sel;
+      $('#selFlip').hidden = $('#selDelete').hidden = $('#selDone').hidden = !sel;
+    }
+    const lasso = gesture && gesture.kind === 'lasso' ? gesture.pts : null;
+    const fx = $('#fx');
+    // SVG elements have no .hidden property, so toggle the attribute itself.
+    if (!(lasso || sel)) { fx.setAttribute('hidden', ''); return; }
+    fx.removeAttribute('hidden');
+    fx.setAttribute('viewBox', '0 0 ' + E.W + ' ' + E.H);
+    fx.style.setProperty('--u', String(1 / view.s));
+    const pts = (arr) => { let out = ''; for (let i = 0; i < arr.length; i += 2) out += arr[i].toFixed(1) + ',' + arr[i + 1].toFixed(1) + ' '; return out; };
+    showFx('fxLassoA', !!lasso);
+    showFx('fxLassoB', !!lasso);
+    if (lasso) { const a = pts(lasso); fxEl('fxLassoA').setAttribute('points', a); fxEl('fxLassoB').setAttribute('points', a); }
+    for (const id of ['fxBoxA', 'fxBoxB', 'fxRotLine', 'fxScale', 'fxRot']) showFx(id, !!sel && !sel.deleted);
+    if (!sel || sel.deleted) return;
+    const g = selGeometry(sel);
+    const box = pts(g.corners.flat());
+    fxEl('fxBoxA').setAttribute('points', box);
+    fxEl('fxBoxB').setAttribute('points', box);
+    const r = 9 / view.s;
+    for (const [id, c] of [['fxScale', g.scale], ['fxRot', g.rot]]) { const el = fxEl(id); el.setAttribute('cx', c[0]); el.setAttribute('cy', c[1]); el.setAttribute('r', r); }
+    const ln = fxEl('fxRotLine');
+    ln.setAttribute('x1', g.topMid[0]); ln.setAttribute('y1', g.topMid[1]); ln.setAttribute('x2', g.rot[0]); ln.setAttribute('y2', g.rot[1]);
+  }
+  $('#selAll').addEventListener('click', () => { if (E.project) beginSelection(new Float32Array([0, 0, E.W, 0, E.W, E.H, 0, E.H])); });
+  $('#selFlip').addEventListener('click', () => { if (!sel) return; sel.flip = !sel.flip; sel.changed = true; renderSelection(); renderSelUI(); });
+  $('#selDelete').addEventListener('click', () => { if (!sel) return; sel.deleted = true; sel.changed = true; renderSelection(); finishSelection(true); });
+  $('#selDone').addEventListener('click', () => finishSelection(true));
   function cancelStroke() {
     if (!gesture || gesture.kind !== 'draw') return;
     gesture = null;
@@ -2020,6 +2311,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   function setTool(t) {
+    if (t !== 'select' && sel) finishSelection(true);
     if (t === 'picker' && prefs.tool !== 'picker') toolBeforePicker = prefs.tool;
     prefs.tool = t;
     if (t !== 'picker') Prefs.set('tool', t);
@@ -2027,6 +2319,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#btnColor').setAttribute('aria-pressed', String(t === 'picker'));
     vp.dataset.tool = t;
     updateSizeUI();
+    renderSelUI();
   }
   function setColor(hex, addRecent = true) {
     prefs.color = hex;
@@ -2067,6 +2360,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function togglePlay() { if (E.playing) stopPlay(); else startPlay(); }
   function startPlay() {
     if (!E.project || E.playing) return;
+    if (sel) finishSelection(true);
     if (gesture && gesture.kind === 'draw') return;
     if (E.frames.length < 2) { toast('Add a second frame to see it move.'); return; }
     E.playing = true;
@@ -2229,6 +2523,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (t === 'shape' && !Prefs.get('shapeHint', false)) {
       Prefs.set('shapeHint', true);
       toast('Drag to draw a ' + SHAPE_NAMES[prefs.shape] + '. Tap Shapes again to switch shapes.', 3600);
+    }
+    if (t === 'select' && !Prefs.get('lassoHint', false)) {
+      Prefs.set('lassoHint', true);
+      toast('Loop around part of your drawing. Then drag it, resize from the corner, or rotate from the top handle.', 4600);
     }
   }));
   $('#btnUndo').addEventListener('click', undo);
@@ -2474,6 +2772,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (e.key === 'Escape') {
       const top = sheetStack[sheetStack.length - 1];
       if (top && top.id !== 'sheetImport') closeSheet();
+      else if (!top && sel) finishSelection(false);
       return;
     }
     if (e.target.closest && e.target.closest('input, textarea, select')) return;
@@ -2484,12 +2783,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (mod && k === 'y') { e.preventDefault(); redo(); return; }
     if (mod || e.altKey) return;
     if (e.key === ' ') { e.preventDefault(); if (!e.repeat) { spaceDown = true; spacePanned = false; } return; }
+    if (sel) {
+      const big = e.shiftKey ? 10 : 1;
+      const moves = { arrowleft: [-big, 0], arrowright: [big, 0], arrowup: [0, -big], arrowdown: [0, big] };
+      if (moves[k]) { e.preventDefault(); nudgeSelection(moves[k][0], moves[k][1]); return; }
+      if (k === 'enter') { e.preventDefault(); finishSelection(true); return; }
+      if (k === 'delete' || k === 'backspace') { e.preventDefault(); $('#selDelete').click(); return; }
+    }
     switch (k) {
       case 'b': case 'p': setTool('pen'); break;
       case 'e': setTool('eraser'); break;
       case 'g': case 'f': setTool('fill'); break;
       case 'i': setTool('picker'); break;
       case 'u': setTool('shape'); break;
+      case 'l': case 's': setTool('select'); break;
       case '[': changeSize(-1); break;
       case ']': changeSize(1); break;
       case 'arrowleft': case ',': e.preventDefault(); step(-1); break;
@@ -2560,6 +2867,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   async function closeProject() {
     if (!E.project) return;
+    if (sel) finishSelection(true);
     if (E.playing) stopPlay();
     resetAudio();
     await saveNow();
@@ -3907,7 +4215,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, exportGif, exportVideo, exportZip, makeZip, crc32 };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, exportGif, exportVideo, exportZip, makeZip, crc32 };
   boot();
 })();
 </script>
