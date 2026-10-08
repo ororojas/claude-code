@@ -4168,6 +4168,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     canvasPool.splice(0).forEach(freeCanvas);
     freeCanvas(tintCanvas); tintCanvas = null;
     freeCanvas(thumbScratch); thumbScratch = null;
+    freeCanvas(markerScratch); markerScratch = null;
+    layerScratch.forEach(freeCanvas); layerScratch.fill(null);
     freeScaleTemps();
     for (const c of [cvRef, cvOnion, cvDraw, cvLive]) { c.width = 1; c.height = 1; }
     $('#strip').textContent = '';
