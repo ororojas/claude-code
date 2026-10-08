@@ -32,6 +32,8 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 
 The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
 
+For traced clips, the frame options also have **Auto-sketch from the video**. It finds the edges in the video frame and draws them as real strokes in your current color and brush, for one frame or every frame. Pick how much detail and how heavy the lines are, check the preview, then keep, erase or trace over the result. One undo takes back a whole run.
+
 The sliders button opens the **light table** settings: video opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode.
 
 ### Gestures and shortcuts

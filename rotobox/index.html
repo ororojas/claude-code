@@ -335,6 +335,8 @@ input[type="color"] { width: 60px; height: 40px; border: 1px solid var(--rule); 
 .shape small { font: 400 10.5px var(--font-mono); color: var(--muted); }
 .shape[aria-checked="true"] { border-color: var(--ink); background: var(--tray-2); box-shadow: inset 0 0 0 1px var(--ink); }
 .brush-preview { display: block; width: 100%; height: 64px; border-radius: 12px; background: var(--desk); margin-bottom: 14px; }
+.sk-preview { display: grid; place-items: center; margin-bottom: 14px; border-radius: 14px; overflow: hidden; background: var(--desk); }
+.sk-preview canvas { display: block; max-width: 100%; max-height: 30vh; }
 
 .imp-preview { display: grid; place-items: center; background: #000; border-radius: 14px; overflow: hidden; margin-bottom: 14px; }
 .imp-preview video, .imp-preview canvas { display: block; max-width: 100%; max-height: min(28vh, 260px); object-fit: contain; }
@@ -410,6 +412,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-lasso" viewBox="0 0 24 24"><ellipse cx="12.5" cy="10" rx="8.5" ry="5.5" stroke-dasharray="3 2.4"/><path d="M6.5 14.2c-1.6.8-2.3 2.2-1.6 3.4.7 1.2 2.4 1.3 3.4.3M7.6 18l-.9 3"/></symbol>
     <symbol id="i-ink" viewBox="0 0 24 24"><path d="M12 3c2.5 3.2 4 6 4 8.6L12 21l-4-9.4C8 9 9.5 6.2 12 3z"/><path d="M12 12.5V21"/><circle cx="12" cy="10.4" r="1.4"/></symbol>
     <symbol id="i-marker" viewBox="0 0 24 24"><path d="M15 4l5 5-9 9H6v-5z"/><path d="M6 18l-2 2"/><path d="M12.5 6.5l5 5"/></symbol>
+    <symbol id="i-sketch" viewBox="0 0 24 24"><path d="M4 18c3-6 5-11 8-11 2.6 0 1.4 6 4 6 1.6 0 2.6-2 4-4"/><path d="M4 21h16"/><path d="M17.5 3.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -694,8 +697,27 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" id="fmPaste"><svg class="i"><use href="#i-paste"/></svg>Paste drawing</button>
     <button type="button" id="fmEarlier"><svg class="i"><use href="#i-left"/></svg>Move earlier</button>
     <button type="button" id="fmLater"><svg class="i"><use href="#i-right"/></svg>Move later</button>
+    <button type="button" id="fmSketch"><svg class="i"><use href="#i-sketch"/></svg>Auto-sketch from the video</button>
     <button type="button" id="fmClear"><svg class="i"><use href="#i-eraser"/></svg>Clear drawing</button>
     <button type="button" id="fmDelete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Delete frame</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheetSketch" role="dialog" aria-modal="true" aria-labelledby="skTitle" hidden>
+  <h2 id="skTitle">Auto-sketch</h2>
+  <p class="body">Finds the edges in the video and draws them as lines you can keep, erase or trace over. It uses your current color and brush.</p>
+  <div class="sk-preview"><canvas id="skPreview" aria-label="Preview of the sketch for this frame"></canvas></div>
+  <div class="field">
+    <span class="label" id="lblSkDetail">Detail</span>
+    <div class="chips" id="skDetail" aria-labelledby="lblSkDetail"><button type="button" data-v="low">Less</button><button type="button" data-v="mid">Some</button><button type="button" data-v="high">More</button></div>
+  </div>
+  <div class="field">
+    <span class="label" id="lblSkWeight">Line weight</span>
+    <div class="chips" id="skWeight" aria-labelledby="lblSkWeight"><button type="button" data-v="fine">Fine</button><button type="button" data-v="medium">Medium</button><button type="button" data-v="bold">Bold</button></div>
+  </div>
+  <div class="btn-row">
+    <button type="button" class="btn-secondary" id="skAll">Every frame</button>
+    <button type="button" class="btn-primary" id="skOne">Sketch this frame</button>
   </div>
 </div>
 
@@ -874,6 +896,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const sheetStack = [];
   function openSheet(id) {
     if (sel) finishSelection(true);
+    $('#toast').classList.remove('show');
     const el = document.getElementById(id);
     if (sheetStack.includes(el)) return el;
     sheetStack.push(el);
@@ -1687,6 +1710,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       f.dirty = true;
       queueThumb(f);
       showFrame(idx);
+    } else if (h.type === 'batch') {
+      for (const it of h.items) {
+        const f = E.frames.find((x) => x.id === it.fid);
+        if (!f) continue;
+        f.ops = isUndo ? it.before : it.after;
+        f.ver++;
+        f.dirty = true;
+        queueThumb(f);
+      }
+      showFrame(E.cur);
     } else if (h.type === 'hold') {
       const idx = E.frames.findIndex((f) => f.id === h.fid);
       if (idx < 0) return;
@@ -2756,6 +2789,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#fmEarlier').disabled = E.cur === 0;
     $('#fmLater').disabled = E.cur === E.frames.length - 1;
     $('#fmClear').disabled = !E.frames[E.cur].ops.length;
+    $('#fmSketch').hidden = !E.project.hasVideo;
     openSheet('sheetFrame');
   });
   const frameAction = (fn) => () => { closeSheet('sheetFrame'); fn(); };
@@ -2777,6 +2811,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   $('#fmEarlier').addEventListener('click', frameAction(() => moveFrame(-1)));
   $('#fmLater').addEventListener('click', frameAction(() => moveFrame(1)));
   $('#fmClear').addEventListener('click', frameAction(clearDrawing));
+  $('#fmSketch').addEventListener('click', frameAction(openSketchSheet));
   $('#fmDelete').addEventListener('click', frameAction(deleteFrame));
 
   // FPS
@@ -3907,6 +3942,249 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       freeScaleTemps();
     }
   }
+
+  // ---------- Auto-sketch ----------
+  // Canny-style edges (blur, Sobel, thin, hysteresis), traced into chains and simplified into strokes.
+  const SKETCH = {
+    low: { size: 480, blur: 3, pct: 0.9, minLen: 26 },
+    mid: { size: 560, blur: 2, pct: 0.8, minLen: 16 },
+    high: { size: 720, blur: 1, pct: 0.66, minLen: 9 },
+  };
+  const SKETCH_WEIGHT = { fine: 1.6, medium: 2.6, bold: 4.2 };
+  const sk = { detail: Prefs.get('skDetail', 'mid'), weight: Prefs.get('skWeight', 'medium'), token: 0 };
+  function boxBlur(src, w, h) {
+    const tmp = new Float32Array(w * h), out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      for (let x = 0; x < w; x++) tmp[row + x] = (src[row + Math.max(0, x - 1)] + src[row + x] + src[row + Math.min(w - 1, x + 1)]) / 3;
+    }
+    for (let y = 0; y < h; y++) {
+      const up = Math.max(0, y - 1) * w, row = y * w, dn = Math.min(h - 1, y + 1) * w;
+      for (let x = 0; x < w; x++) out[row + x] = (tmp[up + x] + tmp[row + x] + tmp[dn + x]) / 3;
+    }
+    return out;
+  }
+  function edgeMap(img, W, H, preset) {
+    const scale = Math.min(1, preset.size / Math.max(W, H));
+    const w = Math.max(8, Math.round(W * scale)), h = Math.max(8, Math.round(H * scale));
+    const c = makeCanvas(w, h);
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.drawImage(img, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h).data;
+    freeCanvas(c);
+    let g = new Float32Array(w * h);
+    for (let p = 0, i = 0; p < w * h; p++, i += 4) g[p] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+    for (let k = 0; k < preset.blur; k++) g = boxBlur(g, w, h);
+    const mag = new Float32Array(w * h), dir = new Uint8Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x;
+        const gx = g[i - w + 1] + 2 * g[i + 1] + g[i + w + 1] - g[i - w - 1] - 2 * g[i - 1] - g[i + w - 1];
+        const gy = g[i + w - 1] + 2 * g[i + w] + g[i + w + 1] - g[i - w - 1] - 2 * g[i - w] - g[i - w + 1];
+        mag[i] = Math.hypot(gx, gy);
+        let a = Math.atan2(gy, gx);
+        if (a < 0) a += Math.PI;
+        dir[i] = Math.round(a / (Math.PI / 4)) % 4;
+      }
+    }
+    // Keep only ridge pixels: stronger than both neighbours across the edge.
+    const STEP = [[1, 0], [1, 1], [0, 1], [-1, 1]];
+    const thin = new Float32Array(w * h);
+    const hist = new Uint32Array(1024);
+    let ridges = 0;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const i = y * w + x, m = mag[i];
+        if (m < 4) continue;
+        const [dx, dy] = STEP[dir[i]];
+        if (m >= mag[i + dy * w + dx] && m >= mag[i - dy * w - dx]) {
+          thin[i] = m;
+          hist[Math.min(1023, Math.floor(m))]++;
+          ridges++;
+        }
+      }
+    }
+    if (!ridges) return { w, h, scale, edge: new Uint8Array(w * h) };
+    let acc = 0, hi = 1023;
+    for (let v = 0; v < 1024; v++) { acc += hist[v]; if (acc >= ridges * preset.pct) { hi = Math.max(8, v); break; } }
+    const lo = hi * 0.45;
+    const edge = new Uint8Array(w * h);
+    const stack = [];
+    for (let i = 0; i < w * h; i++) if (thin[i] >= hi && !edge[i]) { edge[i] = 1; stack.push(i); }
+    while (stack.length) {
+      const i = stack.pop(), x = i % w, y = (i / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const q = ny * w + nx;
+          if (!edge[q] && thin[q] >= lo) { edge[q] = 1; stack.push(q); }
+        }
+      }
+    }
+    return { w, h, scale, edge };
+  }
+  function traceChains(edge, w, h, minLen) {
+    const seen = new Uint8Array(w * h);
+    const N8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+    const chains = [];
+    const degree = (p) => {
+      const x = p % w, y = (p / w) | 0;
+      let n = 0;
+      for (const [dx, dy] of N8) { const nx = x + dx, ny = y + dy; if (nx >= 0 && ny >= 0 && nx < w && ny < h && edge[ny * w + nx]) n++; }
+      return n;
+    };
+    const walk = (start) => {
+      const pts = [start % w, (start / w) | 0];
+      seen[start] = 1;
+      let cur = start, pdx = 0, pdy = 0;
+      for (;;) {
+        const x = cur % w, y = (cur / w) | 0;
+        let best = -1, bestScore = -Infinity, bdx = 0, bdy = 0;
+        for (const [dx, dy] of N8) {
+          const nx = x + dx, ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const q = ny * w + nx;
+          if (!edge[q] || seen[q]) continue;
+          const score = (pdx * dx + pdy * dy) - (dx && dy ? 0.1 : 0);
+          if (score > bestScore) { bestScore = score; best = q; bdx = dx; bdy = dy; }
+        }
+        if (best < 0) break;
+        seen[best] = 1;
+        pts.push(best % w, (best / w) | 0);
+        pdx = bdx; pdy = bdy; cur = best;
+      }
+      return pts;
+    };
+    for (let pass = 0; pass < 2; pass++) {
+      for (let p = 0; p < w * h && chains.length < 1500; p++) {
+        if (!edge[p] || seen[p] || (pass === 0 && degree(p) !== 1)) continue;
+        const pts = walk(p);
+        if (pts.length / 2 >= minLen) chains.push(pts);
+      }
+    }
+    return chains;
+  }
+  function simplify(pts, eps) {
+    const n = pts.length / 2;
+    if (n < 3) return pts;
+    const keep = new Uint8Array(n);
+    keep[0] = keep[n - 1] = 1;
+    const stack = [[0, n - 1]];
+    while (stack.length) {
+      const [a, b] = stack.pop();
+      const ax = pts[2 * a], ay = pts[2 * a + 1], dx = pts[2 * b] - ax, dy = pts[2 * b + 1] - ay;
+      const len = Math.hypot(dx, dy) || 1;
+      let maxD = 0, idx = -1;
+      for (let i = a + 1; i < b; i++) {
+        const dd = Math.abs(dy * (pts[2 * i] - ax) - dx * (pts[2 * i + 1] - ay)) / len;
+        if (dd > maxD) { maxD = dd; idx = i; }
+      }
+      if (maxD > eps && idx > 0) { keep[idx] = 1; stack.push([a, idx], [idx, b]); }
+    }
+    const out = [];
+    for (let i = 0; i < n; i++) if (keep[i]) out.push(pts[2 * i], pts[2 * i + 1]);
+    return out;
+  }
+  function sketchOps(img, W, H, detail, weight, color) {
+    const preset = SKETCH[detail] || SKETCH.mid;
+    const { w, h, scale, edge } = edgeMap(img, W, H, preset);
+    const chains = traceChains(edge, w, h, preset.minLen);
+    const width = SKETCH_WEIGHT[weight] * Math.max(0.6, Math.max(W, H) / 1280);
+    const code = BRUSH_CODE[prefs.brush];
+    const ops = [];
+    for (const chain of chains) {
+      const pts = simplify(chain, 0.9);
+      if (pts.length < 4) continue;
+      const P = new Float32Array((pts.length / 2) * 3);
+      for (let i = 0, j = 0; i < pts.length; i += 2, j += 3) { P[j] = (pts[i] + 0.5) / scale; P[j + 1] = (pts[i + 1] + 0.5) / scale; P[j + 2] = 1; }
+      const op = { t: 's', c: color, w: width, e: 0, p: P };
+      if (code) op.b = code;
+      ops.push(op);
+    }
+    return ops;
+  }
+  function openSketchSheet() {
+    if (!E.project || !E.project.hasVideo) return;
+    setPressed($('#skDetail'), sk.detail);
+    setPressed($('#skWeight'), sk.weight);
+    openSheet('sheetSketch');
+    previewSketch();
+  }
+  async function previewSketch() {
+    const f = E.frames[E.cur];
+    if (!f || !f.ref) return;
+    const token = ++sk.token;
+    const bmp = await getRef(f).catch(() => null);
+    if (!bmp || token !== sk.token || !E.project) return;
+    const ops = sketchOps(bmp, E.W, E.H, sk.detail, sk.weight, prefs.color);
+    const c = $('#skPreview');
+    const s = Math.min(1, 480 / Math.max(E.W, E.H));
+    c.width = Math.round(E.W * s);
+    c.height = Math.round(E.H * s);
+    const full = makeCanvas(E.W, E.H);
+    const fc = full.getContext('2d');
+    fc.fillStyle = E.project.paper;
+    fc.fillRect(0, 0, E.W, E.H);
+    fc.globalAlpha = 0.35;
+    fc.drawImage(bmp, 0, 0, E.W, E.H);
+    fc.globalAlpha = 1;
+    renderOps(fc, ops);
+    const ctx = c.getContext('2d');
+    drawScaled(ctx, full, c.width, c.height);
+    freeCanvas(full);
+    $('#skOne').textContent = ops.length ? 'Sketch this frame (' + ops.length + ' lines)' : 'Sketch this frame';
+  }
+  onPick($('#skDetail'), (v) => { sk.detail = v; Prefs.set('skDetail', v); setPressed($('#skDetail'), v); previewSketch(); });
+  onPick($('#skWeight'), (v) => { sk.weight = v; Prefs.set('skWeight', v); setPressed($('#skWeight'), v); previewSketch(); });
+  $('#skOne').addEventListener('click', async () => {
+    const f = E.frames[E.cur];
+    closeSheet('sheetSketch');
+    const bmp = f && f.ref ? await getRef(f).catch(() => null) : null;
+    if (!bmp) { toast('This frame has no video to sketch from.'); return; }
+    const ops = sketchOps(bmp, E.W, E.H, sk.detail, sk.weight, prefs.color);
+    if (!ops.length) { toast('No clear edges found. Try More detail.'); return; }
+    setOps(f, f.ops.concat(ops));
+    paintDrawing(f);
+    renderOnion();
+    toast('Added ' + ops.length + ' lines. Undo removes them.');
+  });
+  $('#skAll').addEventListener('click', async () => {
+    closeSheet('sheetSketch');
+    const ctl = busyOpen('Sketching every frame', { cancel: true });
+    const wake = await holdWake();
+    const items = [];
+    const n = E.frames.length;
+    try {
+      for (let i = 0; i < n; i++) {
+        if (ctl.signal.aborted) break;
+        const f = E.frames[i];
+        if (!f.ref) continue;
+        const bmp = await getRef(f).catch(() => null);
+        if (!bmp) continue;
+        const ops = sketchOps(bmp, E.W, E.H, sk.detail, sk.weight, prefs.color);
+        if (ops.length) {
+          const after = f.ops.concat(ops);
+          items.push({ fid: f.id, before: f.ops, after });
+          f.ops = after;
+          f.ver++;
+          f.dirty = true;
+          queueThumb(f);
+        }
+        ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n);
+        await yieldUI();
+      }
+    } finally {
+      ctl.close();
+      releaseWake(wake);
+    }
+    if (items.length) {
+      record({ type: 'batch', items });
+      scheduleSave();
+      showFrame(E.cur);
+      toast((ctl.signal.aborted ? 'Stopped after ' : 'Sketched ') + items.length + ' frames. One undo takes them all back.');
+    }
+  });
 
   // ---------- Export ----------
   const X = { fmt: Prefs.get('expFmt', 'mp4'), size: {}, video: false, strength: 100, transparent: false, loops: 0, sound: true, result: null, url: null };
