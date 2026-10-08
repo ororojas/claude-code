@@ -182,6 +182,7 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75); pointer-events: none; }
 .hud { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+.hud-left { right: auto; left: 10px; }
 .chip {
   height: 34px; padding: 0 12px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px;
   background: var(--tray); border: 1px solid var(--rule); font: 500 12px var(--font-mono); box-shadow: var(--lift);
@@ -386,6 +387,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-paste" viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h2"/><path d="M12 11v6M9 14h6"/></symbol>
     <symbol id="i-left" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
     <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -448,6 +451,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <canvas id="cvDraw"></canvas>
     </div>
     <div class="ring" id="ring" hidden></div>
+    <div class="hud hud-left">
+      <button type="button" class="chip" id="btnSound" hidden aria-pressed="true"><svg class="i sm"><use id="soundUse" href="#i-sound"/></svg><span id="soundLabel">Sound on</span></button>
+    </div>
     <div class="hud">
       <button type="button" class="chip" id="btnFit" hidden aria-label="Fit to screen"><svg class="i sm"><use href="#i-fit"/></svg><span id="zoomLabel">100%</span></button>
     </div>
@@ -657,6 +663,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       </div>
     </div>
     <div class="row" id="expTransRow"><label for="swExpTrans">Transparent background</label><button type="button" class="switch" role="switch" id="swExpTrans" aria-checked="false"><span></span></button></div>
+    <div class="row" id="expSoundRow"><label for="swExpSound">Include the video’s sound</label><button type="button" class="switch" role="switch" id="swExpSound" aria-checked="true"><span></span></button></div>
     <div class="field" id="expLoopsField">
       <span class="label" id="lblLoops">Repeat</span>
       <div class="chips mono" id="expLoops" aria-labelledby="lblLoops"><button type="button" data-v="1">1×</button><button type="button" data-v="2">2×</button><button type="button" data-v="3">3×</button><button type="button" data-v="5">5×</button></div>
@@ -1008,6 +1015,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         tx.objectStore('kv').put(v, k);
         await done(tx);
       },
+      async kvDel(k) {
+        const db = await open();
+        if (!db) { mem.kv.delete(k); return; }
+        const tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').delete(k);
+        await done(tx);
+      },
     };
   })();
 
@@ -1195,7 +1209,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   let toolBeforePicker = 'pen';
 
   function defaultSettings(hasVideo) {
-    return { showRef: true, refOpacity: 0.6, onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35 };
+    return { showRef: true, refOpacity: 0.6, onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35, sound: true };
   }
 
   const vp = $('#viewport');
@@ -1667,6 +1681,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   function onDown(e) {
     if (!E.project) return;
+    if (e.target.closest && e.target.closest('.hud')) return;
     if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
     e.preventDefault();
     try { vp.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
@@ -1976,11 +1991,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const startIdx = E.cur;
     const t0 = performance.now();
     let shown = -1;
+    E.soundLoop = -1;
+    if (E.project.hasAudio && E.settings.sound) { ensureAudioContext(); loadProjectAudio(); }
     const loop = (now) => {
       if (token !== E.playToken) return;
-      const k = Math.floor(((now - t0) * E.project.fps) / 1000);
-      const i = (startIdx + k) % E.frames.length;
+      const fps = E.project.fps, n = E.frames.length;
+      const pos = startIdx + ((now - t0) * fps) / 1000;
+      const i = Math.floor(pos) % n;
       if (i !== shown) { shown = i; paintPlayFrame(i); }
+      // The sound restarts with every loop of the animation.
+      const lap = Math.floor(pos / n);
+      if (lap !== E.soundLoop && A.buffer && E.settings.sound) {
+        E.soundLoop = lap;
+        startSound((pos - lap * n) / fps);
+      }
       E.rafId = requestAnimationFrame(loop);
     };
     E.rafId = requestAnimationFrame(loop);
@@ -1998,9 +2022,100 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (!E.playing) return;
     E.playToken++;
     cancelAnimationFrame(E.rafId);
+    stopSound();
     E.playing = false;
     setPlayIcon(false);
     showFrame(E.cur);
+  }
+
+  // ---------- Sound ----------
+  // A traced clip's trimmed sound is kept in the kv store as a small m4a file.
+  const A = { ctx: null, buffer: null, pid: null, loading: null, node: null };
+  const audioKey = (pid) => 'audio:' + pid;
+  function ensureAudioContext() {
+    if (!A.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { A.ctx = new AC(); } catch (e) { return null; }
+    }
+    if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
+    return A.ctx;
+  }
+  function loadProjectAudio() {
+    const p = E.project;
+    if (!p || !p.hasAudio) return Promise.resolve(null);
+    if (A.pid === p.id && A.loading) return A.loading;
+    A.pid = p.id;
+    A.buffer = null;
+    A.loading = (async () => {
+      const rec = await Store.kvGet(audioKey(p.id));
+      const ctx = ensureAudioContext();
+      if (!rec || !rec.blob || !ctx) return null;
+      const data = await rec.blob.arrayBuffer();
+      const buf = await new Promise((res, rej) => {
+        const pr = ctx.decodeAudioData(data, res, rej);
+        if (pr && pr.catch) pr.catch(rej);
+      });
+      if (A.pid === p.id) A.buffer = buf;
+      return buf;
+    })().catch((e) => { console.warn('The sound could not be played here', e); return null; });
+    return A.loading;
+  }
+  function startSound(offset) {
+    stopSound();
+    if (!A.buffer || !A.ctx || offset >= A.buffer.duration) return;
+    const node = A.ctx.createBufferSource();
+    node.buffer = A.buffer;
+    node.connect(A.ctx.destination);
+    try { node.start(0, Math.max(0, offset)); } catch (e) { return; }
+    A.node = node;
+  }
+  function stopSound() {
+    if (!A.node) return;
+    try { A.node.stop(); } catch (e) { /* already stopped */ }
+    A.node.disconnect();
+    A.node = null;
+  }
+  function resetAudio() { stopSound(); A.buffer = null; A.loading = null; A.pid = null; }
+  function updateSoundUI() {
+    const has = !!(E.project && E.project.hasAudio);
+    const b = $('#btnSound');
+    b.hidden = !has;
+    if (!has) return;
+    const on = E.settings.sound !== false;
+    b.setAttribute('aria-pressed', String(on));
+    b.setAttribute('aria-label', on ? 'Sound on. Tap to mute.' : 'Sound off. Tap to unmute.');
+    $('#soundUse').setAttribute('href', on ? '#i-sound' : '#i-mute');
+    $('#soundLabel').textContent = on ? 'Sound on' : 'Sound off';
+  }
+  $('#btnSound').addEventListener('click', () => {
+    if (!E.project) return;
+    E.settings.sound = E.settings.sound === false;
+    updateSoundUI();
+    if (E.settings.sound) { ensureAudioContext(); loadProjectAudio(); E.soundLoop = -1; } else stopSound();
+    scheduleSave();
+  });
+
+  // Copy the trimmed sound out of a video without re-encoding it when possible.
+  async function extractAudio(file, start, end) {
+    const MB = await loadMediabunny();
+    const input = new MB.Input({ formats: MB.ALL_FORMATS, source: new MB.BlobSource(file) });
+    try {
+      const track = await input.getPrimaryAudioTrack();
+      if (!track) return null;
+      const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new MB.BufferTarget() });
+      const conv = await MB.Conversion.init({
+        input, output, tracks: 'primary', video: { discard: true }, trim: { start, end },
+        copy: { mode: 'preferred', shiftTolerance: Infinity, boundaryPolicy: 'expand' }, showWarnings: false,
+      });
+      if (!conv.isValid || !conv.utilizedTracks.some((t) => t.type === 'audio')) return null;
+      await conv.execute();
+      const buf = output.target.buffer;
+      if (!buf || buf.byteLength < 64) return null;
+      return { blob: new Blob([buf], { type: 'audio/mp4' }), duration: end - start };
+    } finally {
+      try { input.dispose(); } catch (e) { /* ignore */ }
+    }
   }
 
   // ---------- Editor chrome ----------
@@ -2014,6 +2129,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     cvRef.style.opacity = s.refOpacity;
     stage.style.background = p.paper;
     $('#fmInsertLabel').textContent = p.hasVideo ? 'Insert a frame after this one' : 'Insert a blank frame after';
+    updateSoundUI();
     setTool(prefs.tool);
     setColor(prefs.color, false);
     updateSizeUI();
@@ -2316,6 +2432,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     E.undo = [];
     E.redo = [];
     E.clipboard = null;
+    resetAudio();
     drawCache.max = clamp(Math.floor(96e6 / (p.w * p.h * 4)), 6, 32);
     for (const c of [cvRef, cvOnion, cvDraw]) { c.width = p.w; c.height = p.h; }
     stage.style.width = p.w + 'px';
@@ -2332,6 +2449,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   async function closeProject() {
     if (!E.project) return;
     if (E.playing) stopPlay();
+    resetAudio();
     await saveNow();
     thumbQ.clear();
     const all = new Set(E.frames);
@@ -2426,6 +2544,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const ok = await confirmSheet({ title: 'Delete “' + p.name + '”?', body: 'This removes it from this device. You can’t undo it.', ok: 'Delete', danger: true });
       if (!ok) return;
       await Store.removeProject(p.id);
+      if (p.hasAudio) await Store.kvDel(audioKey(p.id)).catch(() => {});
       await refreshHome();
       toast('Deleted');
     };
@@ -2437,6 +2556,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const nid = uid();
     const frames = (p.frames || []).map((fid) => byId.get(fid)).filter(Boolean).map((r) => ({ id: uid(), project: nid, ref: r.ref || null, ops: r.ops || [] }));
     const copy = Object.assign({}, p, { id: nid, name: (p.name + ' copy').slice(0, 80), frames: frames.map((f) => f.id), created: Date.now(), updated: Date.now(), example: false });
+    if (p.hasAudio) {
+      const rec = await Store.kvGet(audioKey(p.id)).catch(() => null);
+      if (rec) await Store.kvSet(audioKey(nid), rec); else copy.hasAudio = false;
+    }
     await Store.save(copy, frames);
   }
 
@@ -2882,6 +3005,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const w = even(src.vw * sc), h = even(src.vh * sc);
     imp.running = true;
     closeSheet('sheetImport');
+    const audioJob = extractAudio(imp.file, imp.start, imp.start + n / fps).catch((e) => { console.warn('No sound kept', e); return null; });
     const ctl = busyOpen('Pulling frames from your video', { cancel: true });
     if (src.kind === 'element') { src.el.controls = false; ctl.showMedia(src.el); }
     const wake = await holdWake();
@@ -2918,13 +3042,19 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       }
       if (ctl.signal.aborted) throw abortError();
       if (!refs.length) throw new Error('No frames came out of this video');
+      ctl.set(1, 'Keeping the sound');
+      const audio = await Promise.race([audioJob, sleep(45000).then(() => null)]);
+      if (ctl.signal.aborted) throw abortError();
       const pid = uid();
       const frames = refs.map((ref) => ({ id: uid(), project: pid, ref, ops: [] }));
       const now = Date.now();
       const p = {
         id: pid, name, w, h, fps, paper: '#ffffff', hasVideo: true, frames: frames.map((f) => f.id),
-        created: now, updated: now, thumb: cover, settings: defaultSettings(true), cur: 0,
+        created: now, updated: now, thumb: cover, settings: defaultSettings(true), cur: 0, hasAudio: false,
       };
+      if (audio) {
+        try { await Store.kvSet(audioKey(pid), { blob: audio.blob, duration: audio.duration }); p.hasAudio = true; } catch (e) { console.warn(e); }
+      }
       await Store.save(p, frames);
       const refThumbs = new Map();
       for (let k = 0; k < frames.length; k++) {
@@ -2936,7 +3066,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       src.close();
       imp.src = null;
       await openProject(pid, { refThumbs });
-      toast('Draw on frame 1, then step forward with the arrow.', 4200);
+      toast(p.hasAudio ? 'Draw on frame 1, then step forward. The clip’s sound came along too.' : 'Draw on frame 1, then step forward with the arrow.', 4200);
     } catch (e) {
       ctl.close();
       thumbs.forEach(freeCanvas);
@@ -2953,7 +3083,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   // ---------- Export ----------
-  const X = { fmt: Prefs.get('expFmt', 'mp4'), size: {}, video: false, strength: 100, transparent: false, loops: 0, result: null, url: null };
+  const X = { fmt: Prefs.get('expFmt', 'mp4'), size: {}, video: false, strength: 100, transparent: false, loops: 0, sound: true, result: null, url: null };
   const FMT_HINTS = {
     mp4: 'An MP4 you can save to your photos or post anywhere.',
     gif: 'Loops forever. Good for short clips and messages.',
@@ -2992,6 +3122,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#expTransRow').hidden = fmt === 'mp4' || (hv && X.video);
     $('#swExpTrans').setAttribute('aria-checked', String(X.transparent));
     $('#expLoopsField').hidden = fmt !== 'mp4';
+    $('#expSoundRow').hidden = !(fmt === 'mp4' && E.project.hasAudio);
+    $('#swExpSound').setAttribute('aria-checked', String(X.sound));
     if (!X.loops) { const dur = E.frames.length / E.project.fps; X.loops = dur < 1.5 ? 3 : dur < 3 ? 2 : 1; }
     setPressed($('#expLoops'), X.loops);
     $('#btnMake').textContent = { mp4: 'Create video', gif: 'Create GIF', zip: 'Create ZIP', png: 'Create PNG' }[fmt];
@@ -3010,6 +3142,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   onPick($('#expLoops'), (v) => { X.loops = +v; setPressed($('#expLoops'), v); });
   bindSwitch($('#swExpVideo'), (on) => { X.video = on; renderExportOptions(); });
   bindSwitch($('#swExpTrans'), (on) => { X.transparent = on; });
+  bindSwitch($('#swExpSound'), (on) => { X.sound = on; });
   $('#rgExpVideo').addEventListener('input', (e) => { X.strength = +e.target.value; $('#outExpVideo').textContent = X.strength + '%'; });
   $('#btnExpBack').addEventListener('click', () => { clearExportResult(); $('#expOptions').hidden = false; $('#expResult').hidden = true; });
   $('#btnMake').addEventListener('click', runExport);
@@ -3033,6 +3166,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       w: s.w, h: s.h, video, videoAlpha: X.strength / 100,
       transparent: X.fmt !== 'mp4' && !video && X.transparent,
       loops: X.fmt === 'mp4' ? X.loops || 1 : 1,
+      sound: X.fmt === 'mp4' && !!E.project.hasAudio && X.sound,
     };
   }
   async function compositeFrame(f, ctx, w, h, o) {
@@ -3071,7 +3205,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         const r = await exportVideo(o, ctl);
         blob = r.blob;
         name = base + '.' + r.ext;
-        meta = (E.frames.length * o.loops / E.project.fps).toFixed(1) + ' s · ' + fmtBytes(blob.size);
+        meta = (E.frames.length * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
       } else if (fmt === 'gif') {
         blob = await exportGif(o, ctl);
         name = base + '.gif';
@@ -3205,23 +3339,73 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new MB.BufferTarget() });
     const source = new MB.CanvasSource(c, { codec, quality: MB.QUALITY_HIGH, keyFrameInterval: 2 });
     output.addVideoTrack(source, { frameRate: outFps });
-    await output.start();
     const n = E.frames.length, total = n * o.loops;
+    const sound = o.sound ? await prepareExportSound(MB, output, n / fps, o.loops).catch((e) => { console.warn('Exporting without sound', e); return null; }) : null;
+    await output.start();
     try {
       for (let k = 0; k < total; k++) {
         if (ctl.signal.aborted) throw abortError();
+        if (sound) await sound.feedUntil(k / fps + 0.5);
         await compositeFrame(E.frames[k % n], ctx, w, h, Object.assign({}, o, { transparent: false }));
         for (let r = 0; r < rep; r++) await source.add((k * rep + r) / outFps, 1 / outFps);
         ctl.set((k + 1) / total, 'Frame ' + ((k % n) + 1) + ' of ' + n + (o.loops > 1 ? ' · pass ' + (Math.floor(k / n) + 1) + ' of ' + o.loops : ''), c);
       }
+      if (sound) await sound.feedUntil(Infinity);
       await output.finalize();
     } catch (e) {
       try { await output.cancel(); } catch (err) { /* ignore */ }
       throw e;
     } finally {
       freeCanvas(c);
+      if (sound) sound.close();
     }
-    return { blob: new Blob([output.target.buffer], { type: 'video/mp4' }), ext: 'mp4', codec };
+    return { blob: new Blob([output.target.buffer], { type: 'video/mp4' }), ext: 'mp4', codec, sound: !!sound };
+  }
+  // Copies the stored sound into the MP4, restarting it with each repeat of the animation.
+  async function prepareExportSound(MB, output, lapDur, laps) {
+    const rec = await Store.kvGet(audioKey(E.project.id));
+    if (!rec || !rec.blob) return null;
+    const input = new MB.Input({ formats: MB.ALL_FORMATS, source: new MB.BlobSource(rec.blob) });
+    const close = () => { try { input.dispose(); } catch (e) { /* ignore */ } };
+    try {
+      const track = await input.getPrimaryAudioTrack();
+      const codec = track && (await track.getCodec());
+      if (!codec || !output.format.getSupportedAudioCodecs().includes(codec)) { close(); return null; }
+      const decoderConfig = await track.getDecoderConfig();
+      const sink = new MB.EncodedPacketSink(track);
+      const src = new MB.EncodedAudioPacketSource(codec);
+      output.addAudioTrack(src);
+      let iter = null, lap = 0, t0 = null, first = true, pending = null, finished = false;
+      const next = async () => {
+        while (lap < laps) {
+          if (!iter) iter = sink.packets();
+          const r = await iter.next();
+          if (r.done) { iter = null; lap++; continue; }
+          const pk = r.value;
+          if (t0 === null) t0 = pk.timestamp;
+          const t = pk.timestamp - t0;
+          if (t >= lapDur - 1e-6) { if (iter.return) await iter.return(); iter = null; lap++; continue; }
+          return pk.clone({ timestamp: lap * lapDur + t });
+        }
+        return null;
+      };
+      return {
+        async feedUntil(time) {
+          while (!finished) {
+            if (!pending) pending = await next();
+            if (!pending) { finished = true; break; }
+            if (pending.timestamp > time) break;
+            await src.add(pending, first ? { decoderConfig } : undefined);
+            first = false;
+            pending = null;
+          }
+        },
+        close,
+      };
+    } catch (e) {
+      close();
+      throw e;
+    }
   }
   async function exportWithRecorder(o, ctl) {
     const types = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
@@ -3611,7 +3795,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, exportGif, exportVideo, exportZip, makeZip, crc32 };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, exportGif, exportVideo, exportZip, makeZip, crc32 };
   boot();
 })();
 </script>

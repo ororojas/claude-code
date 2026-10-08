@@ -17,6 +17,8 @@ The whole app is one file, `index.html`. It has no build step and no server, and
 4. Draw on frame 1, then step to the next frame with the arrow and draw again. A faint red ghost of the previous drawing (the onion skin) helps you keep things lined up.
 5. Press play to watch it, then tap **Export**.
 
+If your clip has sound, Rotobox keeps it. It plays along when you press play (tap the speaker in the corner of the canvas to mute it), and MP4 exports include it.
+
 ### Tools
 
 | Tool | What it does |
