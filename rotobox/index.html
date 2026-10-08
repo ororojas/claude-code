@@ -257,6 +257,8 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .cell .num { font: 500 10px/1 var(--font-mono); color: var(--muted); }
 .cell.cur .thumb { box-shadow: 0 0 0 2px var(--lamp-fill); }
 .cell.cur .num { color: var(--lamp); }
+.cell .wave { display: block; opacity: 0.65; }
+.cell.cur .wave { opacity: 1; }
 .add-frame { flex: none; width: 44px; height: 60px; border-radius: 10px; border: 1.5px dashed var(--rule); display: grid; place-items: center; color: var(--muted); }
 
 @media (min-width: 860px) and (min-height: 540px), (orientation: landscape) and (max-height: 540px) {
@@ -821,6 +823,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <span class="label">Sound</span>
     <p class="snd-name" id="sndName">No sound yet</p>
     <p class="hint" id="sndHint"></p>
+    <div class="row" id="sndScrubRow" style="margin-top:6px">
+      <div><label for="swScrub">Hear each frame as you step</label><p class="hint">Plays the bit of sound under a frame when you move to it, for matching drawings to beats and words.</p></div>
+      <button type="button" class="switch" role="switch" id="swScrub" aria-checked="true"><span></span></button>
+    </div>
     <div class="btn-row" id="sndRow" style="margin-top:12px">
       <button type="button" class="btn-secondary" id="sndRemove">Remove</button>
       <button type="button" class="btn-primary" id="sndAdd">Add a sound</button>
@@ -1848,6 +1854,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     strip.append(frag);
     $('#btnAddFrame').style.height = d.ch + 14 + 'px';
     markCurrent('near');
+    if (A.buffer) drawWaves();
   }
   function markCurrent(mode) {
     const strip = $('#strip');
@@ -1869,6 +1876,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (!cell) return;
     if (E.playing) stopPlay();
     showFrame(+cell.dataset.i, false);
+    scrubSound();
   });
 
   // Drag a frame along the strip to move it. Touch and stylus need a long press first, so a
@@ -2210,6 +2218,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (E.playing) stopPlay();
     const n = E.frames.length;
     showFrame((E.cur + d + n) % n);
+    scrubSound();
   }
 
   // ---------- Saving ----------
@@ -3142,7 +3151,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const loop = (now) => {
       if (token !== E.playToken) return;
       const fps = E.project.fps;
-      const pos = startBeat + ((now - t0) * fps) / 1000;
+      // The first frame's timestamp can come from just before Play was pressed. Without the
+      // clamp, that sliver of negative time would flash the end of the previous loop.
+      const pos = startBeat + (Math.max(0, now - t0) * fps) / 1000;
       const lap = Math.floor(pos / beats);
       const inLap = pos - lap * beats;
       let lo = 0, hi = n - 1;
@@ -3201,7 +3212,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     A.buffer = null;
     A.loading = (async () => {
       const rec = await Store.kvGet(audioKey(p.id));
-      const ctx = ensureAudioContext();
+      const ctx = decodeContext();
       if (!rec || !rec.blob || !ctx) return null;
       const data = await rec.blob.arrayBuffer();
       let buf;
@@ -3214,9 +3225,99 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         buf = await decodeWithLibrary(rec.blob, ctx);
       }
       if (A.pid === p.id) A.buffer = buf;
+      if (E.project === p) drawWaves();
       return buf;
     })().catch((e) => { console.warn('The sound could not be played here', e); return null; });
     return A.loading;
+  }
+  // Sounds are decoded in an offline context, so drawing the waveform when a project opens doesn't
+  // start an audio session (which on iOS can pause music playing in another app).
+  let decodeCtx = null;
+  function decodeContext() {
+    if (!decodeCtx) {
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      try { if (OAC) decodeCtx = new OAC(1, 1, 44100); } catch (e) { decodeCtx = null; }
+    }
+    return decodeCtx || ensureAudioContext();
+  }
+  // Stepping frame by frame plays the slice of sound under the new frame.
+  function scrubSound() {
+    const p = E.project;
+    if (!p || !p.hasAudio || E.playing || E.settings.sound === false || E.settings.scrub === false) return;
+    const ctx = ensureAudioContext();
+    if (!ctx) return;
+    const cur = E.cur;
+    loadProjectAudio().then((buf) => {
+      if (!buf || E.playing || E.project !== p || E.cur !== cur) return;
+      let beat = 0;
+      for (let i = 0; i < cur; i++) beat += holdOf(E.frames[i]);
+      const t = beat / p.fps;
+      if (t >= buf.duration) return;
+      const dur = Math.min(buf.duration - t, Math.max(0.12, holdOf(E.frames[cur]) / p.fps));
+      stopSound();
+      const node = ctx.createBufferSource();
+      node.buffer = buf;
+      // A few milliseconds of fade at each end keeps the slice from clicking.
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(1, now + 0.008);
+      gain.gain.setValueAtTime(1, Math.max(now + 0.008, now + dur - 0.02));
+      gain.gain.linearRampToValueAtTime(0, now + dur);
+      node.connect(gain);
+      gain.connect(ctx.destination);
+      node.onended = () => { if (A.node === node) A.node = null; try { gain.disconnect(); } catch (e) { /* gone */ } };
+      try { node.start(now, t, dur); } catch (e) { return; }
+      A.node = node;
+    });
+  }
+  // Under each filmstrip frame, the sound that plays while that frame is on screen.
+  function drawWaves() {
+    const strip = $('#strip');
+    const p = E.project;
+    const buf = p && p.hasAudio && A.pid === p.id ? A.buffer : null;
+    if (!buf) { for (const w of strip.querySelectorAll('.wave')) w.remove(); return; }
+    if (A.peakFor !== buf) {
+      let peak = 0.01;
+      for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let j = 0; j < d.length; j += 16) { const v = Math.abs(d[j]); if (v > peak) peak = v; } }
+      A.peakFor = buf;
+      A.peak = peak;
+    }
+    const chans = [];
+    for (let c = 0; c < Math.min(2, buf.numberOfChannels); c++) chans.push(buf.getChannelData(c));
+    const sr = buf.sampleRate, len = chans[0].length, fps = p.fps;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const color = getComputedStyle(document.documentElement).getPropertyValue('--lamp-fill').trim() || '#f0a03c';
+    const cells = strip.querySelectorAll('.cell');
+    let beat = 0;
+    E.frames.forEach((f, i) => {
+      const cell = cells[i];
+      const hold = holdOf(f);
+      const s0 = Math.floor((beat / fps) * sr), s1 = Math.min(len, Math.floor(((beat + hold) / fps) * sr));
+      beat += hold;
+      if (!cell) return;
+      const thumb = cell.querySelector('.thumb');
+      const cw = parseFloat(thumb.style.width) || 84;
+      let c = cell.querySelector('.wave');
+      if (!c) { c = document.createElement('canvas'); c.className = 'wave'; thumb.after(c); }
+      c.width = Math.round(cw * dpr);
+      c.height = Math.round(12 * dpr);
+      c.style.width = cw + 'px';
+      c.style.height = '12px';
+      const g = c.getContext('2d');
+      g.clearRect(0, 0, c.width, c.height);
+      g.fillStyle = color;
+      // Bars about 1.5 px wide with a 1 px gap, snapped to device pixels so they stay crisp.
+      const bar = Math.max(1, Math.round(1.5 * dpr)), gap = Math.max(1, Math.round(dpr));
+      const cols = Math.max(1, Math.floor((c.width + gap) / (bar + gap)));
+      for (let k = 0; k < cols; k++) {
+        const a = s0 + Math.floor(((s1 - s0) * k) / cols), b = s0 + Math.floor(((s1 - s0) * (k + 1)) / cols);
+        let v = 0;
+        for (const d of chans) for (let j = a; j < b; j += 4) { const x = Math.abs(d[j]); if (x > v) v = x; }
+        const h = Math.max(dpr * 0.6, Math.min(1, v / A.peak) * c.height);
+        g.fillRect(k * (bar + gap), (c.height - h) / 2, bar, h);
+      }
+    });
   }
   // Some browsers' audio decoders turn down a format the video library can still decode.
   async function decodeWithLibrary(blob, ctx) {
@@ -3318,9 +3419,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       ? 'It plays from frame 1 and starts over each time the animation loops.'
       : 'Add a song, a voice clip, or the sound from another video.';
     $('#sndRemove').hidden = !has;
+    $('#sndScrubRow').hidden = !has;
+    $('#swScrub').setAttribute('aria-checked', String(E.settings.scrub !== false));
     $('#sndRow').style.gridTemplateColumns = has ? '' : '1fr';
     $('#sndAdd').textContent = has ? 'Change sound' : 'Add a sound';
   }
+  bindSwitch($('#swScrub'), (on) => { E.settings.scrub = on; scheduleSave(); });
   $('#sndAdd').addEventListener('click', () => {
     if (E.playing) stopPlay();
     const i = $('#fileSound');
@@ -3432,6 +3536,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     E.settings.sound = true;
     resetAudio();
     updateSoundUI();
+    loadProjectAudio();
     scheduleSave(100);
     toast('Sound added. Press play to hear it with your animation.');
   }
@@ -3447,6 +3552,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     resetAudio();
     updateSoundUI();
     renderSoundGroup();
+    drawWaves();
     scheduleSave(100);
     toast('Sound removed');
   });
@@ -3600,6 +3706,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (playing) stopPlay();
     E.project.fps = +v;
     setPressed($('#fpsChips'), v);
+    drawWaves();
     updateFpsLabel();
     scheduleSave();
     if (playing) startPlay();
@@ -3922,6 +4029,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (isDark(p.paper) && isDark(prefs.color)) setColor('#ffffff');
     if (!isDark(p.paper) && prefs.color.toLowerCase() === '#ffffff' && !p.hasVideo) setColor('#1b1b1f');
     firstTips();
+    if (p.hasAudio) loadProjectAudio();
   }
   let closing = false;
   async function closeProject() {
