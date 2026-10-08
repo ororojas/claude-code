@@ -63,7 +63,11 @@ On a keyboard:
 
 After an export, tap **Save to device**. On an iPhone or iPad this opens the share sheet, where **Save Video** or **Save Image** puts the file in Photos. On a computer the file downloads.
 
-Projects are saved automatically in your browser's storage on that device. Clearing your browser data deletes them, so export anything you want to keep.
+Projects are saved automatically in your browser's storage on that device. Clearing your browser data deletes them, so keep backups of anything you care about.
+
+## Backups
+
+On the home screen, tap **⋯** on an animation and choose **Save a backup file**. You get one `.rotobox.zip` with every frame, drawing, hold, the video frames, the sound and your settings. Keep it in Files, iCloud Drive or anywhere else. To bring it back, on this device or another one, tap **Restore a backup** on the home screen and pick the file.
 
 ## Running your own copy
 

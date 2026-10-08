@@ -138,6 +138,8 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .steps li { display: flex; gap: 10px; align-items: baseline; color: var(--muted); font-size: 14px; }
 .steps li::before { counter-increment: step; content: counter(step, decimal-leading-zero); font: 500 12px var(--font-mono); color: var(--lamp); }
 .section-h { margin: 0 0 14px; font: 700 22px/1.2 var(--font-display); letter-spacing: -0.01em; }
+.section-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.link-btn { color: var(--lamp); font-weight: 600; font-size: 14px; padding: 6px 2px; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
 .card { position: relative; min-width: 0; }
 .card-open { display: grid; gap: 6px; width: 100%; text-align: left; }
@@ -443,7 +445,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     </ol>
 
     <section aria-labelledby="yoursH">
-      <h2 class="section-h" id="yoursH">Your animations</h2>
+      <div class="section-row">
+        <h2 class="section-h" id="yoursH">Your animations</h2>
+        <button type="button" class="link-btn" id="btnRestore">Restore a backup</button>
+      </div>
       <div class="grid" id="projectGrid"></div>
       <p class="empty" id="emptyNote" hidden>Nothing here yet. Start one above and it shows up here.</p>
     </section>
@@ -451,6 +456,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <p class="fine" id="storageNote">Everything stays in this browser on this device. Export anything you want to keep.</p>
   </div>
   <input type="file" id="fileVideo" class="file-input" accept="video/*" tabindex="-1" aria-hidden="true">
+  <input type="file" id="fileBackup" class="file-input" accept=".zip,application/zip" tabindex="-1" aria-hidden="true">
 </main>
 
 <!-- ============ Editor ============ -->
@@ -738,6 +744,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   <div class="menu">
     <button type="button" id="pmRename"><svg class="i"><use href="#i-pen"/></svg>Rename</button>
     <button type="button" id="pmDuplicate"><svg class="i"><use href="#i-dup"/></svg>Make a copy</button>
+    <button type="button" id="pmBackup"><svg class="i"><use href="#i-share"/></svg>Save a backup file</button>
     <button type="button" id="pmDelete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Delete</button>
   </div>
 </div>
@@ -3162,6 +3169,26 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       await refreshHome();
       toast('Made a copy');
     };
+    $('#pmBackup').onclick = async () => {
+      closeSheet('sheetProject');
+      const ctl = busyOpen('Packing a backup', { cancel: false });
+      let blob;
+      try {
+        blob = await buildBackup(p, ctl);
+      } catch (e) {
+        console.error(e);
+        ctl.close();
+        showError('The backup didn’t work', 'Something went wrong while packing this animation. Try again in a moment.');
+        return;
+      }
+      ctl.close();
+      const ok = await confirmSheet({
+        title: 'Backup ready',
+        body: p.name + ' · ' + fmtBytes(blob.size) + '. Keep it somewhere safe, like Files or iCloud Drive. Restore it from the home screen on any device.',
+        ok: 'Save backup', cancel: 'Not now',
+      });
+      if (ok) saveFile(blob, slug(p.name) + '.rotobox.zip');
+    };
     $('#pmDelete').onclick = async () => {
       closeSheet('sheetProject');
       const ok = await confirmSheet({ title: 'Delete “' + p.name + '”?', body: 'This removes it from this device. You can’t undo it.', ok: 'Delete', danger: true });
@@ -3173,6 +3200,182 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     };
     openSheet('sheetProject');
   }
+  // ---------- Backup files ----------
+  // A backup is a zip: rotobox.json (project, frames, ops) plus the video frames, sound and cover.
+  // Typed arrays in ops are stored as base64 so the JSON stays compact.
+  function bytesToB64(u8) {
+    let out = '';
+    for (let i = 0; i < u8.length; i += 0x8000) out += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
+    return btoa(out);
+  }
+  function b64ToBytes(b64) {
+    const str = atob(b64);
+    const u8 = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) u8[i] = str.charCodeAt(i);
+    return u8;
+  }
+  const bytesOf = (v) => new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  function opsReplacer(k, v) {
+    if (v instanceof Float32Array) return { $f32: bytesToB64(bytesOf(v)) };
+    if (v instanceof Uint16Array) return { $u16: bytesToB64(bytesOf(v)) };
+    return v;
+  }
+  function opsReviver(k, v) {
+    if (v && typeof v === 'object' && typeof v.$f32 === 'string') { const b = b64ToBytes(v.$f32); return new Float32Array(b.buffer, 0, b.byteLength >> 2); }
+    if (v && typeof v === 'object' && typeof v.$u16 === 'string') { const b = b64ToBytes(v.$u16); return new Uint16Array(b.buffer, 0, b.byteLength >> 1); }
+    return v;
+  }
+  const HEX = /^#[0-9a-f]{6}$/i;
+  // Keeps only ops the renderer understands, so a damaged file can't break drawing.
+  function cleanOps(ops) {
+    if (!Array.isArray(ops)) return [];
+    const out = [];
+    for (const op of ops) {
+      if (!op || typeof op !== 'object') continue;
+      if (op.t === 's' && op.p instanceof Float32Array && op.p.length >= 3 && op.p.length % 3 === 0 && HEX.test(op.c) && op.w > 0 && op.w <= 512) {
+        const o = { t: 's', c: op.c, w: +op.w, e: op.e ? 1 : 0, p: op.p };
+        if (op.b === 'i' || op.b === 'm') o.b = op.b;
+        out.push(o);
+      } else if (op.t === 'f' && op.r instanceof Uint16Array && op.r.length % 3 === 0 && HEX.test(op.c)) {
+        out.push({ t: 'f', c: op.c, m: op.m === 'u' ? 'u' : 'o', r: op.r });
+      } else if (op.t === 'x' && op.p instanceof Float32Array && op.p.length >= 6 && op.p.length % 2 === 0) {
+        const m = Array.isArray(op.m) && op.m.length === 6 && op.m.every(Number.isFinite) ? op.m.map(Number) : null;
+        out.push({ t: 'x', p: op.p, m });
+      }
+    }
+    return out;
+  }
+  async function buildBackup(p, ctl) {
+    const recs = await Store.frames(p.id);
+    const byId = new Map(recs.map((r) => [r.id, r]));
+    const files = [], frames = [], seen = new Map();
+    const ids = p.frames || [];
+    for (let i = 0; i < ids.length; i++) {
+      const r = byId.get(ids[i]);
+      if (!r) continue;
+      let ref = null;
+      if (r.ref) {
+        const bytes = new Uint8Array(await r.ref.arrayBuffer());
+        const key = bytes.length + ':' + crc32(bytes);
+        ref = seen.get(key);
+        if (!ref) {
+          ref = 'frames/' + String(seen.size + 1).padStart(4, '0') + '.jpg';
+          seen.set(key, ref);
+          files.push({ name: ref, data: bytes });
+        }
+      }
+      frames.push({ hold: r.hold || 1, ref, ops: r.ops || [] });
+      if (ctl) ctl.set((i + 1) / ids.length, 'Frame ' + (i + 1) + ' of ' + ids.length);
+    }
+    let audio = null;
+    if (p.hasAudio) {
+      const a = await Store.kvGet(audioKey(p.id)).catch(() => null);
+      if (a && a.blob) { files.push({ name: 'sound.m4a', data: new Uint8Array(await a.blob.arrayBuffer()) }); audio = { file: 'sound.m4a', duration: a.duration }; }
+    }
+    if (p.thumb) files.push({ name: 'cover.jpg', data: new Uint8Array(await p.thumb.arrayBuffer()) });
+    const meta = {
+      format: 'rotobox', version: 1, saved: new Date().toISOString(),
+      project: { name: p.name, w: p.w, h: p.h, fps: p.fps, paper: p.paper, hasVideo: !!p.hasVideo, settings: p.settings || {} },
+      frames, audio, cover: p.thumb ? 'cover.jpg' : null,
+    };
+    files.unshift({ name: 'rotobox.json', data: new TextEncoder().encode(JSON.stringify(meta, opsReplacer)) });
+    return makeZip(files);
+  }
+  // Reads stored or deflated entries straight from the file, one at a time.
+  async function readZip(blob) {
+    const size = blob.size;
+    const tailLen = Math.min(size, 65557);
+    const tail = new DataView(await blob.slice(size - tailLen).arrayBuffer());
+    let eocd = -1;
+    for (let i = tailLen - 22; i >= 0; i--) if (tail.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    if (eocd < 0) throw new Error('Not a zip file');
+    const count = tail.getUint16(eocd + 10, true), cdSize = tail.getUint32(eocd + 12, true), cdOff = tail.getUint32(eocd + 16, true);
+    const cd = new DataView(await blob.slice(cdOff, cdOff + cdSize).arrayBuffer());
+    const entries = new Map();
+    const dec = new TextDecoder();
+    let o = 0;
+    for (let k = 0; k < count; k++) {
+      if (o + 46 > cd.byteLength || cd.getUint32(o, true) !== 0x02014b50) throw new Error('Damaged zip file');
+      const nlen = cd.getUint16(o + 28, true), xlen = cd.getUint16(o + 30, true), clen = cd.getUint16(o + 32, true);
+      entries.set(dec.decode(new Uint8Array(cd.buffer, o + 46, nlen)), {
+        method: cd.getUint16(o + 10, true), csize: cd.getUint32(o + 20, true), lho: cd.getUint32(o + 42, true),
+      });
+      o += 46 + nlen + xlen + clen;
+    }
+    async function read(name, type = '') {
+      const e = entries.get(name);
+      if (!e) return null;
+      const lh = new DataView(await blob.slice(e.lho, e.lho + 30).arrayBuffer());
+      if (lh.getUint32(0, true) !== 0x04034b50) throw new Error('Damaged zip file');
+      const start = e.lho + 30 + lh.getUint16(26, true) + lh.getUint16(28, true);
+      const raw = await blob.slice(start, start + e.csize).arrayBuffer();
+      if (e.method === 0) return new Blob([raw], { type });
+      if (e.method === 8 && 'DecompressionStream' in window) {
+        const out = new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')));
+        return new Blob([await out.arrayBuffer()], { type });
+      }
+      throw new Error('This zip uses compression the browser can’t read');
+    }
+    return { entries, read };
+  }
+  async function restoreBackup(file) {
+    const ctl = busyOpen('Restoring your animation', { cancel: false });
+    try {
+      let zip;
+      try { zip = await readZip(file); } catch (e) { zip = null; }
+      const metaBlob = zip && (await zip.read('rotobox.json').catch(() => null));
+      let meta = null;
+      try { meta = metaBlob && JSON.parse(await metaBlob.text(), opsReviver); } catch (e) { meta = null; }
+      const pr = meta && meta.format === 'rotobox' && meta.project;
+      if (!pr || !Array.isArray(meta.frames) || !meta.frames.length) {
+        ctl.close();
+        showError('That isn’t a Rotobox backup', 'Pick a .rotobox.zip file saved with “Save a backup file”.');
+        return;
+      }
+      const w = clamp(Math.round(pr.w) || 0, 16, 4096), h = clamp(Math.round(pr.h) || 0, 16, 4096);
+      const pid = uid();
+      const refs = new Map(), frames = [];
+      for (let i = 0; i < meta.frames.length && i < 2000; i++) {
+        const fr = meta.frames[i] || {};
+        let ref = null;
+        if (typeof fr.ref === 'string') {
+          ref = refs.get(fr.ref);
+          if (ref === undefined) { ref = await zip.read(fr.ref, 'image/jpeg'); refs.set(fr.ref, ref); }
+        }
+        frames.push({ id: uid(), project: pid, ref: ref || null, ops: cleanOps(fr.ops), hold: clamp(Math.round(fr.hold) || 1, 1, 4) });
+        ctl.set((i + 1) / meta.frames.length, 'Frame ' + (i + 1) + ' of ' + meta.frames.length);
+      }
+      const hasVideo = !!pr.hasVideo && frames.some((f) => f.ref);
+      const now = Date.now();
+      const p = {
+        id: pid, name: String(pr.name || 'Restored animation').slice(0, 80), w, h,
+        fps: clamp(Math.round(pr.fps) || 12, 1, 60), paper: HEX.test(pr.paper) ? pr.paper : '#ffffff', hasVideo,
+        frames: frames.map((f) => f.id), created: now, updated: now,
+        thumb: meta.cover ? await zip.read(meta.cover, 'image/jpeg').catch(() => null) : null,
+        settings: Object.assign(defaultSettings(hasVideo), pr.settings && typeof pr.settings === 'object' ? pr.settings : {}),
+        cur: 0, hasAudio: false,
+      };
+      if (meta.audio && typeof meta.audio.file === 'string') {
+        const blob = await zip.read(meta.audio.file, 'audio/mp4').catch(() => null);
+        if (blob && blob.size) { await Store.kvSet(audioKey(pid), { blob, duration: +meta.audio.duration || 0 }); p.hasAudio = true; }
+      }
+      await Store.save(p, frames);
+      ctl.close();
+      await refreshHome();
+      toast('Restored “' + p.name + '”');
+    } catch (e) {
+      console.error(e);
+      ctl.close();
+      showError('Couldn’t restore that backup', 'The file may be damaged or too large for this device.');
+    }
+  }
+  $('#btnRestore').addEventListener('click', () => { const i = $('#fileBackup'); i.value = ''; i.click(); });
+  $('#fileBackup').addEventListener('change', (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (file) restoreBackup(file);
+  });
+
   async function duplicateProject(p) {
     const recs = await Store.frames(p.id);
     const byId = new Map(recs.map((r) => [r.id, r]));
@@ -4430,7 +4633,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, exportGif, exportVideo, exportZip, makeZip, crc32 };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32 };
   boot();
 })();
 </script>
