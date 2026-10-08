@@ -8,7 +8,7 @@ Rotobox is a small animation app that runs in a web browser. You can use it thre
 
 When you're done, export it as an MP4 video, an animated GIF, a ZIP of PNG frames, or a single PNG.
 
-The whole app is one file, `index.html`. It has no build step and no server, and your work never leaves your device.
+The whole app is one file, `index.html`. It has no build step and no server, and your work never leaves your device. The other files in this folder (`manifest.webmanifest`, `sw.js` and the icons) only make a hosted copy installable and let it work offline.
 
 ## Using it
 
@@ -91,19 +91,22 @@ On the home screen, tap **⋯** on an animation and choose **Save a backup file*
 
 ## Running your own copy
 
-Any static web host works, since it's a single HTML file. For example, with GitHub Pages:
+Any static web host works. Upload the whole folder so the manifest, icons and `sw.js` sit next to `index.html`. For example, with GitHub Pages:
 
 1. In the repository settings, open **Pages**.
 2. Set the source to the branch that has this folder.
-3. Open `https://<your-user>.github.io/<repo>/rotobox/` on your phone, then use **Add to Home Screen** to get an app icon.
+3. Open `https://<your-user>.github.io/<repo>/rotobox/` on your phone.
+4. Install it. On an iPhone or iPad, tap Share, then **Add to Home Screen**. In Chrome or Edge, tap **Install** on the Rotobox home screen, or use the browser's install button.
 
-To try it locally, run `python3 -m http.server` inside this folder and open `http://localhost:8000`.
+After the first visit, a hosted copy keeps working with no connection, including the fonts and the video library. Your animations were always stored on the device, so they're there offline too. When you're online, it picks up a new version of the page the next time it opens.
+
+To try it locally, run `python3 -m http.server` inside this folder and open `http://localhost:8000`. Opening `index.html` straight from a file also works, just without the offline part.
 
 ## Browser support
 
 - Video import uses the browser's own video player, so it opens whatever your browser can play. That includes iPhone HEVC clips in Safari. If that route fails, Rotobox tries again with WebCodecs.
 - MP4 export uses WebCodecs (Safari 16.4+, Chrome, Edge) and falls back to recording the canvas with MediaRecorder. GIF, ZIP and PNG export work everywhere.
-- The fonts and the [Mediabunny](https://mediabunny.dev/) library (used for MP4 export and the WebCodecs import route) load from public CDNs. Without a network connection, the app still draws, plays and exports GIFs.
+- The fonts and the [Mediabunny](https://mediabunny.dev/) library (used for MP4 export, the WebCodecs import route and keeping a clip's sound) load from public CDNs. A hosted copy saves them for offline use. Without them, the app still draws, plays, imports with the browser's video player, and exports GIFs and videos.
 
 ## How it works
 

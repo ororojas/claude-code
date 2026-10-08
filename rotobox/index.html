@@ -8,10 +8,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Rotobox">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Rotobox</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&display=swap" crossorigin>
 <style>
 /* Layout: a light table. A graphite desk around a glowing sheet of paper, slim tool trays,
    and a numbered X-sheet strip of frames along the bottom. */
@@ -152,6 +156,8 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .fine { margin: 0; color: var(--muted); font-size: 13px; max-width: 62ch; }
 .file-input { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .empty { margin: 0; padding: 26px 18px; border: 1.5px dashed var(--rule); border-radius: 16px; color: var(--muted); text-align: center; }
+.install { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--tray); border: 1px solid var(--rule); }
+.install span { color: var(--muted); font-size: 14px; }
 
 /* ---------- Editor ---------- */
 #editor {
@@ -485,6 +491,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <p class="empty" id="emptyNote" hidden>Nothing here yet. Start one above and it shows up here.</p>
     </section>
 
+    <div class="install" id="installRow" hidden>
+      <span>Install Rotobox to open it from your home screen, even offline.</span>
+      <button type="button" class="link-btn" id="btnInstall">Install</button>
+    </div>
     <p class="fine" id="storageNote">Everything stays in this browser on this device. Export anything you want to keep.</p>
   </div>
   <input type="file" id="fileVideo" class="file-input" accept="video/*" tabindex="-1" aria-hidden="true">
@@ -5441,6 +5451,22 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       freeCanvas(c);
     }
   }
+
+  // ---------- Installing and offline ----------
+  // A hosted copy (with the manifest and sw.js beside it) can be installed and opened offline.
+  // The artifact viewer and pages opened straight from a file skip this.
+  if ('serviceWorker' in navigator && !inViewer && /^https?:$/.test(location.protocol) && document.querySelector('link[rel="manifest"]')) {
+    addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch((e) => console.warn('Offline support is off', e)); });
+  }
+  let installPrompt = null;
+  addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; $('#installRow').hidden = false; });
+  addEventListener('appinstalled', () => { installPrompt = null; $('#installRow').hidden = true; });
+  $('#btnInstall').addEventListener('click', async () => {
+    const p = installPrompt;
+    installPrompt = null;
+    $('#installRow').hidden = true;
+    if (p) { try { await p.prompt(); } catch (e) { /* the browser said no */ } }
+  });
 
   // ---------- Boot ----------
   async function boot() {
