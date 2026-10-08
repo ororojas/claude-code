@@ -389,6 +389,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
     <symbol id="i-sound" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+    <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3.5" y="10.5" width="10" height="10" rx="1.5"/><circle cx="15.5" cy="8.5" r="5"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -463,7 +464,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" class="tool" data-tool="pen" aria-pressed="true" aria-label="Pencil"><svg class="i"><use href="#i-pen"/></svg></button>
     <button type="button" class="tool" data-tool="eraser" aria-pressed="false" aria-label="Eraser"><svg class="i"><use href="#i-eraser"/></svg></button>
     <button type="button" class="tool" data-tool="fill" aria-pressed="false" aria-label="Fill"><svg class="i"><use href="#i-fill"/></svg></button>
-    <button type="button" class="tool" data-tool="picker" aria-pressed="false" aria-label="Color picker"><svg class="i"><use href="#i-picker"/></svg></button>
+    <button type="button" class="tool" data-tool="shape" aria-pressed="false" aria-label="Shapes"><svg class="i"><use href="#i-shape"/></svg></button>
     <span class="bar-sep" aria-hidden="true"></span>
     <button type="button" class="tool color-btn" id="btnColor" aria-label="Color"><span class="dot" id="colorDot"></span></button>
     <button type="button" class="tool size-btn" id="btnSize" aria-label="Brush size"><span class="dot" id="sizeDot"></span><span class="num" id="sizeNum">6</span></button>
@@ -559,21 +560,28 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <div class="swatches" id="recentSw"></div>
   </div>
   <div class="row"><label for="customColor">Mix your own</label><input type="color" id="customColor" value="#1b1b1f"></div>
+  <button type="button" class="btn-secondary" id="btnPickCanvas" style="margin-top:10px;gap:8px"><svg class="i sm"><use href="#i-picker"/></svg>Pick a color from the canvas</button>
 </div>
 
 <div class="sheet" id="sheetBrush" role="dialog" aria-modal="true" aria-labelledby="brushTitle" hidden>
   <h2 id="brushTitle">Pencil</h2>
   <canvas class="brush-preview" id="brushPreview" width="640" height="128" aria-hidden="true"></canvas>
+  <div class="field" id="shapeField" hidden>
+    <span class="label" id="lblShapeKind">Shape</span>
+    <div class="chips" id="shapeChips" aria-labelledby="lblShapeKind">
+      <button type="button" data-v="line">Line</button><button type="button" data-v="rect">Rectangle</button><button type="button" data-v="ellipse">Ellipse</button>
+    </div>
+  </div>
   <div class="field">
     <div class="row tight"><label class="label" for="rgSize">Size</label><output class="mono small" id="outSize" for="rgSize">6 px</output></div>
     <input type="range" id="rgSize" min="0" max="21" step="1">
   </div>
-  <div class="field">
+  <div class="field" id="smoothField">
     <div class="row tight"><label class="label" for="rgSmooth">Steady hand</label><output class="mono small" id="outSmooth" for="rgSmooth">3</output></div>
     <input type="range" id="rgSmooth" min="0" max="10" step="1">
     <p class="hint">Smooths out wobbles. Higher feels a little slower but draws cleaner lines.</p>
   </div>
-  <div class="row">
+  <div class="row" id="pressureRow">
     <div><label for="swPressure">Stylus pressure</label><p class="hint">Press harder for a thicker line.</p></div>
     <button type="button" class="switch" role="switch" id="swPressure" aria-checked="true"><span></span></button>
   </div>
@@ -1204,6 +1212,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     pressure: Prefs.get('pressure', true),
     penOnly: Prefs.get('penOnly', false),
     recent: Prefs.get('recent', []),
+    shape: Prefs.get('shape', 'line'),
   };
   if (prefs.tool === 'picker') prefs.tool = 'pen';
   let toolBeforePicker = 'pen';
@@ -1692,8 +1701,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
     if (e.pointerType === 'pen') {
       if (!prefs.penOnly) setPenOnly(true, true);
-      if (gesture && gesture.kind === 'draw' && gesture.type === 'pen') return;
-      if (gesture && gesture.kind === 'draw') cancelStroke();
+      if (gesture && gesture.type === 'pen' && gesture.kind !== 'wait') return;
+      cancelActive();
       gesture = null;
       multiTap = null;
       startTool(e);
@@ -1705,7 +1714,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const touches = touchList();
       trackMultiTap(touches.length);
       if (touches.length >= 2) {
-        if (gesture && gesture.kind === 'draw') cancelStroke();
+        cancelActive();
         startPinch(touches[0], touches[1]);
         return;
       }
@@ -1724,6 +1733,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function startTool(e) {
     const t = prefs.tool;
     if (t === 'pen' || t === 'eraser') beginStroke(e);
+    else if (t === 'shape') beginShape(e);
     else if (t === 'fill') gesture = { kind: 'fill', id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY };
     else if (t === 'picker') { gesture = { kind: 'pick', id: e.pointerId, type: e.pointerType }; pickAt(e.clientX, e.clientY, false); }
   }
@@ -1744,6 +1754,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       applyView();
     } else if (gesture.kind === 'pinch') movePinch();
     else if (gesture.kind === 'pick' && e.pointerId === gesture.id) pickAt(e.clientX, e.clientY, false);
+    else if (gesture.kind === 'shape' && e.pointerId === gesture.id) moveShape(e);
   }
   function onUp(e, cancelled) {
     const p = ptrs.get(e.pointerId);
@@ -1760,6 +1771,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       } else if (g.kind === 'pick' && e.pointerId === g.id) {
         gesture = null;
         if (!cancelled) pickAt(e.clientX, e.clientY, true);
+      } else if (g.kind === 'shape' && e.pointerId === g.id) {
+        if (cancelled) paintDrawing(g.frame); else endShape(e);
+        gesture = null;
       } else if (g.kind === 'pan' && e.pointerId === g.id) {
         gesture = null;
         vp.classList.remove('panning');
@@ -1904,6 +1918,76 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (g.frame !== E.frames[E.cur]) return;
     pushOp({ t: 's', c: g.color, w: g.size, e: g.eraser ? 1 : 0, p: new Float32Array(g.pts) });
   }
+  // Drops whatever mark is in progress, e.g. when a second finger starts a pinch.
+  function cancelActive() {
+    if (!gesture) return;
+    if (gesture.kind === 'draw') cancelStroke();
+    else if (gesture.kind === 'shape') { const f = gesture.frame; gesture = null; paintDrawing(f); }
+  }
+  function beginShape(e) {
+    const pt = toCanvas(e.clientX, e.clientY);
+    gesture = { kind: 'shape', id: e.pointerId, type: e.pointerType, ax: pt.x, ay: pt.y, bx: pt.x, by: pt.y, shift: e.shiftKey, frame: E.frames[E.cur] };
+  }
+  function moveShape(e) {
+    const g = gesture;
+    const pt = toCanvas(e.clientX, e.clientY);
+    g.bx = pt.x;
+    g.by = pt.y;
+    g.shift = e.shiftKey;
+    paintDrawing(g.frame);
+    const op = shapeOp(g);
+    if (op) renderOps(ctxDraw, [op]);
+  }
+  function endShape(e) {
+    const g = gesture;
+    const pt = toCanvas(e.clientX, e.clientY);
+    g.bx = pt.x;
+    g.by = pt.y;
+    paintDrawing(g.frame);
+    const op = shapeOp(g);
+    if (!op || g.frame !== E.frames[E.cur]) return;
+    renderOps(ctxDraw, [op]);
+    pushOp(op);
+  }
+  // Straight edges are sampled every few pixels so the curve smoothing keeps them straight.
+  function polyPts(corners, closed) {
+    const pts = closed ? corners.concat([corners[0]]) : corners;
+    const out = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+      const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 3));
+      for (let k = 0; k < steps; k++) out.push(x0 + ((x1 - x0) * k) / steps, y0 + ((y1 - y0) * k) / steps);
+    }
+    const last = pts[pts.length - 1];
+    out.push(last[0], last[1]);
+    if (closed && out.length >= 4) out.push(out[2], out[3]);
+    return out;
+  }
+  function shapeOp(g, color = prefs.color, width = prefs.sizes.pen) {
+    let { ax, ay, bx, by } = g;
+    const kind = prefs.shape;
+    if (kind === 'line') {
+      const len = Math.hypot(bx - ax, by - ay);
+      if (len < 2) return null;
+      let ang = Math.atan2(by - ay, bx - ax);
+      const stepA = g.shift ? Math.PI / 4 : Math.PI / 2;
+      const snapped = Math.round(ang / stepA) * stepA;
+      if (g.shift || Math.abs(ang - snapped) < (4 * Math.PI) / 180) ang = snapped;
+      return strokeFrom(color, width, [ax, ay, ax + Math.cos(ang) * len, ay + Math.sin(ang) * len]);
+    }
+    if (g.shift) {
+      const d = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
+      bx = ax + Math.sign(bx - ax || 1) * d;
+      by = ay + Math.sign(by - ay || 1) * d;
+    }
+    if (Math.abs(bx - ax) < 2 && Math.abs(by - ay) < 2) return null;
+    if (kind === 'rect') return strokeFrom(color, width, polyPts([[ax, ay], [bx, ay], [bx, by], [ax, by]], true));
+    const cx = (ax + bx) / 2, cy = (ay + by) / 2;
+    const rx = Math.max(0.5, Math.abs(bx - ax) / 2), ry = Math.max(0.5, Math.abs(by - ay) / 2);
+    const perim = Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)));
+    return strokeFrom(color, width, ellipsePts(cx, cy, rx, ry, clamp(Math.ceil(perim / 4), 24, 720)));
+  }
+  const SHAPE_NAMES = { line: 'line', rect: 'rectangle', ellipse: 'ellipse' };
   function cancelStroke() {
     if (!gesture || gesture.kind !== 'draw') return;
     gesture = null;
@@ -1940,6 +2024,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     prefs.tool = t;
     if (t !== 'picker') Prefs.set('tool', t);
     $$('.tool[data-tool]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
+    $('#btnColor').setAttribute('aria-pressed', String(t === 'picker'));
     vp.dataset.tool = t;
     updateSizeUI();
   }
@@ -2137,7 +2222,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     updateCounter();
   }
 
-  $$('.tool[data-tool]').forEach((b) => b.addEventListener('click', () => setTool(b.dataset.tool)));
+  $$('.tool[data-tool]').forEach((b) => b.addEventListener('click', () => {
+    const t = b.dataset.tool;
+    if (t === 'shape' && prefs.tool === 'shape') { openBrushSheet(); return; }
+    setTool(t);
+    if (t === 'shape' && !Prefs.get('shapeHint', false)) {
+      Prefs.set('shapeHint', true);
+      toast('Drag to draw a ' + SHAPE_NAMES[prefs.shape] + '. Tap Shapes again to switch shapes.', 3600);
+    }
+  }));
   $('#btnUndo').addEventListener('click', undo);
   $('#btnRedo').addEventListener('click', redo);
   $('#btnPlay').addEventListener('click', togglePlay);
@@ -2251,6 +2344,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#customColor').value = prefs.color;
     openSheet('sheetColor');
   });
+  $('#btnPickCanvas').addEventListener('click', () => {
+    closeSheet('sheetColor');
+    setTool('picker');
+    toast('Tap the canvas to pick a color. Colors from the video work too.');
+  });
   const pickSwatch = (v) => {
     setColor(v);
     if (prefs.tool === 'eraser' || prefs.tool === 'picker') setTool('pen');
@@ -2268,6 +2366,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.clearRect(0, 0, c.width, c.height);
     const key = activeSizeKey();
     const size = Math.min(prefs.sizes[key] * 2, 100);
+    if (prefs.tool === 'shape') {
+      const m = size / 2 + 10;
+      const op = shapeOp({ ax: c.width / 2 - 150, ay: m, bx: c.width / 2 + 150, by: c.height - m, shift: false }, prefs.color, size);
+      if (op) renderOps(ctx, [op]);
+      return;
+    }
     const P = [];
     for (let i = 0; i <= 60; i++) {
       const t = i / 60;
@@ -2276,9 +2380,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
     renderOps(ctx, [{ t: 's', c: key === 'eraser' ? '#8e949e' : prefs.color, w: size, e: 0, p: new Float32Array(P) }]);
   }
-  $('#btnSize').addEventListener('click', () => {
+  $('#btnSize').addEventListener('click', () => openBrushSheet());
+  onPick($('#shapeChips'), (v) => { prefs.shape = v; Prefs.set('shape', v); setPressed($('#shapeChips'), v); drawBrushPreview(); });
+  function openBrushSheet() {
     const key = activeSizeKey();
-    $('#brushTitle').textContent = key === 'eraser' ? 'Eraser' : 'Pencil';
+    const shape = prefs.tool === 'shape';
+    $('#brushTitle').textContent = shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : 'Pencil';
+    $('#shapeField').hidden = !shape;
+    $('#smoothField').hidden = shape;
+    $('#pressureRow').hidden = shape;
+    setPressed($('#shapeChips'), prefs.shape);
     let i = SIZES.indexOf(prefs.sizes[key]);
     if (i < 0) i = SIZES.findIndex((v) => v >= prefs.sizes[key]);
     $('#rgSize').value = Math.max(0, i);
@@ -2288,7 +2399,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#swPressure').setAttribute('aria-checked', String(prefs.pressure));
     openSheet('sheetBrush');
     drawBrushPreview();
-  });
+  }
   $('#rgSize').addEventListener('input', (e) => {
     const key = activeSizeKey();
     prefs.sizes[key] = SIZES[+e.target.value];
@@ -2378,6 +2489,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       case 'e': setTool('eraser'); break;
       case 'g': case 'f': setTool('fill'); break;
       case 'i': setTool('picker'); break;
+      case 'u': setTool('shape'); break;
       case '[': changeSize(-1); break;
       case ']': changeSize(1); break;
       case 'arrowleft': case ',': e.preventDefault(); step(-1); break;

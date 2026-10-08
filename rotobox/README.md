@@ -26,7 +26,8 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 | Pencil | Draws. With a stylus, pressing harder makes thicker lines. |
 | Eraser | Erases your drawing. It never touches the video underneath. |
 | Fill | Tap an empty area to fill it under your lines, or tap a filled area to recolor it. |
-| Color picker | Tap to take a color from your drawing or from the video. |
+| Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |
+| Color | Pick a swatch, mix your own, or use **Pick a color from the canvas** to grab one from your drawing or the video. |
 
 The sliders button opens the **light table** settings: video opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode.
 
@@ -42,7 +43,8 @@ On a keyboard:
 
 | Key | Action |
 | --- | --- |
-| `B` / `E` / `G` / `I` | Pencil / eraser / fill / color picker |
+| `B` / `E` / `G` / `U` / `I` | Pencil / eraser / fill / shapes / color picker |
+| `Shift` while drawing a shape | Square, circle, or a line at 45° steps |
 | `[` and `]` | Smaller / bigger brush |
 | `←` `→` | Previous / next frame |
 | `Space` | Play or pause (hold and drag to pan) |
