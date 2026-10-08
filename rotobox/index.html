@@ -1029,6 +1029,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <span class="label" id="lblExpSize">Size</span>
       <div class="chips mono" id="expSize" aria-labelledby="lblExpSize"></div>
     </div>
+    <div class="field" id="expShapeField">
+      <span class="label" id="lblExpShape">Shape</span>
+      <div class="chips" id="expShape" aria-labelledby="lblExpShape"><button type="button" data-v="drawn">As drawn</button><button type="button" data-v="square">Square</button><button type="button" data-v="tall">Tall 9:16</button><button type="button" data-v="wide">Wide 16:9</button></div>
+      <p class="hint" id="expShapeHint">Tall suits stories and short videos. Other shapes fit the whole drawing inside and fill the rest with your paper color.</p>
+    </div>
     <div class="group" id="expVideoGrp">
       <div class="row"><label for="swExpVideo" data-refl="Keep the {all} behind the drawing">Keep the video behind the drawing</label><button type="button" class="switch" role="switch" id="swExpVideo" aria-checked="false"><span></span></button></div>
       <div class="field" id="expVideoStrength" style="margin-bottom:0">
@@ -6191,7 +6196,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   });
 
   // ---------- Export ----------
-  const X = { fmt: Prefs.get('expFmt', 'mp4'), size: {}, video: false, strength: 100, transparent: false, loops: 0, sound: true, result: null, url: null };
+  const X = { fmt: Prefs.get('expFmt', 'mp4'), shape: Prefs.get('expShape', 'drawn'), size: {}, video: false, strength: 100, transparent: false, loops: 0, sound: true, result: null, url: null };
   const FMT_HINTS = {
     mp4: 'An MP4 you can save to your photos or post anywhere.',
     gif: 'Loops forever. Good for short clips and messages.',
@@ -6201,14 +6206,31 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const canEncodeVideo = () => 'VideoEncoder' in window || ('MediaRecorder' in window && !!HTMLCanvasElement.prototype.captureStream);
   function exportSizes() {
     const W = E.W, H = E.H, L = Math.max(W, H);
-    const out = [{ key: 'full', w: W, h: H }];
-    for (const target of [720, 480]) if (L > target * 1.05) { const s = target / L; out.push({ key: String(target), w: even(W * s), h: even(H * s) }); }
+    const out = [exportBox('full', W, H)];
+    for (const target of [720, 480]) if (L > target * 1.05) { const s = target / L; out.push(exportBox(String(target), even(W * s), even(H * s))); }
     return out;
+  }
+  // A shape other than the drawing's own pads it (never crops), centered, with the long side kept to
+  // 1920 px so every phone can play it.
+  const EXPORT_SHAPES = { square: 1, tall: 9 / 16, wide: 16 / 9 };
+  const shapeMatches = (a) => Math.abs(a - E.W / E.H) < 0.01;
+  function exportBox(key, cw, ch) {
+    const a = EXPORT_SHAPES[X.shape];
+    if (!a || shapeMatches(a)) return { key, w: cw, h: ch, box: null };
+    let w = cw, h = ch;
+    if (cw / ch > a) h = cw / a; else w = ch * a;
+    const k = Math.min(1, 1920 / Math.max(w, h));
+    w = even(w * k);
+    h = even(h * k);
+    const iw = Math.round(cw * k), ih = Math.round(ch * k);
+    return { key, w, h, box: { x: Math.round((w - iw) / 2), y: Math.round((h - ih) / 2), w: iw, h: ih } };
   }
   function renderExportOptions() {
     const fmt = X.fmt;
     setPressed($('#expFmt'), fmt);
     $('#expFmtHint').textContent = fmt === 'mp4' && !canEncodeVideo() ? 'This browser can’t make video files. Try GIF instead.' : FMT_HINTS[fmt];
+    for (const b of $$('#expShape [data-v]')) b.hidden = b.dataset.v !== 'drawn' && shapeMatches(EXPORT_SHAPES[b.dataset.v]);
+    setPressed($('#expShape'), EXPORT_SHAPES[X.shape] && !shapeMatches(EXPORT_SHAPES[X.shape]) ? X.shape : 'drawn');
     const sizes = exportSizes();
     if (!X.size[fmt] || !sizes.some((s) => s.key === X.size[fmt])) X.size[fmt] = fmt === 'gif' ? (sizes.find((s) => s.key === '480') || sizes[sizes.length - 1]).key : 'full';
     const box = $('#expSize');
@@ -6249,6 +6271,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   });
   onPick($('#expFmt'), (v) => { X.fmt = v; Prefs.set('expFmt', v); renderExportOptions(); });
   onPick($('#expSize'), (v) => { X.size[X.fmt] = v; setPressed($('#expSize'), v); });
+  onPick($('#expShape'), (v) => { X.shape = v; Prefs.set('expShape', v); renderExportOptions(); });
   onPick($('#expLoops'), (v) => { X.loops = +v; setPressed($('#expLoops'), v); });
   bindSwitch($('#swExpVideo'), (on) => { X.video = on; E.settings.expRef = on; scheduleSave(); renderExportOptions(); });
   bindSwitch($('#swExpTrans'), (on) => { X.transparent = on; });
@@ -6273,7 +6296,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const s = exportSizes().find((z) => z.key === X.size[X.fmt]) || exportSizes()[0];
     const video = E.project.hasVideo && X.video;
     return {
-      w: s.w, h: s.h, video, videoAlpha: X.strength / 100,
+      w: s.w, h: s.h, box: s.box, video, videoAlpha: X.strength / 100,
       transparent: X.fmt !== 'mp4' && !video && X.transparent,
       loops: X.fmt === 'mp4' ? X.loops || 1 : 1,
       sound: X.fmt === 'mp4' && !!E.project.hasAudio && X.sound,
@@ -6286,6 +6309,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.globalCompositeOperation = 'source-over';
     if (o.transparent) ctx.clearRect(0, 0, w, h);
     else { ctx.fillStyle = E.project.paper; ctx.fillRect(0, 0, w, h); }
+    if (o.box) { ctx.translate(o.box.x, o.box.y); w = o.box.w; h = o.box.h; }
     if (o.video && f.ref) {
       try {
         const bmp = await getRef(f);

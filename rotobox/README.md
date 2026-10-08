@@ -96,6 +96,8 @@ On a keyboard:
 
 ## Saving to your camera roll
 
+Before you create an export you can also pick its **Shape**. **As drawn** keeps your paper's own shape. **Square**, **Tall 9:16** (for stories and short videos) and **Wide 16:9** fit the whole drawing inside that shape and fill the rest with your paper color, or leave it clear when the background is transparent. Nothing gets cropped, and the long side stays at 1920 pixels or less so the file plays on any phone. Rotobox remembers the shape you picked for next time.
+
 After an export, tap **Save to device**. On an iPhone or iPad this opens the share sheet, where **Save Video** or **Save Image** puts the file in Photos. On a computer the file downloads.
 
 Projects are saved automatically in your browser's storage on that device. Clearing your browser data deletes them, so keep backups of anything you care about.
