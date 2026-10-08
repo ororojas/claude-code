@@ -1017,14 +1017,19 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const Store = (() => {
     let dbPromise = null;
     let memory = false;
+    let opened = false;
     const mem = { projects: new Map(), frames: new Map(), kv: new Map() };
     const req = (r) => new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
     const done = (tx) => new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); tx.onabort = () => rej(tx.error || new Error('Save was interrupted')); });
     function open() {
       if (dbPromise) return dbPromise;
-      dbPromise = new Promise((resolve) => {
+      const p = new Promise((resolve) => {
         let settled = false;
-        const finish = (db) => { if (settled) return; settled = true; if (!db) memory = true; resolve(db); };
+        const finish = (db) => {
+          if (settled) { if (db) db.close(); return; }
+          settled = true;
+          resolve(db);
+        };
         try {
           const r = indexedDB.open('rotobox', 1);
           r.onupgradeneeded = () => {
@@ -1037,29 +1042,48 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
           r.onerror = () => finish(null);
         } catch (e) { finish(null); }
         setTimeout(() => finish(null), 6000);
+      }).then((db) => {
+        if (db) {
+          opened = true;
+          // iOS can drop the connection while the app sits in the background; reconnect on next use.
+          db.onclose = () => { if (dbPromise === p) dbPromise = null; };
+          db.onversionchange = () => { db.close(); if (dbPromise === p) dbPromise = null; };
+        } else if (opened) {
+          if (dbPromise === p) dbPromise = null; // a reconnect failed; try again next time
+        } else memory = true;
+        return db;
       });
-      return dbPromise;
+      dbPromise = p;
+      return p;
+    }
+    // Runs fn with the database (or null in memory mode). A failure gets one retry on a fresh
+    // connection, which is what a dropped one needs; every operation here is safe to repeat.
+    async function run(fn) {
+      const db = await open();
+      if (!db && opened) throw new Error('Storage is unavailable right now');
+      try {
+        return await fn(db);
+      } catch (e) {
+        if (!db) throw e;
+        const cur = dbPromise;
+        if (cur && (await cur) === db && dbPromise === cur) dbPromise = null;
+        try { db.close(); } catch (err) { /* already closed */ }
+        const again = await open();
+        if (!again) throw e;
+        return fn(again);
+      }
     }
     return {
       get memory() { return memory; },
       async init() { await open(); return !memory; },
-      async projects() {
-        const db = await open();
-        if (!db) return [...mem.projects.values()];
-        return req(db.transaction('projects').objectStore('projects').getAll());
-      },
-      async project(id) {
-        const db = await open();
-        if (!db) return mem.projects.get(id) || null;
-        return (await req(db.transaction('projects').objectStore('projects').get(id))) || null;
-      },
-      async frames(projectId) {
-        const db = await open();
-        if (!db) return [...mem.frames.values()].filter((f) => f.project === projectId);
-        return req(db.transaction('frames').objectStore('frames').index('project').getAll(projectId));
-      },
-      async save(project, frames = [], removeIds = []) {
-        const db = await open();
+      // Test hook: drops the connection the way iOS does after a while in the background.
+      async dropConnection() { const db = await open(); if (db) db.close(); },
+      projects: () => run((db) => (db ? req(db.transaction('projects').objectStore('projects').getAll()) : [...mem.projects.values()])),
+      project: (id) => run(async (db) => (db ? (await req(db.transaction('projects').objectStore('projects').get(id))) || null : mem.projects.get(id) || null)),
+      frames: (projectId) => run((db) => (db
+        ? req(db.transaction('frames').objectStore('frames').index('project').getAll(projectId))
+        : [...mem.frames.values()].filter((f) => f.project === projectId))),
+      save: (project, frames = [], removeIds = []) => run(async (db) => {
         if (!db) {
           if (project) mem.projects.set(project.id, project);
           frames.forEach((f) => mem.frames.set(f.id, f));
@@ -1072,9 +1096,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         frames.forEach((f) => fs.put(f));
         removeIds.forEach((id) => fs.delete(id));
         await done(tx);
-      },
-      async removeProject(id) {
-        const db = await open();
+      }),
+      removeProject: (id) => run(async (db) => {
         if (!db) {
           mem.projects.delete(id);
           for (const [k, f] of mem.frames) if (f.project === id) mem.frames.delete(k);
@@ -1085,26 +1108,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         const cur = tx.objectStore('frames').index('project').openCursor(IDBKeyRange.only(id));
         cur.onsuccess = () => { const c = cur.result; if (c) { c.delete(); c.continue(); } };
         await done(tx);
-      },
-      async kvGet(k) {
-        const db = await open();
-        if (!db) return mem.kv.get(k);
-        return req(db.transaction('kv').objectStore('kv').get(k));
-      },
-      async kvSet(k, v) {
-        const db = await open();
+      }),
+      kvGet: (k) => run((db) => (db ? req(db.transaction('kv').objectStore('kv').get(k)) : mem.kv.get(k))),
+      kvSet: (k, v) => run(async (db) => {
         if (!db) { mem.kv.set(k, v); return; }
         const tx = db.transaction('kv', 'readwrite');
         tx.objectStore('kv').put(v, k);
         await done(tx);
-      },
-      async kvDel(k) {
-        const db = await open();
+      }),
+      kvDel: (k) => run(async (db) => {
         if (!db) { mem.kv.delete(k); return; }
         const tx = db.transaction('kv', 'readwrite');
         tx.objectStore('kv').delete(k);
         await done(tx);
-      },
+      }),
     };
   })();
 
@@ -1506,6 +1523,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function showFrame(i, scroll = true) {
     if (!E.project) return;
+    // A stroke, shape or loop still being dragged belongs to the frame that's leaving.
+    cancelActive();
     if (sel) finishSelection(true);
     E.cur = clamp(i, 0, E.frames.length - 1);
     const f = E.frames[E.cur];
@@ -1612,19 +1631,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   let thumbRunning = false;
   function queueThumb(f) { thumbQ.add(f); if (!thumbRunning) runThumbs(); }
   function queueAllThumbs() { E.frames.forEach((f) => thumbQ.add(f)); if (!thumbRunning) runThumbs(); }
+  // Closing a project empties the queue, so if another project opens while a render is
+  // still in flight, the same loop carries on with the new project's frames.
   async function runThumbs() {
     thumbRunning = true;
-    const proj = E.project;
     try {
-      while (thumbQ.size && E.project === proj) {
+      while (thumbQ.size && E.project) {
         const curF = E.frames[E.cur];
         const f = thumbQ.has(curF) ? curF : thumbQ.values().next().value;
         thumbQ.delete(f);
-        if (f.thumb && f.thumb.width) await renderThumb(f);
+        try { if (f.thumb && f.thumb.width) await renderThumb(f); } catch (e) { console.warn(e); }
         if (E.playing) await sleep(100); else await yieldUI();
       }
-    } catch (e) {
-      console.warn(e);
     } finally {
       thumbRunning = false;
     }
@@ -1634,6 +1652,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (f.ref && !f.refThumb) {
       try {
         const bmp = await decodeImage(f.ref);
+        if (!c.width) { if (bmp.close) bmp.close(); return; } // its project closed meanwhile
         const rt = makeCanvas(tw, th);
         rt.getContext('2d').drawImage(bmp, 0, 0, tw, th);
         if (bmp.close) bmp.close();
@@ -1966,7 +1985,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   function onDown(e) {
-    if (!E.project) return;
+    if (!E.project || closing) return;
     if (e.target.closest && e.target.closest('.hud')) return;
     if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 1) return;
     e.preventDefault();
@@ -2077,6 +2096,17 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   vp.addEventListener('pointermove', onMove);
   vp.addEventListener('pointerup', (e) => onUp(e, false));
   vp.addEventListener('pointercancel', (e) => onUp(e, true));
+  vp.addEventListener('lostpointercapture', (e) => { if (ptrs.has(e.pointerId)) onUp(e, true); });
+  // A touch that was down when the app went to the background may never report its end.
+  // Forget it, so the next single finger draws instead of starting a pinch.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden' || !ptrs.size) return;
+    cancelActive();
+    ptrs.clear();
+    gesture = null;
+    multiTap = null;
+    vp.classList.remove('panning');
+  });
   vp.addEventListener('pointerleave', (e) => { if (e.pointerType !== 'touch' && !ptrs.has(e.pointerId)) ring.hidden = true; });
   vp.addEventListener('contextmenu', (e) => e.preventDefault());
   $('#strip').addEventListener('contextmenu', (e) => e.preventDefault());
@@ -2634,12 +2664,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const A = { ctx: null, buffer: null, pid: null, loading: null, node: null };
   const audioKey = (pid) => 'audio:' + pid;
   function ensureAudioContext() {
+    // Safari 16.4+: play like a video does, even with the ringer switch set to silent.
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) { /* not supported */ }
     if (!A.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return null;
       try { A.ctx = new AC(); } catch (e) { return null; }
     }
-    if (A.ctx.state === 'suspended') A.ctx.resume().catch(() => {});
+    // iOS reports 'interrupted' after a call or a trip to the background, not just 'suspended'.
+    if (A.ctx.state !== 'running' && A.ctx.state !== 'closed') A.ctx.resume().catch(() => {});
     return A.ctx;
   }
   function loadProjectAudio() {
@@ -3019,7 +3052,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       return;
     }
     if (e.target.closest && e.target.closest('input, textarea, select')) return;
-    if (sheetStack.length || !$('#busy').hidden || !E.project || $('#editor').hidden) return;
+    if (sheetStack.length || !$('#busy').hidden || !E.project || closing || $('#editor').hidden) return;
     const k = e.key.toLowerCase();
     const mod = e.metaKey || e.ctrlKey;
     if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
@@ -3060,7 +3093,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (e.key !== ' ' || !spaceDown) return;
     e.preventDefault();
     spaceDown = false;
-    if (!spacePanned && E.project && !sheetStack.length && !$('#editor').hidden) togglePlay();
+    if (!spacePanned && E.project && !closing && !sheetStack.length && !$('#editor').hidden) togglePlay();
   });
 
   // ---------- Opening and closing projects ----------
@@ -3069,7 +3102,14 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#editor').hidden = name !== 'editor';
     document.body.dataset.screen = name;
   }
+  // A second tap on a card while the first one is still loading is ignored.
+  let opening = false;
   async function openProject(id, extras = {}) {
+    if (opening || closing) return;
+    opening = true;
+    try { await loadProject(id, extras); } finally { opening = false; }
+  }
+  async function loadProject(id, extras) {
     const p = await Store.project(id);
     if (!p) { toast('That animation couldn’t be found.'); refreshHome(); return; }
     const recs = await Store.frames(id);
@@ -3110,12 +3150,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (isDark(p.paper) && isDark(prefs.color)) setColor('#ffffff');
     if (!isDark(p.paper) && prefs.color.toLowerCase() === '#ffffff' && !p.hasVideo) setColor('#1b1b1f');
   }
+  let closing = false;
   async function closeProject() {
-    if (!E.project) return;
+    if (!E.project || closing) return;
+    closing = true;
+    cancelActive();
     if (sel) finishSelection(true);
     if (E.playing) stopPlay();
     resetAudio();
-    await saveNow();
+    // The editor stays on screen while the last save runs, but takes no more input.
+    const ed = $('#editor');
+    ed.inert = true;
+    try { await saveNow(); } finally { ed.inert = false; closing = false; }
     thumbQ.clear();
     const all = new Set(E.frames);
     for (const h of E.undo.concat(E.redo)) if (h.type === 'frames') { h.before.forEach((f) => all.add(f)); h.after.forEach((f) => all.add(f)); }
@@ -3584,7 +3630,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   onPick($('#blankShape'), (v) => { blank.shape = v; setPressed($('#blankShape'), v); });
   onPick($('#blankFps'), (v) => { blank.fps = +v; setPressed($('#blankFps'), v); });
   onPick($('#blankPaper'), (v) => { blank.paper = v; setPressed($('#blankPaper'), v); });
+  let creating = false;
   $('#blankGo').addEventListener('click', async () => {
+    if (creating) return;
+    creating = true;
+    try { await createBlank(); } finally { creating = false; }
+  });
+  async function createBlank() {
     const sh = SHAPES[blank.shape];
     const pid = uid();
     const f = { id: uid(), project: pid, ref: null, ops: [] };
@@ -3597,7 +3649,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     try { await Store.save(p, [f]); } catch (e) { console.error(e); }
     closeSheet('sheetBlank');
     await openProject(pid);
-  });
+  }
 
   // ---------- Video import ----------
   let mediabunny = null;
@@ -4144,9 +4196,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (!bmp) { toast('This frame has no video to sketch from.'); return; }
     const ops = sketchOps(bmp, E.W, E.H, sk.detail, sk.weight, prefs.color);
     if (!ops.length) { toast('No clear edges found. Try More detail.'); return; }
+    if (!E.project || !E.frames.includes(f)) return;
     setOps(f, f.ops.concat(ops));
-    paintDrawing(f);
-    renderOnion();
+    showFrame(E.cur, false);
     toast('Added ' + ops.length + ' lines. Undo removes them.');
   });
   $('#skAll').addEventListener('click', async () => {
@@ -4304,10 +4356,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const ctl = busyOpen({ mp4: 'Making your video', gif: 'Making your GIF', zip: 'Packing your frames', png: 'Saving this frame' }[fmt], { cancel: fmt !== 'png' });
     const wake = await holdWake();
     try {
-      let blob, name, meta;
+      let blob, name, meta, sound = false;
       if (fmt === 'mp4') {
         const r = await exportVideo(o, ctl);
         blob = r.blob;
+        sound = !!r.sound;
         name = base + '.' + r.ext;
         meta = (totalBeats() * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
       } else if (fmt === 'gif') {
@@ -4326,7 +4379,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         name = base + '-frame-' + pad3(E.cur + 1) + '.png';
         meta = o.w + '×' + o.h + ' · ' + fmtBytes(blob.size);
       }
-      showExportResult(blob, name, meta);
+      showExportResult(blob, name, meta, sound);
     } catch (e) {
       if (e && e.name === 'AbortError') toast('Export cancelled');
       else { console.error(e); showError('That export didn’t work', (e && e.userMessage) || 'Try a smaller size, or pick GIF instead.'); }
@@ -4337,7 +4390,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (E.project) showFrame(E.cur, false);
     }
   }
-  function showExportResult(blob, name, meta) {
+  function showExportResult(blob, name, meta, sound) {
     clearExportResult();
     X.result = { blob, name };
     X.url = URL.createObjectURL(blob);
@@ -4354,6 +4407,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       v.autoplay = true;
       v.playsInline = true;
       v.setAttribute('playsinline', '');
+      // Previews start muted so they can autoplay; controls let you turn the sound on.
+      if (sound) v.controls = true;
       v.src = X.url;
       pv.append(v);
       v.play().catch(() => {});
@@ -4847,7 +4902,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const counts = new Map();
     const bump = (c) => counts.set(c, (counts.get(c) || 0) + 1);
     if (!transparent) bump(E.project.paper);
-    for (const f of E.frames) for (const op of f.ops) if (!(op.t === 's' && op.e)) bump(op.c.toLowerCase());
+    // Lasso ops carry no color, and eraser strokes leave none behind.
+    for (const f of E.frames) for (const op of f.ops) if (op.c && !(op.t === 's' && op.e)) bump(op.c.toLowerCase());
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 96);
   }
   async function exportGif(o, ctl) {
