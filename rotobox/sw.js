@@ -1,9 +1,9 @@
 // Rotobox offline support. Keeps the app, its icons, its fonts and the video library it loads from
 // a CDN, so a hosted or installed copy opens and works without a connection. Your animations live
 // in IndexedDB, not here.
-const CACHE = 'rotobox-1';
+const CACHE = 'rotobox-2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
-const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&display=swap';
+const FONT_CSS = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400..700&family=Patrick+Hand&display=swap';
 const LIBS = ['https://cdn.jsdelivr.net/npm/mediabunny@1.61.1/dist/bundles/mediabunny.min.mjs', FONT_CSS];
 const CDN = new Set(['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com']);
 const cors = (url) => new Request(url, { mode: 'cors', credentials: 'omit' });

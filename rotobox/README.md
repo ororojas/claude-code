@@ -46,6 +46,7 @@ Rotobox keeps only the part that plays, plus up to a minute more so it still cov
 | Fill | Tap an empty area to fill it under your lines, or tap a filled area to recolor it. |
 | Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |
 | Lasso | Draw a loop around part of a frame, then drag it, resize it from the corner handle, rotate it from the top handle, flip it or delete it. **Select all** grabs the whole frame. |
+| Text | Tap where the text should go, type it, and pick a font (Bold, Clean, Hand or Mono), plain or outlined, and a color. It lands as a selection you can drag, resize, rotate or flip, then **Done** sets it down. Tap text later with this tool to change it. |
 | Color | Pick a swatch, mix your own, or use **Pick a color from the canvas** to grab one from your drawing or the video. |
 
 The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, add photos, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
@@ -73,6 +74,7 @@ On a keyboard:
 | --- | --- |
 | `B` / `E` / `G` / `U` / `I` | Pencil / eraser / fill / shapes / color picker |
 | `Shift` while drawing a shape | Square, circle, or a line at 45° steps |
+| `T` | Text |
 | `L` | Lasso select. With a selection: arrow keys nudge it (`Shift` for 10 px), `Enter` keeps it, `Delete` removes it, `Esc` cancels |
 | `[` and `]` | Smaller / bigger brush |
 | `←` `→` | Previous / next frame |
