@@ -4511,7 +4511,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // ---------- Keyboard ----------
   document.addEventListener('keydown', (e) => {
     if (!$('#cam').hidden && !sheetStack.length) {
-      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) shoot(); }
+      if (e.key === ' ' || e.key === 'Enter') {
+        if (e.target.closest && e.target.closest('#cam button, #cam input')) return; // it handles its own keys
+        e.preventDefault();
+        if (!e.repeat) shoot();
+      }
       else if (e.key === 'Escape') { e.preventDefault(); closeCamera(); }
       return;
     }
@@ -5752,6 +5756,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     cam.opening = false;
     if (!ok) return;
     $('#cam').hidden = false;
+    $('#home').inert = $('#editor').inert = true;
+    if (!coarse) $('#camShoot').focus({ preventScroll: true });
     layoutCam();
     $('#rgCamGhost').value = Math.round(Prefs.get('camGhost', 0.4) * 100);
     $('#camGhost').style.opacity = +$('#rgCamGhost').value / 100;
@@ -5895,6 +5901,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const g = $('#camGhost');
     g.width = g.height = 1;
     $('#cam').hidden = true;
+    $('#home').inert = $('#editor').inert = false;
   }
   async function camDone() {
     if (!cam.shots.length || cam.busy) return;
