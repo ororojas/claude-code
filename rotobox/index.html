@@ -953,7 +953,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       </div>
     </div>
     <div class="row" id="expTransRow"><label for="swExpTrans">Transparent background</label><button type="button" class="switch" role="switch" id="swExpTrans" aria-checked="false"><span></span></button></div>
-    <div class="row" id="expSoundRow"><label for="swExpSound">Include the video’s sound</label><button type="button" class="switch" role="switch" id="swExpSound" aria-checked="true"><span></span></button></div>
+    <div class="row" id="expSoundRow"><label for="swExpSound">Include the sound</label><button type="button" class="switch" role="switch" id="swExpSound" aria-checked="true"><span></span></button></div>
     <div class="field" id="expLoopsField">
       <span class="label" id="lblLoops">Repeat</span>
       <div class="chips mono" id="expLoops" aria-labelledby="lblLoops"><button type="button" data-v="1">1×</button><button type="button" data-v="2">2×</button><button type="button" data-v="3">3×</button><button type="button" data-v="5">5×</button></div>
@@ -3072,6 +3072,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   ];
   let measureCtx = null;
   const measurer = () => measureCtx || (measureCtx = makeCanvas(1, 1).getContext('2d'));
+  // Text drawn before its web font arrived used a fallback. Once a font finishes loading, frames with
+  // text are marked stale so the cache, filmstrip and screen redraw with the real thing.
+  if (document.fonts && document.fonts.addEventListener) {
+    document.fonts.addEventListener('loadingdone', () => {
+      if (!E.project) return;
+      let any = false;
+      for (const f of E.frames) if (f.ops.some((o) => o.t === 't')) { f.ver++; queueThumb(f); any = true; }
+      if (any && !gesture && !sel && !E.playing) { paintDrawing(E.frames[E.cur]); renderOnion(); }
+    });
+  }
   // The topmost text op under a canvas point, or -1.
   function textAt(f, x, y) {
     for (let k = f.ops.length - 1; k >= 0; k--) {
