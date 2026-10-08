@@ -800,6 +800,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     </div>
     <p class="hint">This changes how fast your frames play. It doesn’t add or remove any.</p>
   </div>
+  <div class="field">
+    <span class="label" id="lblLoop">When it reaches the end</span>
+    <div class="chips" id="loopChips" aria-labelledby="lblLoop">
+      <button type="button" data-v="repeat">Start over</button><button type="button" data-v="pingpong">Go back and forth</button>
+    </div>
+    <p class="hint">Back and forth plays to the last frame, then runs the frames in reverse. Exports do the same.</p>
+  </div>
   <div class="group last">
     <span class="label">Sound</span>
     <p class="snd-name" id="sndName">No sound yet</p>
@@ -1584,7 +1591,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   let toolBeforePicker = 'pen';
 
   function defaultSettings(hasVideo) {
-    return { showRef: true, refOpacity: 0.6, onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35, sound: true };
+    return { showRef: true, refOpacity: 0.6, onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35, sound: true, loop: 'repeat' };
   }
 
   const vp = $('#viewport');
@@ -2038,7 +2045,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   // A hold shows one drawing for several beats of the frame rate.
   const holdOf = (f) => f.hold || 1;
-  const totalBeats = () => E.frames.reduce((b, f) => b + holdOf(f), 0);
+  // The order frames play in. Back and forth runs to the end and then back again, without
+  // showing the first or last frame twice in a row. Playback and every export follow it.
+  function playOrder() {
+    const n = E.frames.length;
+    const order = [];
+    for (let i = 0; i < n; i++) order.push(i);
+    if (E.settings.loop === 'pingpong') for (let i = n - 2; i >= 1; i--) order.push(i);
+    return order;
+  }
+  const orderBeats = (order = playOrder()) => order.reduce((b, i) => b + holdOf(E.frames[i]), 0);
   function setHold(v) {
     const f = E.frames[E.cur];
     const before = holdOf(f);
@@ -2875,11 +2891,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     setPlayIcon(true);
     cvOnion.hidden = true;
     const token = ++E.playToken;
-    const n = E.frames.length;
+    const order = playOrder();
+    const n = order.length;
     const starts = new Float64Array(n);
     let beats = 0;
-    for (let k = 0; k < n; k++) { starts[k] = beats; beats += holdOf(E.frames[k]); }
-    const startBeat = starts[E.cur];
+    for (let k = 0; k < n; k++) { starts[k] = beats; beats += holdOf(E.frames[order[k]]); }
+    const startBeat = starts[E.cur]; // the forward pass puts frame i at position i
     const t0 = performance.now();
     let shown = -1;
     E.soundLoop = -1;
@@ -2892,7 +2909,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const inLap = pos - lap * beats;
       let lo = 0, hi = n - 1;
       while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= inLap) lo = mid; else hi = mid - 1; }
-      if (lo !== shown && lo < E.frames.length) { shown = lo; paintPlayFrame(lo); }
+      if (lo !== shown && order[lo] < E.frames.length) { shown = lo; paintPlayFrame(order, lo); }
       // The sound restarts with every loop of the animation.
       if (lap !== E.soundLoop && A.buffer && E.settings.sound) {
         E.soundLoop = lap;
@@ -2902,12 +2919,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     };
     E.rafId = requestAnimationFrame(loop);
   }
-  function paintPlayFrame(i) {
+  function paintPlayFrame(order, pos) {
+    const i = order[pos];
     E.cur = i;
     const f = E.frames[i];
     paintDrawing(f);
     paintRef(f);
-    for (let k = 1; k <= 3; k++) { const g = E.frames[(i + k) % E.frames.length]; if (g.ref) getRef(g); }
+    for (let k = 1; k <= 3; k++) { const g = E.frames[order[(pos + k) % order.length]]; if (g && g.ref) getRef(g); }
     updateCounter();
     markCurrent('center');
   }
@@ -3051,7 +3069,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // Any animation can have a sound: a song, a voice clip, or the sound from another video.
   // You pick where it starts, and only the part that plays (plus some room to grow) is kept.
   const snd = { file: null, duration: 0, start: 0, audio: null, url: null };
-  const lapSeconds = () => totalBeats() / E.project.fps;
+  const lapSeconds = () => orderBeats() / E.project.fps;
   function renderSoundGroup() {
     const p = E.project;
     const has = !!p.hasAudio;
@@ -3210,7 +3228,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function updateEditorUI() {
     const p = E.project, s = E.settings;
     $('#projTitle').textContent = p.name;
-    $('#fpsLabel').textContent = p.fps + ' fps';
+    updateFpsLabel();
     $('#btnOnion').setAttribute('aria-pressed', String(s.onion));
     $('#btnRef').hidden = !p.hasVideo;
     $('#btnRef').setAttribute('aria-pressed', String(s.showRef));
@@ -3303,13 +3321,28 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   $('#fmDelete').addEventListener('click', frameAction(deleteFrame));
 
   // FPS
-  $('#btnFps').addEventListener('click', () => { setPressed($('#fpsChips'), E.project.fps); renderSoundGroup(); openSheet('sheetFps'); });
+  $('#btnFps').addEventListener('click', () => {
+    setPressed($('#fpsChips'), E.project.fps);
+    setPressed($('#loopChips'), E.settings.loop || 'repeat');
+    renderSoundGroup();
+    openSheet('sheetFps');
+  });
+  function updateFpsLabel() { $('#fpsLabel').textContent = E.project.fps + ' fps' + (E.settings.loop === 'pingpong' ? ' ⇄' : ''); }
+  onPick($('#loopChips'), (v) => {
+    const playing = E.playing;
+    if (playing) stopPlay();
+    E.settings.loop = v;
+    setPressed($('#loopChips'), v);
+    updateFpsLabel();
+    scheduleSave();
+    if (playing) startPlay();
+  });
   onPick($('#fpsChips'), (v) => {
     const playing = E.playing;
     if (playing) stopPlay();
     E.project.fps = +v;
     setPressed($('#fpsChips'), v);
-    $('#fpsLabel').textContent = v + ' fps';
+    updateFpsLabel();
     scheduleSave();
     if (playing) startPlay();
   });
@@ -5008,7 +5041,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#expLoopsField').hidden = fmt !== 'mp4';
     $('#expSoundRow').hidden = !(fmt === 'mp4' && E.project.hasAudio);
     $('#swExpSound').setAttribute('aria-checked', String(X.sound));
-    if (!X.loops) { const dur = totalBeats() / E.project.fps; X.loops = dur < 1.5 ? 3 : dur < 3 ? 2 : 1; }
+    if (!X.loops) { const dur = orderBeats() / E.project.fps; X.loops = dur < 1.5 ? 3 : dur < 3 ? 2 : 1; }
     setPressed($('#expLoops'), X.loops);
     $('#btnMake').textContent = { mp4: 'Create video', gif: 'Create GIF', zip: 'Create ZIP', png: 'Create PNG' }[fmt];
     $('#btnMake').disabled = fmt === 'mp4' && !canEncodeVideo();
@@ -5107,15 +5140,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         blob = r.blob;
         sound = !!r.sound;
         name = base + '.' + r.ext;
-        meta = (totalBeats() * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
+        meta = (orderBeats() * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
       } else if (fmt === 'gif') {
         blob = await exportGif(o, ctl);
         name = base + '.gif';
-        meta = E.frames.length + ' frames · ' + fmtBytes(blob.size);
+        meta = playOrder().length + ' frames · ' + fmtBytes(blob.size);
       } else if (fmt === 'zip') {
         blob = await exportZip(o, ctl);
         name = base + '-frames.zip';
-        meta = totalBeats() + ' PNGs · ' + fmtBytes(blob.size);
+        meta = orderBeats() + ' PNGs · ' + fmtBytes(blob.size);
       } else {
         const c = makeCanvas(o.w, o.h);
         await compositeFrame(E.frames[E.cur], c.getContext('2d'), o.w, o.h, o);
@@ -5164,7 +5197,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       z.className = 'zip';
       z.innerHTML = '<svg class="i" style="width:40px;height:40px"><use href="#i-onion"/></svg>';
       const s = document.createElement('span');
-      s.textContent = totalBeats() + ' images inside';
+      s.textContent = orderBeats() + ' images inside';
       z.append(s);
       pv.append(z);
     }
@@ -5245,19 +5278,19 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: 'in-memory' }), target: new MB.BufferTarget() });
     const source = new MB.CanvasSource(c, { codec, quality: MB.QUALITY_HIGH, keyFrameInterval: 2 });
     output.addVideoTrack(source, { frameRate: outFps });
-    const n = E.frames.length, total = n * o.loops;
-    const sound = o.sound ? await prepareExportSound(MB, output, totalBeats() / fps, o.loops).catch((e) => { console.warn('Exporting without sound', e); return null; }) : null;
+    const order = playOrder(), n = order.length, total = n * o.loops;
+    const sound = o.sound ? await prepareExportSound(MB, output, orderBeats(order) / fps, o.loops).catch((e) => { console.warn('Exporting without sound', e); return null; }) : null;
     await output.start();
     let beat = 0;
     try {
       for (let k = 0; k < total; k++) {
         if (ctl.signal.aborted) throw abortError();
-        const f = E.frames[k % n], hold = holdOf(f);
+        const fi = order[k % n], f = E.frames[fi], hold = holdOf(f);
         if (sound) await sound.feedUntil(beat / fps + 0.5);
         await compositeFrame(f, ctx, w, h, Object.assign({}, o, { transparent: false }));
         for (let r = 0; r < rep * hold; r++) await source.add((beat * rep + r) / outFps, 1 / outFps);
         beat += hold;
-        ctl.set((k + 1) / total, 'Frame ' + ((k % n) + 1) + ' of ' + n + (o.loops > 1 ? ' · pass ' + (Math.floor(k / n) + 1) + ' of ' + o.loops : ''), c);
+        ctl.set((k + 1) / total, 'Frame ' + (fi + 1) + ' of ' + E.frames.length + (o.loops > 1 ? ' · pass ' + (Math.floor(k / n) + 1) + ' of ' + o.loops : ''), c);
       }
       if (sound) await sound.feedUntil(Infinity);
       await output.finalize();
@@ -5321,7 +5354,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const type = types.find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } });
     if (!type) throw new Error('No recordable video type');
     const w = even(o.w), h = even(o.h);
-    const fps = E.project.fps, n = E.frames.length, total = n * o.loops;
+    const fps = E.project.fps, n = E.frames.length;
+    const order = playOrder(), m = order.length, total = m * o.loops;
     const c = makeCanvas(w, h);
     c.style.cssText = 'position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none';
     document.body.append(c);
@@ -5352,14 +5386,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       let beat = 0;
       for (let k = 0; k < total; k++) {
         if (ctl.signal.aborted) { rec.stop(); await stopped; throw abortError(); }
-        const i = k % n;
+        const i = order[k % m];
         beat += holdOf(E.frames[i]);
         const img = await get(i);
         ctx.drawImage(img, 0, 0, w, h);
         if (manual) liveTrack.requestFrame();
-        get((i + 1) % n);
-        get((i + 2) % n);
-        if (n > 4) drop((i - 2 + n) % n);
+        const next = order[(k + 1) % m], next2 = order[(k + 2) % m], old = order[(k - 2 + m) % m];
+        get(next);
+        get(next2);
+        if (n > 4 && old !== i && old !== next && old !== next2) drop(old);
         const wait = t0 + (beat * 1000) / fps - performance.now();
         if (wait > 0) await sleep(wait);
         ctl.set(0.25 + (0.75 * (k + 1)) / total, 'Recording frame ' + (i + 1) + ' of ' + n);
@@ -5425,17 +5460,25 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const c = makeCanvas(o.w, o.h);
     const ctx = c.getContext('2d');
     const files = [];
-    const n = E.frames.length;
+    const order = playOrder();
+    // Numbers are padded to the same width so the files sort in order everywhere.
+    const width = Math.max(3, String(orderBeats(order)).length);
+    const made = new Map();
     let num = 0;
     try {
-      for (let i = 0; i < n; i++) {
+      for (let k = 0; k < order.length; k++) {
         if (ctl.signal.aborted) throw abortError();
-        await compositeFrame(E.frames[i], ctx, o.w, o.h, o);
-        const blob = await toBlob(c, 'image/png');
-        const crc = crc32(new Uint8Array(await blob.arrayBuffer()));
+        const i = order[k];
+        let png = made.get(i);
+        if (!png) {
+          await compositeFrame(E.frames[i], ctx, o.w, o.h, o);
+          const blob = await toBlob(c, 'image/png');
+          png = { blob, size: blob.size, crc: crc32(new Uint8Array(await blob.arrayBuffer())) };
+          made.set(i, png);
+        }
         // Held drawings repeat in the sequence so the images keep their timing.
-        for (let r = 0; r < holdOf(E.frames[i]); r++) files.push({ name: 'frame-' + pad3(++num) + '.png', blob, size: blob.size, crc });
-        ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n, c);
+        for (let r = 0; r < holdOf(E.frames[i]); r++) files.push({ name: 'frame-' + String(++num).padStart(width, '0') + '.png', ...png });
+        ctl.set((k + 1) / order.length, 'Frame ' + (i + 1) + ' of ' + E.frames.length, c);
       }
     } finally {
       freeCanvas(c);
@@ -5674,15 +5717,17 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const palette = buildPalette(hist, sums, exactColors(o.transparent), o.transparent ? 255 : 256);
       const quantize = makeQuantizer(palette);
       const gif = new GifEncoder(w, h, palette, o.transparent ? 255 : -1);
+      const order = playOrder();
       let beat = 0;
-      for (let i = 0; i < n; i++) {
+      for (let k = 0; k < order.length; k++) {
         if (ctl.signal.aborted) throw abortError();
+        const i = order[k];
         await compositeFrame(E.frames[i], ctx, w, h, o);
         const idx = quantize(ctx.getImageData(0, 0, w, h).data, w, h, o.video, o.transparent);
         const hold = holdOf(E.frames[i]);
         gif.addFrame(idx, Math.round(((beat + hold) * 100) / fps) - Math.round((beat * 100) / fps));
         beat += hold;
-        ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n, c);
+        ctl.set((k + 1) / order.length, 'Frame ' + (i + 1) + ' of ' + n, c);
         await yieldUI();
       }
       return new Blob([gif.finish()], { type: 'image/gif' });

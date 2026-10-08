@@ -50,6 +50,8 @@ Rotobox keeps only the part that plays, plus up to a minute more so it still cov
 
 The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, add photos, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
 
+Tap the frame counter under the canvas to change the speed and to pick what happens at the end: **Start over**, or **Go back and forth**, which plays to the last frame and then runs the frames in reverse. Every export follows the same choice.
+
 To move a frame, press and hold it in the filmstrip until it lifts, then drag it to its new spot. Hold it near either end and the strip scrolls. With a mouse you can drag right away. One undo puts it back.
 
 For traced clips, the frame options also have **Auto-sketch from the video**. It finds the edges in the video frame and draws them as real strokes in your current color and brush, for one frame or every frame. Pick how much detail and how heavy the lines are, check the preview, then keep, erase or trace over the result. One undo takes back a whole run.
