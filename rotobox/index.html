@@ -2131,7 +2131,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (hasColorLayer(f.ops) && !(op.t === 's' && !op.e && !op.l) && op.t !== 't') paintDrawing(f);
     else syncCacheFromDraw(f);
   }
+  // Whatever is still in progress is finished before a change to the frame list or to a frame's
+  // whole drawing: a selection is set down where it is, and a stroke or shape mid-drag is dropped.
+  // Otherwise a selection made on the old drawing could land on the wrong frame, or vanish.
+  function settle() {
+    cancelActive();
+    if (sel) finishSelection(true);
+  }
   function changeFrames(list, cur) {
+    settle();
     record({ type: 'frames', before: E.frames.slice(), after: list.slice(), curBefore: E.cur, curAfter: cur });
     E.frames = list;
     buildStrip();
@@ -2240,6 +2248,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function duplicateFrame() {
     if (E.playing) stopPlay();
+    settle();
     const f = E.frames[E.cur];
     const nf = newFrame(f.ref, f.ops.slice());
     nf.refThumb = f.refThumb;
@@ -2251,6 +2260,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function deleteFrame() {
     if (E.playing) stopPlay();
+    settle();
     const f = E.frames[E.cur];
     if (E.frames.length === 1) {
       if (f.ops.length) { setOps(f, []); paintDrawing(f); toast('Cleared it. An animation needs at least one frame.'); }
@@ -2275,6 +2285,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     changeFrames(list, list.indexOf(f));
   }
   function clearDrawing() {
+    settle();
     const f = E.frames[E.cur];
     if (!f.ops.length) return;
     setOps(f, []);
@@ -3079,7 +3090,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (!E.project) return;
       let any = false;
       for (const f of E.frames) if (f.ops.some((o) => o.t === 't')) { f.ver++; queueThumb(f); any = true; }
-      if (any && !gesture && !sel && !E.playing) { paintDrawing(E.frames[E.cur]); renderOnion(); }
+      if (sel && sel.text && !gesture) refreshTextPiece(sel);
+      else if (any && !gesture && !sel && !E.playing) { paintDrawing(E.frames[E.cur]); renderOnion(); }
     });
   }
   // The topmost text op under a canvas point, or -1.
@@ -3272,7 +3284,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   // ---------- Sound ----------
   // A traced clip's trimmed sound is kept in the kv store as a small m4a file.
-  const A = { ctx: null, buffer: null, pid: null, loading: null, node: null };
+  const A = { ctx: null, buffer: null, pid: null, loading: null, node: null, token: 0 };
   const audioKey = (pid) => 'audio:' + pid;
   function ensureAudioContext() {
     // Safari 16.4+: play like a video does, even with the ringer switch set to silent.
@@ -3292,6 +3304,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (A.pid === p.id && A.loading) return A.loading;
     A.pid = p.id;
     A.buffer = null;
+    // A load that a newer one replaced (say, the sound changed while the old one decoded) is dropped.
+    const token = ++A.token;
     A.loading = (async () => {
       const rec = await Store.kvGet(audioKey(p.id));
       const ctx = decodeContext();
@@ -3306,7 +3320,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       } catch (e) {
         buf = await decodeWithLibrary(rec.blob, ctx);
       }
-      if (A.pid === p.id) A.buffer = buf;
+      if (A.token !== token) return null;
+      A.buffer = buf;
       if (E.project === p) drawWaves();
       return buf;
     })().catch((e) => { console.warn('The sound could not be played here', e); return null; });
@@ -3439,7 +3454,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     A.node.disconnect();
     A.node = null;
   }
-  function resetAudio() { stopSound(); A.buffer = null; A.loading = null; A.pid = null; }
+  function resetAudio() { stopSound(); A.buffer = null; A.loading = null; A.pid = null; A.token++; }
   function updateSoundUI() {
     const has = !!(E.project && E.project.hasAudio);
     const b = $('#btnSound');
@@ -3719,6 +3734,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // Frame menu
   $('#btnFrameMenu').addEventListener('click', () => {
     if (E.playing) stopPlay();
+    settle(); // a stylus stroke still going when a finger taps here ends now, on its own frame
     $('#fmTitle').textContent = 'Frame ' + (E.cur + 1) + ' of ' + E.frames.length;
     setPressed($('#fmHold'), holdOf(E.frames[E.cur]));
     $('#fmPasteField').hidden = !E.clipboard;
