@@ -725,7 +725,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <div class="chips" id="gapChips" aria-labelledby="lblGap">
       <button type="button" data-v="off">Off</button><button type="button" data-v="small">Small</button><button type="button" data-v="big">Bigger</button>
     </div>
-    <p class="hint">Color stops at small breaks in your lines instead of spilling out. If a narrow corner stays empty, tap it too.</p>
+    <p class="hint">Color stops at small breaks in your lines instead of spilling out. If a narrow corner stays empty, tap it too. To color a shape without lines, drag a loop around it.</p>
   </div>
   <div class="field" id="shapeField" hidden>
     <span class="label" id="lblShapeKind">Shape</span>
@@ -796,7 +796,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
     <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-marker"/></svg></span><p><b>Marker and fill color under your lines.</b> The eraser can take everything, just the lines, or just the color.</p></li>
-    <li><span class="ti"><svg class="i"><use href="#i-fill"/></svg></span><p><b>Fill steps over small breaks</b> in your lines, so the color stays inside. Tap Fill again to close bigger gaps or turn it off.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-fill"/></svg></span><p><b>Fill steps over small breaks</b> in your lines, so the color stays inside. Drag with Fill to color inside a loop you draw instead.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-onion"/></svg></span><p><b>Onion skin</b> shows the drawing before this one in red and the one after in blue, so you can line things up.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-film"/></svg></span><p data-for="touch"><b>Press and hold a frame</b> in the strip, then drag it to move it.</p><p data-for="mouse-only"><b>Drag a frame</b> along the strip to move it.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-more"/></svg></span><p><b>Frame options</b> live behind ⋯. Hold a drawing for longer, duplicate it, copy and paste, add photos or auto-sketch.</p></li>
@@ -2652,7 +2652,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (sel) finishSelection(true);
       beginLasso(e);
     }
-    else if (t === 'fill') gesture = { kind: 'fill', id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY };
+    else if (t === 'fill') { const pt = toCanvas(e.clientX, e.clientY); gesture = { kind: 'fill', id: e.pointerId, type: e.pointerType, x0: e.clientX, y0: e.clientY, pts: [pt.x, pt.y], loop: false }; }
     else if (t === 'picker') { gesture = { kind: 'pick', id: e.pointerId, type: e.pointerType }; pickAt(e.clientX, e.clientY, false); }
     else if (t === 'text') {
       if (sel && grabSelection(e)) return;
@@ -2677,6 +2677,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       applyView();
     } else if (gesture.kind === 'pinch') movePinch();
     else if (gesture.kind === 'pick' && e.pointerId === gesture.id) pickAt(e.clientX, e.clientY, false);
+    else if (gesture.kind === 'fill' && e.pointerId === gesture.id) moveFillLoop(e);
     else if (gesture.kind === 'shape' && e.pointerId === gesture.id) moveShape(e);
     else if (gesture.kind === 'lasso' && e.pointerId === gesture.id) moveLasso(e);
     else if (gesture.kind.startsWith('sel') && e.pointerId === gesture.id) moveSelection(e);
@@ -2692,7 +2693,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         gesture = null;
       } else if (g.kind === 'fill' && e.pointerId === g.id) {
         gesture = null;
-        if (!cancelled && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 14) fillAt(e.clientX, e.clientY);
+        if (g.loop) { if (cancelled) clearLive(); else endFillLoop(g); }
+        else if (!cancelled && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 14) fillAt(e.clientX, e.clientY);
       } else if (g.kind === 'pick' && e.pointerId === g.id) {
         gesture = null;
         if (!cancelled) pickAt(e.clientX, e.clientY, true);
@@ -2903,6 +2905,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (gesture.kind === 'draw') cancelStroke();
     else if (gesture.kind === 'shape') { const f = gesture.frame; gesture = null; paintDrawing(f); }
     else if (gesture.kind === 'lasso' || gesture.kind.startsWith('sel')) { gesture = null; renderSelUI(); }
+    else if (gesture.kind === 'fill') { gesture = null; clearLive(); }
   }
   function beginShape(e) {
     const pt = toCanvas(e.clientX, e.clientY);
@@ -3185,6 +3188,65 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     renderFill(ctxDraw, op);
     ctxDraw.restore();
     pushOp(op);
+  }
+  // Dragging with Fill draws a loop, and everything inside it is colored on the color layer when
+  // you let go: over color already there, under the lines. A tap still fills the area it lands on.
+  function moveFillLoop(e) {
+    const g = gesture;
+    const list = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+    for (const ev of list && list.length ? list : [e]) {
+      if (!g.loop && Math.hypot(ev.clientX - g.x0, ev.clientY - g.y0) < 14) continue;
+      g.loop = true;
+      const pt = toCanvas(ev.clientX, ev.clientY);
+      const n = g.pts.length;
+      if (Math.hypot(pt.x - g.pts[n - 2], pt.y - g.pts[n - 1]) * view.s < 2) continue;
+      g.pts.push(pt.x, pt.y);
+    }
+    if (g.loop) drawFillLoop(g.pts);
+  }
+  function drawFillLoop(P) {
+    ctxLive.setTransform(1, 0, 0, 1, 0, 0);
+    ctxLive.globalCompositeOperation = 'source-over';
+    ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
+    cvLive.style.opacity = 1;
+    cvLive.hidden = false;
+    ctxLive.beginPath();
+    ctxLive.moveTo(P[0], P[1]);
+    for (let i = 2; i < P.length; i += 2) ctxLive.lineTo(P[i], P[i + 1]);
+    ctxLive.closePath();
+    ctxLive.fillStyle = ctxLive.strokeStyle = prefs.color;
+    ctxLive.globalAlpha = 0.45;
+    ctxLive.fill();
+    ctxLive.globalAlpha = 1;
+    ctxLive.lineWidth = 2 / view.s;
+    ctxLive.lineJoin = 'round';
+    ctxLive.stroke();
+  }
+  function endFillLoop(g) {
+    clearLive();
+    const P = g.pts;
+    if (P.length < 6) return;
+    const b = lassoBounds(P, E.W, E.H);
+    if (b.w < 2 || b.h < 2) return;
+    // The loop is drawn into a scratch canvas the size of its box and read back as pixel runs.
+    const c = makeCanvas(b.w, b.h);
+    const cx = c.getContext('2d', { willReadFrequently: true });
+    cx.translate(-b.x, -b.y);
+    cx.beginPath();
+    cx.moveTo(P[0], P[1]);
+    for (let i = 2; i < P.length; i += 2) cx.lineTo(P[i], P[i + 1]);
+    cx.closePath();
+    cx.fill();
+    const d = cx.getImageData(0, 0, b.w, b.h).data;
+    freeCanvas(c);
+    const runs = [];
+    for (let y = 0; y < b.h; y++) {
+      let x = 0;
+      while (x < b.w) {
+        if (d[((y * b.w + x) << 2) + 3] >= 128) { const x0 = x; while (x < b.w && d[((y * b.w + x) << 2) + 3] >= 128) x++; runs.push(b.y + y, b.x + x0, b.x + x); } else x++;
+      }
+    }
+    if (runs.length) pushOp({ t: 'f', c: prefs.color, m: 'o', r: Uint16Array.from(runs), l: 1 });
   }
   function pickAt(cx, cy, commit) {
     const pt = toCanvas(cx, cy);
@@ -3864,7 +3926,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
     if (t === 'fill' && !Prefs.get('fillHint', false)) {
       Prefs.set('fillHint', true);
-      toast('Tap inside a shape to color it. Tap Fill again to change how it handles gaps in lines.', 3600);
+      toast('Tap inside a shape to color it, or drag a loop to color inside the loop. Tap Fill again for gap settings.', 4200);
     }
     if (t === 'text' && !Prefs.get('textHint', false)) {
       Prefs.set('textHint', true);

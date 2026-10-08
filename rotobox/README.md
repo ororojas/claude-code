@@ -45,7 +45,7 @@ Rotobox keeps only the part that plays, plus up to a minute more so it still cov
 | --- | --- |
 | Pencil | Draws. With a stylus, pressing harder makes thicker lines. In the brush menu (the size button) you can switch to **Ink**, whose strokes taper to a point at both ends, or **Marker**, which is see-through and colors under your lines. |
 | Eraser | Erases your drawing, never the video underneath. In the brush menu, choose **Everything**, **Lines only** (keeps the color) or **Color only** (keeps the lines). |
-| Fill | Tap an empty area to fill it with color under your lines, tap a filled area to recolor it, or tap a line to recolor the line. Fill steps over small breaks in a line so the color stays inside. Tap **Fill** again to close bigger gaps or turn that off. |
+| Fill | Tap an empty area to fill it with color under your lines, tap a filled area to recolor it, or tap a line to recolor the line. Fill steps over small breaks in a line so the color stays inside. Tap **Fill** again to close bigger gaps or turn that off. Drag a loop with Fill to color everything inside the loop, even where there are no lines. |
 | Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |
 | Lasso | Draw a loop around part of a frame, then drag it, resize it from the corner handle, rotate it from the top handle, flip it or delete it. **Select all** grabs the whole frame. |
 | Text | Tap where the text should go, type it, and pick a font (Bold, Clean, Hand or Mono), plain or outlined, and a color. It lands as a selection you can drag, resize, rotate or flip, then **Done** sets it down. Tap text later with this tool to change it. |
