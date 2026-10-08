@@ -239,7 +239,11 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
 .strip::-webkit-scrollbar { display: none; }
-.cell { position: relative; flex: none; display: grid; justify-items: center; gap: 4px; border-radius: 6px; }
+.cell { position: relative; flex: none; display: grid; justify-items: center; gap: 4px; border-radius: 6px; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.cell.lifted { opacity: 0.3; }
+.drop-bar { position: absolute; top: 4px; bottom: 4px; width: 3px; margin-left: -1.5px; border-radius: 2px; background: var(--lamp-fill); pointer-events: none; }
+.drag-ghost { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; border-radius: 6px; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.3); }
+.drag-ghost canvas { display: block; border-radius: 6px; background: #fff; }
 .cell .hold { position: absolute; top: 3px; right: 3px; padding: 1px 4px; border-radius: 4px; background: var(--ink); color: var(--tray); font: 500 9px/1.2 var(--font-mono); }
 .cell .thumb { display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); background: #fff; }
 .cell .num { font: 500 10px/1 var(--font-mono); color: var(--muted); }
@@ -1632,6 +1636,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     return { cw, ch, pw: Math.max(1, Math.round(cw * dpr)), ph: Math.max(1, Math.round(ch * dpr)) };
   }
   function buildStrip() {
+    if (reo) endReorder(false); // the cells it was dragging are about to be replaced
     const strip = $('#strip');
     strip.textContent = '';
     const d = thumbDims(E.W, E.H);
@@ -1681,11 +1686,119 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     else if (cl + cw > sl + sw - 8) strip.scrollLeft = cl + cw - sw + 8;
   }
   $('#strip').addEventListener('click', (e) => {
+    if (performance.now() < suppressStripClick) return;
     const cell = e.target.closest('.cell');
     if (!cell) return;
     if (E.playing) stopPlay();
     showFrame(+cell.dataset.i, false);
   });
+
+  // Drag a frame along the strip to move it. Touch and stylus need a long press first, so a
+  // quick swipe still scrolls the strip. A mouse can drag straight away.
+  const stripEl = $('#strip');
+  let reo = null, suppressStripClick = 0;
+  stripEl.addEventListener('pointerdown', (e) => {
+    const cell = e.target.closest('.cell');
+    if (!cell || !E.project || reo || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    reo = { id: e.pointerId, type: e.pointerType, from: +cell.dataset.i, cell, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, on: false, timer: 0, raf: 0 };
+    if (e.pointerType !== 'mouse') reo.timer = setTimeout(startReorder, 380);
+  });
+  stripEl.addEventListener('pointermove', (e) => {
+    if (!reo || e.pointerId !== reo.id) return;
+    reo.x = e.clientX;
+    reo.y = e.clientY;
+    if (!reo.on) {
+      const d = Math.hypot(e.clientX - reo.x0, e.clientY - reo.y0);
+      if (reo.type === 'mouse') { if (d > 6) startReorder(); } else if (d > 10) endReorder(false); // a scroll, not a drag
+      return;
+    }
+    e.preventDefault();
+    moveReorder();
+  });
+  stripEl.addEventListener('pointerup', (e) => { if (reo && e.pointerId === reo.id) endReorder(true); });
+  stripEl.addEventListener('pointercancel', (e) => { if (reo && e.pointerId === reo.id) endReorder(false); });
+  // Once a drag is under way, the finger moves the frame instead of scrolling the strip.
+  stripEl.addEventListener('touchmove', (e) => { if (reo && reo.on) e.preventDefault(); }, { passive: false });
+  // A mouse wheel scrolls the strip sideways.
+  stripEl.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || e.ctrlKey) return;
+    e.preventDefault();
+    stripEl.scrollLeft += e.deltaY * (e.deltaMode === 1 ? 16 : 1);
+  }, { passive: false });
+  function startReorder() {
+    const r = reo;
+    if (!r || r.on || !E.project || !r.cell.isConnected) { endReorder(false); return; }
+    clearTimeout(r.timer);
+    if (E.playing) stopPlay();
+    r.on = true;
+    try { stripEl.setPointerCapture(r.id); } catch (err) { /* ignore */ }
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch (err) { /* not allowed */ }
+    r.cell.classList.add('lifted');
+    // A copy of the thumbnail follows the pointer while the original waits, faded, in place.
+    const src = r.cell.querySelector('.thumb');
+    r.gw = parseFloat(src.style.width) || src.width;
+    r.gh = parseFloat(src.style.height) || src.height;
+    const c = makeCanvas(src.width, src.height);
+    c.style.width = r.gw + 'px';
+    c.style.height = r.gh + 'px';
+    c.getContext('2d').drawImage(src, 0, 0);
+    r.ghost = document.createElement('div');
+    r.ghost.className = 'drag-ghost';
+    r.ghost.append(c);
+    document.body.append(r.ghost);
+    r.bar = document.createElement('div');
+    r.bar.className = 'drop-bar';
+    stripEl.append(r.bar);
+    r.to = r.from;
+    moveReorder();
+    r.raf = requestAnimationFrame(tickReorder);
+  }
+  function moveReorder() {
+    const r = reo;
+    const lift = r.type === 'mouse' ? r.gh / 2 : r.gh + 14; // keep it clear of the finger
+    r.ghost.style.transform = 'translate(' + (r.x - r.gw / 2) + 'px,' + (r.y - lift) + 'px) scale(1.08)';
+    // It lands after every other frame whose middle is left of the pointer.
+    const x = r.x - stripEl.getBoundingClientRect().left + stripEl.scrollLeft;
+    const others = $$('.cell', stripEl).filter((c) => c !== r.cell);
+    let to = 0;
+    for (const c of others) if (c.offsetLeft + c.offsetWidth / 2 < x) to++;
+    r.to = to;
+    const next = others[to], prev = others[to - 1];
+    r.bar.style.left = (next ? next.offsetLeft - 2.5 : prev ? prev.offsetLeft + prev.offsetWidth + 2.5 : 2) + 'px';
+  }
+  // Holding near either end of the strip scrolls it.
+  function tickReorder() {
+    if (!reo || !reo.on) return;
+    const rc = stripEl.getBoundingClientRect(), edge = 44;
+    let v = 0;
+    if (reo.x < rc.left + edge) v = -Math.ceil((rc.left + edge - reo.x) / 3);
+    else if (reo.x > rc.right - edge) v = Math.ceil((reo.x - rc.right + edge) / 3);
+    if (v) {
+      const before = stripEl.scrollLeft;
+      stripEl.scrollLeft += v;
+      if (stripEl.scrollLeft !== before) moveReorder();
+    }
+    reo.raf = requestAnimationFrame(tickReorder);
+  }
+  function endReorder(drop) {
+    const r = reo;
+    if (!r) return;
+    reo = null;
+    clearTimeout(r.timer);
+    cancelAnimationFrame(r.raf);
+    if (!r.on) return;
+    r.cell.classList.remove('lifted');
+    freeCanvas(r.ghost.firstChild);
+    r.ghost.remove();
+    r.bar.remove();
+    // A click that the release itself produces shouldn't also pick a frame. It arrives within
+    // a few milliseconds, well before a deliberate next tap could.
+    suppressStripClick = performance.now() + 120;
+    if (!drop || !E.project) return;
+    if (r.to !== r.from) moveFrameTo(r.from, r.to);
+    else showFrame(r.from, false);
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') endReorder(false); });
 
   const thumbQ = new Set();
   let thumbRunning = false;
@@ -1888,9 +2001,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function moveFrame(dir) {
     const j = E.cur + dir;
     if (j < 0 || j >= E.frames.length) return;
+    moveFrameTo(E.cur, j);
+  }
+  // Takes the frame at `from` out of the list and puts it back at `to`, as one undo step.
+  function moveFrameTo(from, to) {
+    if (from === to || from < 0 || from >= E.frames.length) return;
+    if (E.playing) stopPlay();
     const list = E.frames.slice();
-    [list[E.cur], list[j]] = [list[j], list[E.cur]];
-    changeFrames(list, j);
+    const [f] = list.splice(from, 1);
+    list.splice(clamp(to, 0, list.length), 0, f);
+    changeFrames(list, list.indexOf(f));
   }
   function clearDrawing() {
     const f = E.frames[E.cur];
@@ -3119,6 +3239,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // ---------- Keyboard ----------
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (reo) { endReorder(false); return; }
       const top = sheetStack[sheetStack.length - 1];
       if (top && top.id !== 'sheetImport') closeSheet();
       else if (!top && sel) finishSelection(false);

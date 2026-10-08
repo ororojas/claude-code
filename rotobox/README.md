@@ -46,6 +46,8 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 
 The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, add photos, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
 
+To move a frame, press and hold it in the filmstrip until it lifts, then drag it to its new spot. Hold it near either end and the strip scrolls. With a mouse you can drag right away. One undo puts it back.
+
 For traced clips, the frame options also have **Auto-sketch from the video**. It finds the edges in the video frame and draws them as real strokes in your current color and brush, for one frame or every frame. Pick how much detail and how heavy the lines are, check the preview, then keep, erase or trace over the result. One undo takes back a whole run.
 
 The sliders button opens the **light table** settings: video or photo opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode.
@@ -56,6 +58,7 @@ On a touch screen:
 
 - Pinch to zoom and pan. Twist two fingers to rotate the canvas, like turning paper on a desk. It snaps back to straight when you're close, and the corner chip resets it.
 - Tap with two fingers to undo, three fingers to redo.
+- Press and hold a frame in the filmstrip, then drag it to move it. A quick swipe still scrolls the strip.
 - If you draw with a stylus (like an Apple Pencil), Rotobox switches to stylus-only mode so your hand and fingers can rest on the screen and move the canvas without leaving marks.
 
 On a keyboard:
