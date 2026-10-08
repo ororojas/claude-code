@@ -49,7 +49,7 @@ Rotobox keeps only the part that plays, plus up to a minute more so it still cov
 | Text | Tap where the text should go, type it, and pick a font (Bold, Clean, Hand or Mono), plain or outlined, and a color. It lands as a selection you can drag, resize, rotate or flip, then **Done** sets it down. Tap text later with this tool to change it. |
 | Color | Pick a swatch, mix your own, or use **Pick a color from the canvas** to grab one from your drawing or the video. |
 
-The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, add photos, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
+The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, add photos, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export. A copied drawing can be pasted on this frame, on this frame and every later one, or on every frame at once, which is handy for backgrounds and titles. One undo takes it back off all of them.
 
 Tap the frame counter under the canvas to change the speed and to pick what happens at the end: **Start over**, or **Go back and forth**, which plays to the last frame and then runs the frames in reverse. Every export follows the same choice.
 

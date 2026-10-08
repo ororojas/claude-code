@@ -850,11 +850,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <div class="chips mono" id="fmHold" aria-labelledby="lblHold"><button type="button" data-v="1">1×</button><button type="button" data-v="2">2×</button><button type="button" data-v="3">3×</button><button type="button" data-v="4">4×</button></div>
     <p class="hint">Shows the drawing for longer without copying it. 2× at 24 fps is animating on twos.</p>
   </div>
+  <div class="field" id="fmPasteField" style="margin-bottom:10px">
+    <span class="label" id="lblPaste">Paste the copied drawing on</span>
+    <div class="chips" id="fmPasteTo" aria-labelledby="lblPaste">
+      <button type="button" data-v="this" id="fmPaste">This frame</button><button type="button" data-v="later">This and later</button><button type="button" data-v="all">Every frame</button>
+    </div>
+  </div>
   <div class="menu">
     <button type="button" id="fmInsert"><svg class="i"><use href="#i-plus"/></svg><span id="fmInsertLabel">Insert a blank frame after</span></button>
     <button type="button" id="fmDup"><svg class="i"><use href="#i-dup"/></svg>Duplicate frame</button>
     <button type="button" id="fmCopy"><svg class="i"><use href="#i-copy"/></svg>Copy drawing</button>
-    <button type="button" id="fmPaste"><svg class="i"><use href="#i-paste"/></svg>Paste drawing</button>
     <button type="button" id="fmEarlier"><svg class="i"><use href="#i-left"/></svg>Move earlier</button>
     <button type="button" id="fmLater"><svg class="i"><use href="#i-right"/></svg>Move later</button>
     <button type="button" id="fmPhotos"><svg class="i"><use href="#i-image"/></svg>Add photos after this frame</button>
@@ -3528,7 +3533,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (E.playing) stopPlay();
     $('#fmTitle').textContent = 'Frame ' + (E.cur + 1) + ' of ' + E.frames.length;
     setPressed($('#fmHold'), holdOf(E.frames[E.cur]));
-    $('#fmPaste').disabled = !E.clipboard;
+    $('#fmPasteField').hidden = !E.clipboard;
     $('#fmEarlier').disabled = E.cur === 0;
     $('#fmLater').disabled = E.cur === E.frames.length - 1;
     $('#fmClear').disabled = !E.frames[E.cur].ops.length;
@@ -3544,13 +3549,29 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     toast(E.clipboard.length ? 'Drawing copied. Paste it on another frame.' : 'This frame has no drawing yet.');
     if (!E.clipboard.length) E.clipboard = null;
   }));
-  $('#fmPaste').addEventListener('click', frameAction(() => {
-    if (!E.clipboard) return;
-    const f = E.frames[E.cur];
-    setOps(f, f.ops.concat(E.clipboard));
-    paintDrawing(f);
-    renderOnion();
-  }));
+  // Pastes the copied drawing on this frame, this one and every later one, or all of them,
+  // as one undo step. Handy for backgrounds, titles and props that stay put.
+  onPick($('#fmPasteTo'), (v) => {
+    closeSheet('sheetFrame');
+    const clip = E.clipboard;
+    if (!clip) return;
+    const from = v === 'all' ? 0 : E.cur;
+    const to = v === 'this' ? E.cur : E.frames.length - 1;
+    const items = [];
+    for (let i = from; i <= to; i++) {
+      const f = E.frames[i];
+      const after = f.ops.concat(clip);
+      items.push({ fid: f.id, before: f.ops, after });
+      f.ops = after;
+      f.ver++;
+      f.dirty = true;
+      queueThumb(f);
+    }
+    record({ type: 'batch', items });
+    scheduleSave();
+    showFrame(E.cur, false);
+    if (items.length > 1) toast('Pasted on ' + items.length + ' frames. One undo takes it off them all.');
+  });
   $('#fmEarlier').addEventListener('click', frameAction(() => moveFrame(-1)));
   $('#fmLater').addEventListener('click', frameAction(() => moveFrame(1)));
   $('#fmClear').addEventListener('click', frameAction(clearDrawing));
