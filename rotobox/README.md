@@ -111,3 +111,5 @@ To try it locally, run `python3 -m http.server` inside this folder and open `htt
 ## How it works
 
 Each frame stores its drawing as a list of operations (strokes and fills) rather than pixels. Undo is just a step back in that list, and frames stay sharp at any export size. Strokes are smoothed with quadratic curves between point midpoints, and fills are stored as runs of pixels so they replay quickly. Video frames are kept as JPEGs in IndexedDB and decoded only when they're on screen, which keeps memory low on phones. The GIF encoder (palette, LZW compression and frame cropping) and the ZIP writer are built in, so exports don't need a server.
+
+Long animations are capped at 480 frames, which is 20 seconds at 24 fps. Exports draw each frame into one reusable canvas, decoded video frames are released as soon as they leave a small cache, and ZIP files are stitched together from image Blobs, so even a 480-frame export doesn't hold every frame in the page's memory at once.

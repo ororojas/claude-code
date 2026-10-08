@@ -1580,7 +1580,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (canvasPool.length < 3 && e.canvas.width === E.W && e.canvas.height === E.H) canvasPool.push(e.canvas);
     else freeCanvas(e.canvas);
   });
-  const refCache = new LRU(12, (p) => { p.then((b) => setTimeout(() => b.close && b.close(), 1500), () => {}); });
+  // An evicted frame is released on the next task. Everything that uses one draws it right after
+  // its await, which runs as a microtask, so it's always done by then.
+  const refCache = new LRU(12, (p) => { p.then((b) => setTimeout(() => b.close && b.close(), 0), () => {}); });
   let tintCanvas = null;
   let thumbScratch = null;
 
@@ -3405,7 +3407,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     E.redo = [];
     E.clipboard = null;
     resetAudio();
-    drawCache.max = clamp(Math.floor(96e6 / (p.w * p.h * 4)), 6, 32);
+    drawCache.max = clamp(Math.floor((coarse ? 48e6 : 72e6) / (p.w * p.h * 4)), 6, 24);
     for (const c of [cvRef, cvOnion, cvDraw, cvLive]) { c.width = p.w; c.height = p.h; }
     stage.style.width = p.w + 'px';
     stage.style.height = p.h + 'px';
@@ -3605,18 +3607,19 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (!r) continue;
       let ref = null;
       if (r.ref) {
-        const bytes = new Uint8Array(await r.ref.arrayBuffer());
-        const key = bytes.length + ':' + crc32(bytes);
+        const crc = crc32(new Uint8Array(await r.ref.arrayBuffer()));
+        const key = r.ref.size + ':' + crc;
         ref = seen.get(key);
         if (!ref) {
           ref = 'frames/' + String(seen.size + 1).padStart(4, '0') + '.jpg';
           seen.set(key, ref);
-          files.push({ name: ref, data: bytes });
+          files.push({ name: ref, blob: r.ref, size: r.ref.size, crc });
         }
       }
       frames.push({ hold: r.hold || 1, ref, ops: r.ops || [] });
       if (ctl) ctl.set((i + 1) / ids.length, 'Frame ' + (i + 1) + ' of ' + ids.length);
     }
+    // The sound and the cover are small, so they go in as bytes. The frames above stay as Blobs.
     let audio = null;
     if (p.hasAudio) {
       const a = await Store.kvGet(audioKey(p.id)).catch(() => null);
@@ -4852,11 +4855,26 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       } catch (e) { /* draw without it */ }
     }
     if (f.ops.length) {
-      const d = getDrawing(f);
+      const d = drawingForExport(f);
       if (w === E.W && h === E.H) ctx.drawImage(d, 0, 0);
       else drawScaled(ctx, d, w, h);
     }
     ctx.restore();
+  }
+  // An export visits every frame once. Drawing each one into a single reusable canvas keeps the
+  // editor's cache (the frames you're working near) intact and the memory flat.
+  let exportScratch = null;
+  function drawingForExport(f) {
+    const e = drawCache.peek(f.id);
+    if (e && e.ver === f.ver) return e.canvas;
+    if (!exportScratch || exportScratch.width !== E.W || exportScratch.height !== E.H) { freeCanvas(exportScratch); exportScratch = makeCanvas(E.W, E.H); }
+    const ctx = exportScratch.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, E.W, E.H);
+    renderOps(ctx, f.ops);
+    return exportScratch;
   }
   async function runExport() {
     if (!E.project) return;
@@ -4897,6 +4915,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       ctl.close();
       releaseWake(wake);
       freeScaleTemps();
+      freeCanvas(exportScratch);
+      exportScratch = null;
       if (E.project) showFrame(E.cur, false);
     }
   }
@@ -5151,6 +5171,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8);
     return (c ^ 0xffffffff) >>> 0;
   }
+  // Each file is { name, data: Uint8Array } or { name, blob, size, crc }. Blobs go into the zip as
+  // they are, so the browser can keep them out of the page's memory.
   function makeZip(files) {
     const parts = [], central = [];
     let offset = 0;
@@ -5160,13 +5182,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const enc = new TextEncoder();
     for (const f of files) {
       const name = enc.encode(f.name);
-      const crc = crc32(f.data);
-      const size = f.data.length;
+      const crc = f.blob ? f.crc : crc32(f.data);
+      const size = f.blob ? f.size : f.data.length;
       const lh = new DataView(new ArrayBuffer(30));
       lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true); lh.setUint16(8, 0, true);
       lh.setUint16(10, dosTime, true); lh.setUint16(12, dosDate, true); lh.setUint32(14, crc, true);
       lh.setUint32(18, size, true); lh.setUint32(22, size, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
-      parts.push(lh.buffer, name, f.data);
+      parts.push(lh.buffer, name, f.blob || f.data);
       const ch = new DataView(new ArrayBuffer(46));
       ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0, true);
       ch.setUint16(10, 0, true); ch.setUint16(12, dosTime, true); ch.setUint16(14, dosDate, true); ch.setUint32(16, crc, true);
@@ -5192,10 +5214,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       for (let i = 0; i < n; i++) {
         if (ctl.signal.aborted) throw abortError();
         await compositeFrame(E.frames[i], ctx, o.w, o.h, o);
-        const b = await toBlob(c, 'image/png');
-        const data = new Uint8Array(await b.arrayBuffer());
+        const blob = await toBlob(c, 'image/png');
+        const crc = crc32(new Uint8Array(await blob.arrayBuffer()));
         // Held drawings repeat in the sequence so the images keep their timing.
-        for (let r = 0; r < holdOf(E.frames[i]); r++) files.push({ name: 'frame-' + pad3(++num) + '.png', data });
+        for (let r = 0; r < holdOf(E.frames[i]); r++) files.push({ name: 'frame-' + pad3(++num) + '.png', blob, size: blob.size, crc });
         ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n, c);
       }
     } finally {
