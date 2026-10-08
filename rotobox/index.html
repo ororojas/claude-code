@@ -713,6 +713,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <button type="button" data-v="pencil">Pencil</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="marker">Marker</button>
     </div>
   </div>
+  <div class="field" id="eraseField" hidden>
+    <span class="label" id="lblErase">Erase</span>
+    <div class="chips" id="eraseChips" aria-labelledby="lblErase">
+      <button type="button" data-v="all">Everything</button><button type="button" data-v="lines">Lines only</button><button type="button" data-v="color">Color only</button>
+    </div>
+    <p class="hint">Marker strokes and fills sit on a color layer under your lines, so you can erase one and keep the other.</p>
+  </div>
   <div class="field" id="shapeField" hidden>
     <span class="label" id="lblShapeKind">Shape</span>
     <div class="chips" id="shapeChips" aria-labelledby="lblShapeKind">
@@ -781,6 +788,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Pinch to zoom,</b> and twist two fingers to turn the paper.</p></li>
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
     <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-marker"/></svg></span><p><b>Marker and fill color under your lines.</b> The eraser can take everything, just the lines, or just the color.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-onion"/></svg></span><p><b>Onion skin</b> shows the drawing before this one in red and the one after in blue, so you can line things up.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-film"/></svg></span><p data-for="touch"><b>Press and hold a frame</b> in the strip, then drag it to move it.</p><p data-for="mouse-only"><b>Drag a frame</b> along the strip to move it.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-more"/></svg></span><p><b>Frame options</b> live behind ⋯. Hold a drawing for longer, duplicate it, copy and paste, add photos or auto-sketch.</p></li>
@@ -1521,6 +1529,47 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.restore();
   }
 
+  // Two layers. Ops tagged l: 1 (marker strokes and fills) sit on a color layer under the line art.
+  // Erasers tagged l: 'b' and lasso moves apply to both. Untagged ops, which is everything made before
+  // layers existed, are line art, so older drawings render exactly as they always did.
+  const hasColorLayer = (ops) => ops.some((o) => o.l === 1);
+  const onColorLayer = (o) => o.l === 1 || o.l === 'b' || o.t === 'x';
+  const onLineLayer = (o) => o.l !== 1;
+  const layerScratch = [null, null];
+  function layerCanvas(k, W, H) {
+    let c = layerScratch[k];
+    if (!c || c.width !== W || c.height !== H) { freeCanvas(c); c = layerScratch[k] = makeCanvas(W, H); }
+    const ctx = c.getContext('2d');
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, W, H);
+    return c;
+  }
+  // A whole frame's drawing: one pass when there's no color layer, otherwise each layer on its own
+  // and the lines laid over the color.
+  function renderDrawing(ctx, ops) {
+    if (!hasColorLayer(ops)) { renderOps(ctx, ops); return; }
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const color = layerCanvas(0, W, H), lines = layerCanvas(1, W, H);
+    renderOps(color.getContext('2d'), ops.filter(onColorLayer));
+    renderOps(lines.getContext('2d'), ops.filter(onLineLayer));
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(color, 0, 0);
+    ctx.drawImage(lines, 0, 0);
+    ctx.restore();
+  }
+  // Is this pixel part of the line art (as opposed to color or empty paper)?
+  function lineAt(f, x, y, shown) {
+    if (!hasColorLayer(f.ops)) return shown.data[(y * E.W + x) * 4 + 3] >= 128;
+    const c = layerCanvas(1, E.W, E.H);
+    renderOps(c.getContext('2d'), f.ops.filter(onLineLayer));
+    return c.getContext('2d').getImageData(x, y, 1, 1).data[3] >= 128;
+  }
+
   // Lasso edits are stored as one op: { t: 'x', p: loop points [x, y, ...], m: 2D matrix, or null to delete }.
   // Replay cuts the loop out of the canvas so far and draws it back with the matrix.
   function lassoPath(ctx, P) {
@@ -1687,6 +1736,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     recent: Prefs.get('recent', []),
     shape: Prefs.get('shape', 'line'),
     brush: Prefs.get('brush', 'pencil'),
+    eraseMode: Prefs.get('eraseMode', 'all'),
   };
   if (!BRUSH_NAMES[prefs.brush]) prefs.brush = 'pencil';
   if (prefs.tool === 'picker') prefs.tool = 'pen';
@@ -1733,7 +1783,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, E.W, E.H);
-    renderOps(ctx, f.ops);
+    renderDrawing(ctx, f.ops);
     e.ver = f.ver;
     drawCache.set(f.id, e);
     return e.canvas;
@@ -2045,7 +2095,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         if (!thumbScratch || thumbScratch.width !== E.W || thumbScratch.height !== E.H) { freeCanvas(thumbScratch); thumbScratch = makeCanvas(E.W, E.H); }
         const sc = thumbScratch.getContext('2d');
         sc.clearRect(0, 0, E.W, E.H);
-        renderOps(sc, f.ops);
+        renderDrawing(sc, f.ops);
         src = thumbScratch;
       }
       drawScaled(ctx, src, tw, th);
@@ -2076,7 +2126,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function pushOp(op) {
     const f = E.frames[E.cur];
     setOps(f, f.ops.concat([op]));
-    syncCacheFromDraw(f);
+    // Line art drawn on top of the screen is exactly what replay gives. Anything else on a frame
+    // with a color layer (fills, erasing, lasso moves) is redrawn from its ops instead.
+    if (hasColorLayer(f.ops) && !(op.t === 's' && !op.e && !op.l) && op.t !== 't') paintDrawing(f);
+    else syncCacheFromDraw(f);
   }
   function changeFrames(list, cur) {
     record({ type: 'frames', before: E.frames.slice(), after: list.slice(), curBefore: E.cur, curAfter: cur });
@@ -2593,19 +2646,25 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const eraser = prefs.tool === 'eraser';
     const brush = eraser ? 'pencil' : prefs.brush;
     const size = prefs.sizes[eraser ? 'eraser' : 'pen'];
+    const f = E.frames[E.cur];
+    // Markers color under the lines. The eraser takes everything, just lines, or just color.
+    const layer = eraser ? ({ lines: 0, color: 1 })[prefs.eraseMode] ?? 'b' : brush === 'marker' ? 1 : 0;
+    // Erasing one layer can't be shown by erasing the screen, so it draws a light trail instead and
+    // the real result appears when the stroke ends.
+    const trail = eraser && (layer === 1 || (layer === 0 && hasColorLayer(f.ops)));
     gesture = {
-      kind: 'draw', id: e.pointerId, type: e.pointerType, eraser, brush, color: prefs.color,
-      size, pts: [], sx: pt.x, sy: pt.y, rx: pt.x, ry: pt.y, pr: 1, frame: E.frames[E.cur],
-      ctx: brush === 'marker' ? ctxLive : ctxDraw,
+      kind: 'draw', id: e.pointerId, type: e.pointerType, eraser, brush, color: prefs.color, layer, trail,
+      size, pts: [], sx: pt.x, sy: pt.y, rx: pt.x, ry: pt.y, pr: 1, frame: f,
+      ctx: brush === 'marker' || trail ? ctxLive : ctxDraw,
       mul: brush === 'ink' ? [] : null, dist: 0, T: inkTaper(size),
     };
-    if (brush === 'marker') {
+    if (brush === 'marker' || trail) {
       ctxLive.setTransform(1, 0, 0, 1, 0, 0);
       ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
-      cvLive.style.opacity = MARKER_ALPHA;
+      cvLive.style.opacity = trail ? 0.45 : MARKER_ALPHA;
       cvLive.hidden = false;
     }
-    strokeStyle(gesture.ctx, eraser, prefs.color);
+    strokeStyle(gesture.ctx, eraser && !trail, trail ? '#8e949e' : prefs.color);
     addPoint(gesture, pt.x, pt.y, pressureOf(e));
   }
   function addPoint(g, x, y, p) {
@@ -2654,15 +2713,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (g.frame !== E.frames[E.cur]) { clearLive(); return; }
     const op = { t: 's', c: g.color, w: g.size, e: g.eraser ? 1 : 0, p: new Float32Array(g.pts) };
     if (BRUSH_CODE[g.brush]) op.b = BRUSH_CODE[g.brush];
-    if (g.brush === 'marker') {
-      ctxDraw.globalAlpha = MARKER_ALPHA;
-      ctxDraw.drawImage(cvLive, 0, 0);
-      ctxDraw.globalAlpha = 1;
+    if (g.layer) op.l = g.layer;
+    const f = E.frames[E.cur];
+    if (g.brush === 'marker' || g.brush === 'ink' || g.trail) {
+      // A marker lands under the lines, an ink taper is only known at the end, and a one-layer
+      // erase was only sketched: redraw the frame from its ops.
       clearLive();
-      pushOp(op);
-    } else if (g.brush === 'ink') {
-      // The end taper is only known once the stroke ends, so redraw the frame from its ops.
-      const f = E.frames[E.cur];
       setOps(f, f.ops.concat([op]));
       paintDrawing(f);
     } else pushOp(op);
@@ -2943,6 +2999,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const res = floodRuns(img.data, E.W, E.H, x, y, hexToRgb(prefs.color));
     if (!res || !res.runs.length) return;
     const op = { t: 'f', c: prefs.color, m: res.under ? 'u' : 'o', r: res.runs };
+    // Fills go on the color layer under the lines. Tapping a line itself recolors the line.
+    if (res.under || !lineAt(E.frames[E.cur], x, y, img)) op.l = 1;
     ctxDraw.save();
     renderFill(ctxDraw, op);
     ctxDraw.restore();
@@ -3046,7 +3104,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const f = E.frames[E.cur];
     const base = makeCanvas(E.W, E.H);
     const bctx = base.getContext('2d');
-    if (spec.index >= 0) renderOps(bctx, f.ops.filter((o, i) => i !== spec.index));
+    if (spec.index >= 0) renderDrawing(bctx, f.ops.filter((o, i) => i !== spec.index));
     else bctx.drawImage(getDrawing(f), 0, 0);
     let cx, cy, s = 1, r = 0, flip = false;
     if (spec.m) {
@@ -3847,6 +3905,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     btn.querySelector('use').setAttribute('href', prefs.brush === 'ink' ? '#i-ink' : prefs.brush === 'marker' ? '#i-marker' : '#i-pen');
     btn.setAttribute('aria-label', BRUSH_NAMES[prefs.brush]);
   }
+  onPick($('#eraseChips'), (v) => { prefs.eraseMode = v; Prefs.set('eraseMode', v); setPressed($('#eraseChips'), v); });
   onPick($('#brushChips'), (v) => {
     prefs.brush = v;
     Prefs.set('brush', v);
@@ -3862,6 +3921,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const shape = prefs.tool === 'shape';
     $('#brushTitle').textContent = shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : BRUSH_NAMES[prefs.brush];
     $('#brushField').hidden = shape || key === 'eraser';
+    $('#eraseField').hidden = key !== 'eraser';
+    setPressed($('#eraseChips'), prefs.eraseMode);
     setPressed($('#brushChips'), prefs.brush);
     $('#shapeField').hidden = !shape;
     $('#smoothField').hidden = shape;
@@ -4247,9 +4308,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (op.t === 's' && op.p instanceof Float32Array && op.p.length >= 3 && op.p.length % 3 === 0 && HEX.test(op.c) && op.w > 0 && op.w <= 512) {
         const o = { t: 's', c: op.c, w: +op.w, e: op.e ? 1 : 0, p: op.p };
         if (op.b === 'i' || op.b === 'm') o.b = op.b;
+        if (op.l === 1 || op.l === 'b') o.l = op.l;
         out.push(o);
       } else if (op.t === 'f' && op.r instanceof Uint16Array && op.r.length % 3 === 0 && HEX.test(op.c)) {
-        out.push({ t: 'f', c: op.c, m: op.m === 'u' ? 'u' : 'o', r: op.r });
+        const o = { t: 'f', c: op.c, m: op.m === 'u' ? 'u' : 'o', r: op.r };
+        if (op.l === 1) o.l = 1;
+        out.push(o);
       } else if (op.t === 't' && typeof op.s === 'string' && op.s.length && HEX.test(op.c) && op.z > 0 && op.z <= 4000 && Array.isArray(op.m) && op.m.length === 6 && op.m.every(Number.isFinite)) {
         out.push({ t: 't', s: op.s.slice(0, 1000), c: op.c, z: +op.z, f: TEXT_FONTS[op.f] ? op.f : 'bold', o: op.o ? 1 : 0, wr: Number.isFinite(op.wr) ? +op.wr : 0, m: op.m.map(Number) });
       } else if (op.t === 'x' && op.p instanceof Float32Array && op.p.length >= 6 && op.p.length % 2 === 0) {
@@ -5542,7 +5606,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, E.W, E.H);
-    renderOps(ctx, f.ops);
+    renderDrawing(ctx, f.ops);
     return exportScratch;
   }
   async function runExport() {
@@ -6199,7 +6263,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32 };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32, renderOps, renderDrawing };
   boot();
 })();
 </script>
