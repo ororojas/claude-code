@@ -720,13 +720,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     </div>
     <p class="hint">Marker strokes and fills sit on a color layer under your lines, so you can erase one and keep the other.</p>
   </div>
+  <div class="field" id="fillField" hidden>
+    <span class="label" id="lblGap">Close gaps</span>
+    <div class="chips" id="gapChips" aria-labelledby="lblGap">
+      <button type="button" data-v="off">Off</button><button type="button" data-v="small">Small</button><button type="button" data-v="big">Bigger</button>
+    </div>
+    <p class="hint">Color stops at small breaks in your lines instead of spilling out. If a narrow corner stays empty, tap it too.</p>
+  </div>
   <div class="field" id="shapeField" hidden>
     <span class="label" id="lblShapeKind">Shape</span>
     <div class="chips" id="shapeChips" aria-labelledby="lblShapeKind">
       <button type="button" data-v="line">Line</button><button type="button" data-v="rect">Rectangle</button><button type="button" data-v="ellipse">Ellipse</button>
     </div>
   </div>
-  <div class="field">
+  <div class="field" id="sizeField">
     <div class="row tight"><label class="label" for="rgSize">Size</label><output class="mono small" id="outSize" for="rgSize">6 px</output></div>
     <input type="range" id="rgSize" min="0" max="21" step="1">
   </div>
@@ -789,6 +796,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
     <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-marker"/></svg></span><p><b>Marker and fill color under your lines.</b> The eraser can take everything, just the lines, or just the color.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-fill"/></svg></span><p><b>Fill steps over small breaks</b> in your lines, so the color stays inside. Tap Fill again to close bigger gaps or turn it off.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-onion"/></svg></span><p><b>Onion skin</b> shows the drawing before this one in red and the one after in blue, so you can line things up.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-film"/></svg></span><p data-for="touch"><b>Press and hold a frame</b> in the strip, then drag it to move it.</p><p data-for="mouse-only"><b>Drag a frame</b> along the strip to move it.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-more"/></svg></span><p><b>Frame options</b> live behind ⋯. Hold a drawing for longer, duplicate it, copy and paste, add photos or auto-sketch.</p></li>
@@ -1627,16 +1635,34 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
 
   // Scanline flood fill on the drawing layer. Tapping an empty area paints under the ink
-  // (so line edges stay clean); tapping a colored area recolors it.
-  function floodRuns(d, w, h, sx, sy, fillRGB) {
+  // (so line edges stay clean); tapping a colored area recolors it. With a gap, an empty area is
+  // bounded as if every line were that many pixels thicker, so color can't spill out through a
+  // small break in a line. The color then grows back up to the real lines, never across one.
+  function floodRuns(d, w, h, sx, sy, fillRGB, gap = 0) {
     const i0 = (sy * w + sx) << 2;
     const sr = d[i0], sg = d[i0 + 1], sb = d[i0 + 2], sa = d[i0 + 3];
     const under = sa < 128;
     if (!under && Math.abs(sr - fillRGB[0]) < 3 && Math.abs(sg - fillRGB[1]) < 3 && Math.abs(sb - fillRGB[2]) < 3) return null;
     const T = 40;
-    const test = under
-      ? (p) => d[(p << 2) + 3] < 128
-      : (p) => { const q = p << 2; return d[q + 3] >= 128 && Math.abs(d[q] - sr) <= T && Math.abs(d[q + 1] - sg) <= T && Math.abs(d[q + 2] - sb) <= T; };
+    let mask = under && gap > 0 ? gapFlood(d, w, h, sx, sy, gap) : null;
+    if (!mask) {
+      const test = under
+        ? (p) => d[(p << 2) + 3] < 128
+        : (p) => { const q = p << 2; return d[q + 3] >= 128 && Math.abs(d[q] - sr) <= T && Math.abs(d[q + 1] - sg) <= T && Math.abs(d[q + 2] - sb) <= T; };
+      mask = scanFlood(w, h, sx, sy, test);
+    }
+    const m = under ? dilate(mask, w, h, Math.max(1, Math.round(Math.min(w, h) / 600))) : mask;
+    const runs = [];
+    for (let y = 0; y < h; y++) {
+      const row = y * w;
+      let x = 0;
+      while (x < w) {
+        if (m[row + x]) { const x0 = x; while (x < w && m[row + x]) x++; runs.push(y, x0, x); } else x++;
+      }
+    }
+    return { under, runs: Uint16Array.from(runs) };
+  }
+  function scanFlood(w, h, sx, sy, test) {
     const mask = new Uint8Array(w * h);
     const stack = [sx, sy];
     while (stack.length) {
@@ -1657,16 +1683,151 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         }
       }
     }
-    const m = under ? dilate(mask, w, h, Math.max(1, Math.round(Math.min(w, h) / 600))) : mask;
-    const runs = [];
+    return mask;
+  }
+  // The gap-closing flood for an empty area. Returns null when the plain fill should run instead.
+  function gapFlood(d, w, h, sx, sy, gap) {
+    const n = w * h;
+    const ink = (p) => d[(p << 2) + 3] >= 128;
+    // Distance to the nearest ink in thirds of a pixel (3 straight, 4 diagonal), in two passes.
+    const dist = new Uint16Array(n);
+    const far = 3 * gap + 4;
+    for (let p = 0; p < n; p++) dist[p] = ink(p) ? 0 : far;
     for (let y = 0; y < h; y++) {
-      const row = y * w;
-      let x = 0;
-      while (x < w) {
-        if (m[row + x]) { const x0 = x; while (x < w && m[row + x]) x++; runs.push(y, x0, x); } else x++;
+      for (let x = 0, p = y * w; x < w; x++, p++) {
+        let v = dist[p];
+        if (!v) continue;
+        if (x > 0 && dist[p - 1] + 3 < v) v = dist[p - 1] + 3;
+        if (y > 0) {
+          const q = p - w;
+          if (dist[q] + 3 < v) v = dist[q] + 3;
+          if (x > 0 && dist[q - 1] + 4 < v) v = dist[q - 1] + 4;
+          if (x < w - 1 && dist[q + 1] + 4 < v) v = dist[q + 1] + 4;
+        }
+        dist[p] = v;
       }
     }
-    return { under, runs: Uint16Array.from(runs) };
+    for (let y = h - 1; y >= 0; y--) {
+      for (let x = w - 1, p = y * w + x; x >= 0; x--, p--) {
+        let v = dist[p];
+        if (!v) continue;
+        if (x < w - 1 && dist[p + 1] + 3 < v) v = dist[p + 1] + 3;
+        if (y < h - 1) {
+          const q = p + w;
+          if (dist[q] + 3 < v) v = dist[q] + 3;
+          if (x < w - 1 && dist[q + 1] + 4 < v) v = dist[q + 1] + 4;
+          if (x > 0 && dist[q - 1] + 4 < v) v = dist[q - 1] + 4;
+        }
+        dist[p] = v;
+      }
+    }
+    const reach = 3 * gap;
+    const open = (p) => dist[p] > reach;
+    // A tap close to a line starts from the nearest open spot it can reach without crossing ink.
+    let seed = sy * w + sx;
+    if (!open(seed)) {
+      const seen = new Set([seed]);
+      let ring = [seed], found = -1;
+      for (let s = 0; s < 2 * gap + 2 && found < 0 && ring.length; s++) {
+        const next = [];
+        for (const p of ring) {
+          const x = p % w;
+          for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, p - w, p + w]) {
+            if (q < 0 || q >= n || seen.has(q) || ink(q)) continue;
+            seen.add(q);
+            if (open(q)) { found = q; break; }
+            next.push(q);
+          }
+          if (found >= 0) break;
+        }
+        ring = next;
+      }
+      if (found < 0) return null; // a pocket narrower than the gap: fill it plainly
+      seed = found;
+    }
+    const mask = scanFlood(w, h, seed % w, (seed / w) | 0, open);
+    // Grow back over the band the thicker lines covered, one ring at a time and never into ink.
+    // Open space past a break grows at the same pace, so the two meet in the middle of the break
+    // and the color stops there instead of bulging out through it. A diagonal step needs one of
+    // its two straight neighbors clear, so it can't slip through a line drawn on the diagonal.
+    let bx0 = w, by0 = h, bx1 = -1, by1 = -1;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0, p = y * w; x < w; x++, p++) {
+        if (!mask[p]) continue;
+        if (x < bx0) bx0 = x;
+        if (x > bx1) bx1 = x;
+        if (y < by0) by0 = y;
+        by1 = y;
+      }
+    }
+    const pad = 2 * gap + 2;
+    bx0 = Math.max(0, bx0 - pad); by0 = Math.max(0, by0 - pad);
+    bx1 = Math.min(w - 1, bx1 + pad); by1 = Math.min(h - 1, by1 + pad);
+    const own = new Uint8Array(n); // 1: this fill, 2: other open space
+    for (let y = by0; y <= by1; y++) for (let x = bx0, p = y * w + x; x <= bx1; x++, p++) own[p] = mask[p] ? 1 : open(p) ? 2 : 0;
+    const free = (q) => !own[q] && !ink(q);
+    let ours = [], theirs = [];
+    for (let y = by0; y <= by1; y++) {
+      for (let x = bx0, p = y * w + x; x <= bx1; x++, p++) {
+        if (!own[p]) continue;
+        if ((x > bx0 && free(p - 1)) || (x < bx1 && free(p + 1)) || (y > by0 && free(p - w)) || (y < by1 && free(p + w))) (own[p] === 1 ? ours : theirs).push(p);
+      }
+    }
+    const grow = (front, who) => {
+      const next = [];
+      for (const p of front) {
+        const x = p % w, y = (p - x) / w;
+        for (let dy = -1; dy <= 1; dy++) {
+          const ny = y + dy;
+          if (ny < by0 || ny > by1) continue;
+          for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx;
+            if ((!dx && !dy) || nx < bx0 || nx > bx1) continue;
+            const q = ny * w + nx;
+            if (own[q] || ink(q)) continue;
+            if (dx && dy && ink(y * w + nx) && ink(ny * w + x)) continue;
+            own[q] = who;
+            next.push(q);
+          }
+        }
+      }
+      return next;
+    };
+    for (let s = 0; s <= gap && ours.length; s++) {
+      theirs = grow(theirs, 2);
+      ours = grow(ours, 1);
+    }
+    // Corners too tight for the rings to reach the tip of (a sharp V, a thin dead end) are taken
+    // whole when only this fill and ink surround them.
+    const pocket = [];
+    for (let y = by0; y <= by1; y++) {
+      for (let x = bx0, p = y * w + x; x <= bx1; x++, p++) {
+        if (own[p] || ink(p)) continue;
+        let mine = false, shared = false;
+        own[p] = 3;
+        pocket.length = 0;
+        pocket.push(p);
+        for (let k = 0; k < pocket.length && !shared; k++) {
+          const q = pocket[k], qx = q % w, qy = (q - qx) / w;
+          for (const r of [qx > 0 ? q - 1 : -1, qx < w - 1 ? q + 1 : -1, qy > 0 ? q - w : -1, qy < h - 1 ? q + w : -1]) {
+            if (r < 0) continue;
+            const o = own[r];
+            if (o === 1) mine = true;
+            else if (o === 2 || o === 4) shared = true;
+            else if (!o && !ink(r)) {
+              // A pocket can run past the box the rings stayed in. Open space out there isn't this fill's.
+              const rx = r % w, ry = (r - rx) / w;
+              if ((rx < bx0 || rx > bx1 || ry < by0 || ry > by1) && open(r)) shared = true;
+              else { own[r] = 3; pocket.push(r); }
+            }
+          }
+        }
+        const v = mine && !shared ? 1 : 4;
+        for (const q of pocket) own[q] = v;
+      }
+    }
+    for (let y = by0; y <= by1; y++) for (let x = bx0, p = y * w + x; x <= bx1; x++, p++) if (own[p] === 1) mask[p] = 1;
+    return mask;
   }
   function dilate(src, w, h, r) {
     let a = src;
@@ -1737,8 +1898,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     shape: Prefs.get('shape', 'line'),
     brush: Prefs.get('brush', 'pencil'),
     eraseMode: Prefs.get('eraseMode', 'all'),
+    fillGap: Prefs.get('fillGap', 'small'),
   };
   if (!BRUSH_NAMES[prefs.brush]) prefs.brush = 'pencil';
+  if (!['off', 'small', 'big'].includes(prefs.fillGap)) prefs.fillGap = 'small';
   if (prefs.tool === 'picker') prefs.tool = 'pen';
   let toolBeforePicker = 'pen';
 
@@ -3002,12 +3165,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     clearLive();
     paintDrawing(E.frames[E.cur]);
   }
+  // How wide a break in a line a fill steps over, in canvas pixels. Small closes breaks up to
+  // about 8 px on a 1080 px canvas, Bigger about 16.
+  function fillGapPx() {
+    const k = ({ small: 1 / 300, big: 1 / 140 })[prefs.fillGap];
+    return k ? Math.max(prefs.fillGap === 'big' ? 4 : 2, Math.round(Math.min(E.W, E.H) * k)) : 0;
+  }
   function fillAt(cx, cy) {
     const pt = toCanvas(cx, cy);
     const x = Math.floor(pt.x), y = Math.floor(pt.y);
     if (x < 0 || y < 0 || x >= E.W || y >= E.H) return;
     const img = ctxDraw.getImageData(0, 0, E.W, E.H);
-    const res = floodRuns(img.data, E.W, E.H, x, y, hexToRgb(prefs.color));
+    const res = floodRuns(img.data, E.W, E.H, x, y, hexToRgb(prefs.color), fillGapPx());
     if (!res || !res.runs.length) return;
     const op = { t: 'f', c: prefs.color, m: res.under ? 'u' : 'o', r: res.runs };
     // Fills go on the color layer under the lines. Tapping a line itself recolors the line.
@@ -3687,11 +3856,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   $$('.tool[data-tool]').forEach((b) => b.addEventListener('click', () => {
     const t = b.dataset.tool;
-    if (t === 'shape' && prefs.tool === 'shape') { openBrushSheet(); return; }
+    if ((t === 'shape' || t === 'fill') && prefs.tool === t) { openBrushSheet(); return; }
     setTool(t);
     if (t === 'shape' && !Prefs.get('shapeHint', false)) {
       Prefs.set('shapeHint', true);
       toast('Drag to draw a ' + SHAPE_NAMES[prefs.shape] + '. Tap Shapes again to switch shapes.', 3600);
+    }
+    if (t === 'fill' && !Prefs.get('fillHint', false)) {
+      Prefs.set('fillHint', true);
+      toast('Tap inside a shape to color it. Tap Fill again to change how it handles gaps in lines.', 3600);
     }
     if (t === 'text' && !Prefs.get('textHint', false)) {
       Prefs.set('textHint', true);
@@ -3932,6 +4105,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     btn.setAttribute('aria-label', BRUSH_NAMES[prefs.brush]);
   }
   onPick($('#eraseChips'), (v) => { prefs.eraseMode = v; Prefs.set('eraseMode', v); setPressed($('#eraseChips'), v); });
+  onPick($('#gapChips'), (v) => { prefs.fillGap = v; Prefs.set('fillGap', v); setPressed($('#gapChips'), v); });
   onPick($('#brushChips'), (v) => {
     prefs.brush = v;
     Prefs.set('brush', v);
@@ -3944,15 +4118,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   onPick($('#shapeChips'), (v) => { prefs.shape = v; Prefs.set('shape', v); setPressed($('#shapeChips'), v); drawBrushPreview(); });
   function openBrushSheet() {
     const key = activeSizeKey();
-    const shape = prefs.tool === 'shape';
-    $('#brushTitle').textContent = shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : BRUSH_NAMES[prefs.brush];
-    $('#brushField').hidden = shape || key === 'eraser';
+    const shape = prefs.tool === 'shape', fill = prefs.tool === 'fill';
+    $('#brushTitle').textContent = fill ? 'Fill' : shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : BRUSH_NAMES[prefs.brush];
+    $('#brushField').hidden = shape || fill || key === 'eraser';
     $('#eraseField').hidden = key !== 'eraser';
+    $('#fillField').hidden = !fill;
     setPressed($('#eraseChips'), prefs.eraseMode);
     setPressed($('#brushChips'), prefs.brush);
+    setPressed($('#gapChips'), prefs.fillGap);
     $('#shapeField').hidden = !shape;
-    $('#smoothField').hidden = shape;
-    $('#pressureRow').hidden = shape;
+    $('#brushPreview').hidden = $('#sizeField').hidden = fill;
+    $('#smoothField').hidden = shape || fill;
+    $('#pressureRow').hidden = shape || fill;
     setPressed($('#shapeChips'), prefs.shape);
     let i = SIZES.indexOf(prefs.sizes[key]);
     if (i < 0) i = SIZES.findIndex((v) => v >= prefs.sizes[key]);
@@ -6291,7 +6468,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32, renderOps, renderDrawing };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32, renderOps, renderDrawing, floodRuns };
   boot();
 })();
 </script>
