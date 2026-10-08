@@ -405,6 +405,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-mute" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
     <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3.5" y="10.5" width="10" height="10" rx="1.5"/><circle cx="15.5" cy="8.5" r="5"/></symbol>
     <symbol id="i-lasso" viewBox="0 0 24 24"><ellipse cx="12.5" cy="10" rx="8.5" ry="5.5" stroke-dasharray="3 2.4"/><path d="M6.5 14.2c-1.6.8-2.3 2.2-1.6 3.4.7 1.2 2.4 1.3 3.4.3M7.6 18l-.9 3"/></symbol>
+    <symbol id="i-ink" viewBox="0 0 24 24"><path d="M12 3c2.5 3.2 4 6 4 8.6L12 21l-4-9.4C8 9 9.5 6.2 12 3z"/><path d="M12 12.5V21"/><circle cx="12" cy="10.4" r="1.4"/></symbol>
+    <symbol id="i-marker" viewBox="0 0 24 24"><path d="M15 4l5 5-9 9H6v-5z"/><path d="M6 18l-2 2"/><path d="M12.5 6.5l5 5"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -465,6 +467,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <canvas id="cvRef" hidden></canvas>
       <canvas id="cvOnion"></canvas>
       <canvas id="cvDraw"></canvas>
+      <canvas id="cvLive" hidden></canvas>
       <svg class="fx" id="fx" hidden aria-hidden="true">
         <polyline id="fxLassoA" class="fx-under"/><polyline id="fxLassoB" class="fx-ants"/>
         <polygon id="fxBoxA" class="fx-under"/><polygon id="fxBoxB" class="fx-ants"/>
@@ -595,6 +598,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 <div class="sheet" id="sheetBrush" role="dialog" aria-modal="true" aria-labelledby="brushTitle" hidden>
   <h2 id="brushTitle">Pencil</h2>
   <canvas class="brush-preview" id="brushPreview" width="640" height="128" aria-hidden="true"></canvas>
+  <div class="field" id="brushField">
+    <span class="label" id="lblBrushKind">Brush</span>
+    <div class="chips" id="brushChips" aria-labelledby="lblBrushKind">
+      <button type="button" data-v="pencil">Pencil</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="marker">Marker</button>
+    </div>
+  </div>
   <div class="field" id="shapeField" hidden>
     <span class="label" id="lblShapeKind">Shape</span>
     <div class="chips" id="shapeChips" aria-labelledby="lblShapeKind">
@@ -1079,33 +1088,106 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.fill();
   }
   // Segment k runs from the midpoint before point k-1 to the midpoint after it, curving through k-1.
-  function drawSegment(ctx, P, k, size) {
+  // Its width eases between the neighbouring points' widths; when that change is more than a
+  // pixel the curve is drawn in short pieces so tapers and pressure changes stay smooth.
+  const pointWidth = (P, k, size, mul) => widthAt(size, P[3 * k + 2]) * (mul ? mul[k] : 1);
+  function curvePiece(ctx, ax, ay, cx, cy, bx, by, wa, wb, straight) {
+    const n = Math.min(16, Math.max(1, Math.ceil(Math.abs(wb - wa) / 0.75)));
+    if (n === 1) {
+      ctx.lineWidth = (wa + wb) / 2;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      if (straight) ctx.lineTo(bx, by); else ctx.quadraticCurveTo(cx, cy, bx, by);
+      ctx.stroke();
+      return;
+    }
+    let px = ax, py = ay;
+    for (let j = 1; j <= n; j++) {
+      const t = j / n, u = 1 - t;
+      const qx = straight ? ax + (bx - ax) * t : u * u * ax + 2 * u * t * cx + t * t * bx;
+      const qy = straight ? ay + (by - ay) * t : u * u * ay + 2 * u * t * cy + t * t * by;
+      ctx.lineWidth = wa + ((wb - wa) * (j - 0.5)) / n;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(qx, qy);
+      ctx.stroke();
+      px = qx;
+      py = qy;
+    }
+  }
+  function drawSegment(ctx, P, k, size, mul) {
     const i = 3 * k;
     const x1 = P[i], y1 = P[i + 1];
-    const x0 = P[i - 3], y0 = P[i - 2], p0 = P[i - 1];
+    const x0 = P[i - 3], y0 = P[i - 2];
     const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    ctx.lineWidth = widthAt(size, p0);
-    ctx.beginPath();
-    if (k === 1) {
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(mx, my);
-    } else {
+    const wc = pointWidth(P, k - 1, size, mul);
+    const wb = (wc + pointWidth(P, k, size, mul)) / 2;
+    if (k === 1) curvePiece(ctx, x0, y0, x0, y0, mx, my, wc, wb, true);
+    else {
       const xa = P[i - 6], ya = P[i - 5];
-      ctx.moveTo((xa + x0) / 2, (ya + y0) / 2);
-      ctx.quadraticCurveTo(x0, y0, mx, my);
+      curvePiece(ctx, (xa + x0) / 2, (ya + y0) / 2, x0, y0, mx, my, (pointWidth(P, k - 2, size, mul) + wc) / 2, wb, false);
     }
-    ctx.stroke();
   }
-  function drawStrokeEnd(ctx, P, size) {
+  function drawStrokeEnd(ctx, P, size, mul) {
     const n = P.length / 3;
     if (n < 2) return;
     const i = 3 * (n - 1);
-    const x1 = P[i], y1 = P[i + 1], p1 = P[i + 2], x0 = P[i - 3], y0 = P[i - 2];
-    ctx.lineWidth = widthAt(size, p1);
-    ctx.beginPath();
-    ctx.moveTo((x0 + x1) / 2, (y0 + y1) / 2);
-    ctx.lineTo(x1, y1);
-    ctx.stroke();
+    const x1 = P[i], y1 = P[i + 1], x0 = P[i - 3], y0 = P[i - 2];
+    const wl = pointWidth(P, n - 1, size, mul);
+    curvePiece(ctx, (x0 + x1) / 2, (y0 + y1) / 2, x1, y1, x1, y1, (pointWidth(P, n - 2, size, mul) + wl) / 2, wl, true);
+  }
+  function drawStrokePath(ctx, P, size, mul) {
+    const n = P.length / 3;
+    drawDot(ctx, P[0], P[1], widthAt(size, P[2]) * (mul ? mul[0] : 1));
+    for (let k = 1; k < n; k++) drawSegment(ctx, P, k, size, mul);
+    drawStrokeEnd(ctx, P, size, mul);
+  }
+  // Brushes: pencil (no code), ink 'i' (ends taper to a point), marker 'm' (see-through, no self-darkening).
+  const MARKER_ALPHA = 0.5;
+  const BRUSH_CODE = { pencil: '', ink: 'i', marker: 'm' };
+  const BRUSH_NAMES = { pencil: 'Pencil', ink: 'Ink', marker: 'Marker' };
+  const inkTaper = (size) => clamp(size * 2.5, 6, 60);
+  function inkWidths(P, size) {
+    const n = P.length / 3, T = inkTaper(size);
+    const d = new Float64Array(n);
+    for (let k = 1; k < n; k++) d[k] = d[k - 1] + Math.hypot(P[3 * k] - P[3 * k - 3], P[3 * k + 1] - P[3 * k - 2]);
+    const total = d[n - 1], out = new Float64Array(n);
+    for (let k = 0; k < n; k++) out[k] = 0.15 + 0.85 * Math.min(1, d[k] / T, (total - d[k]) / T);
+    return out;
+  }
+  let markerScratch = null;
+  function strokeBounds(P, size, W, H) {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < P.length; i += 3) {
+      if (P[i] < x0) x0 = P[i];
+      if (P[i] > x1) x1 = P[i];
+      if (P[i + 1] < y0) y0 = P[i + 1];
+      if (P[i + 1] > y1) y1 = P[i + 1];
+    }
+    const pad = size / 2 + 2;
+    const x = clamp(Math.floor(x0 - pad), 0, W), y = clamp(Math.floor(y0 - pad), 0, H);
+    return { x, y, w: clamp(Math.ceil(x1 + pad), 0, W) - x, h: clamp(Math.ceil(y1 + pad), 0, H) - y };
+  }
+  // The stroke is drawn opaque on a scratch layer, then laid down at half strength in one go.
+  function renderMarker(ctx, op) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const b = strokeBounds(op.p, op.w, W, H);
+    if (b.w < 1 || b.h < 1) return;
+    if (!markerScratch || markerScratch.width < W || markerScratch.height < H) {
+      freeCanvas(markerScratch);
+      markerScratch = makeCanvas(Math.max(W, markerScratch ? markerScratch.width : 0), Math.max(H, markerScratch ? markerScratch.height : 0));
+    }
+    const m = markerScratch.getContext('2d');
+    m.setTransform(1, 0, 0, 1, 0, 0);
+    m.clearRect(b.x, b.y, b.w, b.h);
+    strokeStyle(m, 0, op.c);
+    drawStrokePath(m, op.p, op.w, null);
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = MARKER_ALPHA;
+    ctx.drawImage(markerScratch, b.x, b.y, b.w, b.h, b.x, b.y, b.w, b.h);
+    ctx.restore();
   }
   function renderFill(ctx, op) {
     ctx.globalAlpha = 1;
@@ -1120,13 +1202,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.save();
     for (const op of ops) {
       if (op.t === 's') {
-        const P = op.p;
-        const n = P.length / 3;
-        if (!n) continue;
+        if (!op.p.length) continue;
+        if (op.b === 'm' && !op.e) { renderMarker(ctx, op); continue; }
         strokeStyle(ctx, op.e, op.c);
-        drawDot(ctx, P[0], P[1], widthAt(op.w, P[2]));
-        for (let k = 1; k < n; k++) drawSegment(ctx, P, k, op.w);
-        drawStrokeEnd(ctx, P, op.w);
+        drawStrokePath(ctx, op.p, op.w, op.b === 'i' && !op.e ? inkWidths(op.p, op.w) : null);
       } else if (op.t === 'f') {
         renderFill(ctx, op);
       } else if (op.t === 'x') {
@@ -1301,7 +1380,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     penOnly: Prefs.get('penOnly', false),
     recent: Prefs.get('recent', []),
     shape: Prefs.get('shape', 'line'),
+    brush: Prefs.get('brush', 'pencil'),
   };
+  if (!BRUSH_NAMES[prefs.brush]) prefs.brush = 'pencil';
   if (prefs.tool === 'picker') prefs.tool = 'pen';
   let toolBeforePicker = 'pen';
 
@@ -1315,6 +1396,14 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const ctxRef = cvRef.getContext('2d');
   const ctxOnion = cvOnion.getContext('2d');
   const ctxDraw = cvDraw.getContext('2d');
+  const cvLive = $('#cvLive');
+  const ctxLive = cvLive.getContext('2d');
+  function clearLive() {
+    if (cvLive.hidden) return;
+    ctxLive.setTransform(1, 0, 0, 1, 0, 0);
+    ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
+    cvLive.hidden = true;
+  }
   const ring = $('#ring');
 
   // Rendered drawings per frame. Evicted canvases go back to a small pool for reuse.
@@ -1999,12 +2088,21 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function beginStroke(e) {
     const pt = toCanvas(e.clientX, e.clientY);
     const eraser = prefs.tool === 'eraser';
+    const brush = eraser ? 'pencil' : prefs.brush;
+    const size = prefs.sizes[eraser ? 'eraser' : 'pen'];
     gesture = {
-      kind: 'draw', id: e.pointerId, type: e.pointerType, eraser, color: prefs.color,
-      size: prefs.sizes[eraser ? 'eraser' : 'pen'], pts: [], sx: pt.x, sy: pt.y, rx: pt.x, ry: pt.y, pr: 1,
-      frame: E.frames[E.cur],
+      kind: 'draw', id: e.pointerId, type: e.pointerType, eraser, brush, color: prefs.color,
+      size, pts: [], sx: pt.x, sy: pt.y, rx: pt.x, ry: pt.y, pr: 1, frame: E.frames[E.cur],
+      ctx: brush === 'marker' ? ctxLive : ctxDraw,
+      mul: brush === 'ink' ? [] : null, dist: 0, T: inkTaper(size),
     };
-    strokeStyle(ctxDraw, eraser, prefs.color);
+    if (brush === 'marker') {
+      ctxLive.setTransform(1, 0, 0, 1, 0, 0);
+      ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
+      cvLive.style.opacity = MARKER_ALPHA;
+      cvLive.hidden = false;
+    }
+    strokeStyle(gesture.ctx, eraser, prefs.color);
     addPoint(gesture, pt.x, pt.y, pressureOf(e));
   }
   function addPoint(g, x, y, p) {
@@ -2017,8 +2115,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
     P.push(x, y, p);
     const k = P.length / 3 - 1;
-    if (k === 0) drawDot(ctxDraw, x, y, widthAt(g.size, p));
-    else drawSegment(ctxDraw, P, k, g.size);
+    if (g.mul) {
+      if (k > 0) g.dist += Math.hypot(P[3 * k] - P[3 * k - 3], P[3 * k + 1] - P[3 * k - 2]);
+      g.mul.push(0.15 + 0.85 * Math.min(1, g.dist / g.T));
+    }
+    if (k === 0) drawDot(g.ctx, x, y, widthAt(g.size, p) * (g.mul ? g.mul[0] : 1));
+    else drawSegment(g.ctx, P, k, g.size, g.mul);
   }
   function moveStroke(e) {
     const g = gesture;
@@ -2044,10 +2146,23 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         addPoint(g, g.sx, g.sy, g.pr);
       }
     }
-    drawStrokeEnd(ctxDraw, g.pts, g.size);
-    ctxDraw.globalCompositeOperation = 'source-over';
-    if (g.frame !== E.frames[E.cur]) return;
-    pushOp({ t: 's', c: g.color, w: g.size, e: g.eraser ? 1 : 0, p: new Float32Array(g.pts) });
+    drawStrokeEnd(g.ctx, g.pts, g.size, g.mul);
+    g.ctx.globalCompositeOperation = 'source-over';
+    if (g.frame !== E.frames[E.cur]) { clearLive(); return; }
+    const op = { t: 's', c: g.color, w: g.size, e: g.eraser ? 1 : 0, p: new Float32Array(g.pts) };
+    if (BRUSH_CODE[g.brush]) op.b = BRUSH_CODE[g.brush];
+    if (g.brush === 'marker') {
+      ctxDraw.globalAlpha = MARKER_ALPHA;
+      ctxDraw.drawImage(cvLive, 0, 0);
+      ctxDraw.globalAlpha = 1;
+      clearLive();
+      pushOp(op);
+    } else if (g.brush === 'ink') {
+      // The end taper is only known once the stroke ends, so redraw the frame from its ops.
+      const f = E.frames[E.cur];
+      setOps(f, f.ops.concat([op]));
+      paintDrawing(f);
+    } else pushOp(op);
   }
   // Drops whatever mark is in progress, e.g. when a second finger starts a pinch.
   function cancelActive() {
@@ -2309,6 +2424,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   function cancelStroke() {
     if (!gesture || gesture.kind !== 'draw') return;
     gesture = null;
+    clearLive();
     paintDrawing(E.frames[E.cur]);
   }
   function fillAt(cx, cy) {
@@ -2703,14 +2819,31 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const p = prefs.pressure && key === 'pen' ? Math.sin(Math.PI * t) * 0.85 + 0.15 : 1;
       P.push(40 + t * (c.width - 80), c.height / 2 + Math.sin(t * Math.PI * 2) * (c.height / 2 - size / 2 - 8) * 0.7, p);
     }
-    renderOps(ctx, [{ t: 's', c: key === 'eraser' ? '#8e949e' : prefs.color, w: size, e: 0, p: new Float32Array(P) }]);
+    const op = { t: 's', c: key === 'eraser' ? '#8e949e' : prefs.color, w: size, e: 0, p: new Float32Array(P) };
+    if (key !== 'eraser' && BRUSH_CODE[prefs.brush]) op.b = BRUSH_CODE[prefs.brush];
+    renderOps(ctx, [op]);
   }
+  function updatePenIcon() {
+    const btn = $('.tool[data-tool="pen"]');
+    btn.querySelector('use').setAttribute('href', prefs.brush === 'ink' ? '#i-ink' : prefs.brush === 'marker' ? '#i-marker' : '#i-pen');
+    btn.setAttribute('aria-label', BRUSH_NAMES[prefs.brush]);
+  }
+  onPick($('#brushChips'), (v) => {
+    prefs.brush = v;
+    Prefs.set('brush', v);
+    setPressed($('#brushChips'), v);
+    $('#brushTitle').textContent = BRUSH_NAMES[v];
+    updatePenIcon();
+    drawBrushPreview();
+  });
   $('#btnSize').addEventListener('click', () => openBrushSheet());
   onPick($('#shapeChips'), (v) => { prefs.shape = v; Prefs.set('shape', v); setPressed($('#shapeChips'), v); drawBrushPreview(); });
   function openBrushSheet() {
     const key = activeSizeKey();
     const shape = prefs.tool === 'shape';
-    $('#brushTitle').textContent = shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : 'Pencil';
+    $('#brushTitle').textContent = shape ? 'Shapes' : key === 'eraser' ? 'Eraser' : BRUSH_NAMES[prefs.brush];
+    $('#brushField').hidden = shape || key === 'eraser';
+    setPressed($('#brushChips'), prefs.brush);
     $('#shapeField').hidden = !shape;
     $('#smoothField').hidden = shape;
     $('#pressureRow').hidden = shape;
@@ -2881,7 +3014,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     E.clipboard = null;
     resetAudio();
     drawCache.max = clamp(Math.floor(96e6 / (p.w * p.h * 4)), 6, 32);
-    for (const c of [cvRef, cvOnion, cvDraw]) { c.width = p.w; c.height = p.h; }
+    for (const c of [cvRef, cvOnion, cvDraw, cvLive]) { c.width = p.w; c.height = p.h; }
     stage.style.width = p.w + 'px';
     stage.style.height = p.h + 'px';
     cvRef.hidden = true;
@@ -2914,7 +3047,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     freeCanvas(tintCanvas); tintCanvas = null;
     freeCanvas(thumbScratch); thumbScratch = null;
     freeScaleTemps();
-    for (const c of [cvRef, cvOnion, cvDraw]) { c.width = 1; c.height = 1; }
+    for (const c of [cvRef, cvOnion, cvDraw, cvLive]) { c.width = 1; c.height = 1; }
     $('#strip').textContent = '';
     E.project = null;
     E.frames = [];
@@ -4222,6 +4355,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // ---------- Boot ----------
   async function boot() {
     document.body.dataset.screen = 'home';
+    updatePenIcon();
     setTool(prefs.tool);
     setColor(prefs.color, false);
     updateSizeUI();

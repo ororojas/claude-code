@@ -23,7 +23,7 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 
 | Tool | What it does |
 | --- | --- |
-| Pencil | Draws. With a stylus, pressing harder makes thicker lines. |
+| Pencil | Draws. With a stylus, pressing harder makes thicker lines. In the brush menu (the size button) you can switch to **Ink**, whose strokes taper to a point at both ends, or **Marker**, which is see-through and builds up where strokes overlap. |
 | Eraser | Erases your drawing. It never touches the video underneath. |
 | Fill | Tap an empty area to fill it under your lines, or tap a filled area to recolor it. |
 | Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |
