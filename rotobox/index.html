@@ -353,6 +353,17 @@ input[type="color"] { width: 60px; height: 40px; border: 1px solid var(--rule); 
 .ph-strip figure.bad { background: repeating-linear-gradient(135deg, var(--tray-2) 0 6px, var(--rule) 6px 8px); }
 .ph-strip figure.bad::after { content: "Can’t read"; position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font: 500 10px/1.2 var(--font-mono); color: var(--ink); }
 .ph-count { margin: 0 0 16px; color: var(--muted); }
+.tips { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 14px; }
+.tips li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: start; }
+.tips .ti { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--tray-2); }
+.tips p { margin: 0; padding-top: 2px; color: var(--muted); font-size: 14.5px; line-height: 1.4; }
+.tips p b { color: var(--ink); font-weight: 600; }
+.keys { margin: 0 0 18px; padding-top: 6px; border-top: 1px solid var(--rule); }
+.keys summary { display: flex; align-items: center; min-height: 44px; font-weight: 600; cursor: pointer; }
+.keys dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px 14px; align-items: center; margin: 6px 0 4px; font-size: 14px; }
+.keys dt { white-space: nowrap; }
+.keys dd { margin: 0; color: var(--muted); }
+kbd { display: inline-block; min-width: 24px; padding: 2px 6px; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 6px; background: var(--tray); font: 500 12px/1.4 var(--font-mono); text-align: center; }
 .trim { position: relative; height: 44px; margin: 0 14px; touch-action: none; cursor: pointer; }
 .trim-track {
   position: absolute; left: -14px; right: -14px; top: 50%; height: 12px; translate: 0 -50%; border-radius: 6px;
@@ -734,8 +745,38 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <div><label for="swPenOnly">Stylus only</label><p class="hint">Fingers pan and zoom. Only a stylus draws.</p></div>
       <button type="button" class="switch" role="switch" id="swPenOnly" aria-checked="false"><span></span></button>
     </div>
-    <p class="hint" style="margin-top:8px">Pinch to zoom. Tap with two fingers to undo, three fingers to redo.</p>
+    <button type="button" class="btn-secondary" id="btnTips" style="margin-top:12px">Gestures and shortcuts</button>
   </div>
+</div>
+
+<div class="sheet" id="sheetTips" role="dialog" aria-modal="true" aria-labelledby="tipsTitle" hidden>
+  <h2 id="tipsTitle">A few things worth knowing</h2>
+  <ul class="tips">
+    <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-pen"/></svg></span><p><b>One finger draws.</b> Draw with a stylus and your fingers move the canvas instead, so your hand can rest on the screen.</p></li>
+    <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Pinch to zoom,</b> and twist two fingers to turn the paper.</p></li>
+    <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
+    <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-onion"/></svg></span><p><b>Onion skin</b> shows the drawing before this one in red and the one after in blue, so you can line things up.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-film"/></svg></span><p data-for="touch"><b>Press and hold a frame</b> in the strip, then drag it to move it.</p><p data-for="mouse-only"><b>Drag a frame</b> along the strip to move it.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-more"/></svg></span><p><b>Frame options</b> live behind ⋯. Hold a drawing for longer, duplicate it, copy and paste, add photos or auto-sketch.</p></li>
+  </ul>
+  <details class="keys" id="tipsKeys">
+    <summary>Keyboard shortcuts</summary>
+    <dl>
+      <dt><kbd>B</kbd> <kbd>E</kbd> <kbd>G</kbd></dt><dd>Pencil, eraser, fill</dd>
+      <dt><kbd>U</kbd> <kbd>L</kbd> <kbd>I</kbd></dt><dd>Shapes, lasso, color picker</dd>
+      <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Smaller or bigger brush</dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous or next frame</dd>
+      <dt><kbd>Space</kbd></dt><dd>Play or pause. Hold it and drag to pan.</dd>
+      <dt><kbd>N</kbd> <kbd>H</kbd></dt><dd>New frame, hold this one longer</dd>
+      <dt><kbd>O</kbd> <kbd>V</kbd></dt><dd>Onion skin, video or photos</dd>
+      <dt><kbd id="tipsMod">Ctrl</kbd> <kbd>Z</kbd></dt><dd>Undo. Add Shift to redo.</dd>
+      <dt><kbd>0</kbd> <kbd>+</kbd> <kbd>-</kbd></dt><dd>Fit to screen, zoom in, zoom out</dd>
+      <dt><kbd>R</kbd></dt><dd>Straighten the paper</dd>
+      <dt><kbd>?</kbd></dt><dd>These tips</dd>
+    </dl>
+  </details>
+  <button type="button" class="btn-primary" id="tipsDone">Got it</button>
 </div>
 
 <div class="sheet" id="sheetFps" role="dialog" aria-modal="true" aria-labelledby="fpsTitle" hidden>
@@ -3236,6 +3277,28 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   });
   bindSwitch($('#swPenOnly'), (on) => setPenOnly(on, false));
 
+  // ---------- Tips ----------
+  // Shown once, the first time the editor opens. After that it's in the light table sheet and on the ? key.
+  const hasTouch = navigator.maxTouchPoints > 0;
+  const finePointer = matchMedia('(any-pointer: fine)').matches;
+  function openTips() {
+    const show = { touch: hasTouch || !finePointer, mouse: finePointer, 'mouse-only': finePointer && !hasTouch };
+    for (const el of $$('#sheetTips [data-for]')) el.hidden = !show[el.dataset.for];
+    $('#tipsKeys').open = !hasTouch;
+    $('#tipsMod').textContent = /Mac|iPhone|iPad|iPod/.test(navigator.platform || '') ? '⌘' : 'Ctrl';
+    openSheet('sheetTips');
+  }
+  $('#tipsDone').addEventListener('click', () => closeSheet('sheetTips'));
+  $('#btnTips').addEventListener('click', () => { closeSheet('sheetTable'); openTips(); });
+  function firstTips() {
+    if (Prefs.get('tipsSeen', false)) return;
+    setTimeout(() => {
+      if (!E.project || closing || sheetStack.length || !$('#busy').hidden || Prefs.get('tipsSeen', false)) return;
+      Prefs.set('tipsSeen', true);
+      openTips();
+    }, 450);
+  }
+
   // ---------- Keyboard ----------
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
@@ -3277,6 +3340,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       case 'h': { const v = (holdOf(E.frames[E.cur]) % 4) + 1; setHold(v); toast('Hold ' + v + '×', 1200); break; }
       case 'enter': e.preventDefault(); togglePlay(); break;
       case '0': fitView(); break;
+      case '?': openTips(); break;
       case 'r': { const rc = vp.getBoundingClientRect(); vpRect = rc; rotateAt(rc.left + rc.width / 2, rc.top + rc.height / 2, 0); break; }
       case '=': case '+': zoomCenter(1.25); break;
       case '-': zoomCenter(0.8); break;
@@ -3343,6 +3407,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     showFrame(E.cur);
     if (isDark(p.paper) && isDark(prefs.color)) setColor('#ffffff');
     if (!isDark(p.paper) && prefs.color.toLowerCase() === '#ffffff' && !p.hasVideo) setColor('#1b1b1f');
+    firstTips();
   }
   let closing = false;
   async function closeProject() {
