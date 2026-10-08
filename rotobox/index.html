@@ -315,6 +315,7 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .chips button { min-height: 40px; min-width: 48px; padding: 0 14px; border-radius: 99px; border: 1px solid var(--rule); background: var(--tray); font-weight: 600; font-size: 14px; }
 .chips button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--tray); }
 .chips.mono button { font: 500 13px var(--font-mono); }
+.chips button.danger { color: var(--danger); }
 .seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 4px; margin-bottom: 8px; border-radius: 14px; background: var(--tray-2); }
 .seg button { min-height: 40px; border-radius: 10px; font-weight: 600; font-size: 14px; color: var(--muted); }
 .seg button[aria-checked="true"] { background: var(--tray); color: var(--ink); box-shadow: var(--lift); }
@@ -852,7 +853,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 <div class="sheet" id="sheetFrame" role="dialog" aria-modal="true" aria-labelledby="fmTitle" hidden>
   <h2 id="fmTitle">Frame 1</h2>
   <div class="field" style="margin-bottom:10px">
-    <span class="label" id="lblHold">Hold this drawing</span>
+    <div class="row tight"><span class="label" id="lblHold">Hold this drawing</span><button type="button" class="link-btn" id="fmHoldAll" style="font-size:13px;padding:0">Use on every frame</button></div>
     <div class="chips mono" id="fmHold" aria-labelledby="lblHold"><button type="button" data-v="1">1×</button><button type="button" data-v="2">2×</button><button type="button" data-v="3">3×</button><button type="button" data-v="4">4×</button></div>
     <p class="hint">Shows the drawing for longer without copying it. 2× at 24 fps is animating on twos.</p>
   </div>
@@ -872,6 +873,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" id="fmSketch"><svg class="i"><use href="#i-sketch"/></svg><span data-refl="Auto-sketch from the {one}">Auto-sketch from the video</span></button>
     <button type="button" id="fmClear"><svg class="i"><use href="#i-eraser"/></svg>Clear drawing</button>
     <button type="button" id="fmDelete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Delete frame</button>
+  </div>
+  <div class="field" style="margin:16px 0 0">
+    <span class="label" id="lblAll">The whole animation</span>
+    <div class="chips" id="fmAll" aria-labelledby="lblAll">
+      <button type="button" data-v="reverse">Reverse the order</button><button type="button" data-v="before" class="danger">Delete frames before</button><button type="button" data-v="after" class="danger">Delete frames after</button>
+    </div>
   </div>
 </div>
 
@@ -2105,6 +2112,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       E.frames[idx].dirty = true;
       buildStrip();
       showFrame(idx);
+    } else if (h.type === 'holds') {
+      for (const it of h.items) {
+        const f = E.frames.find((x) => x.id === it.fid);
+        if (f) { f.hold = isUndo ? it.before : it.after; f.dirty = true; }
+      }
+      buildStrip();
+      showFrame(E.cur);
     } else {
       E.frames = (isUndo ? h.before : h.after).slice();
       E.frames.forEach((f) => { if (!f.thumb) f.dirty = true; });
@@ -3643,6 +3657,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#fmEarlier').disabled = E.cur === 0;
     $('#fmLater').disabled = E.cur === E.frames.length - 1;
     $('#fmClear').disabled = !E.frames[E.cur].ops.length;
+    $('#fmAll [data-v="reverse"]').disabled = E.frames.length < 2;
+    $('#fmAll [data-v="before"]').disabled = E.cur === 0;
+    $('#fmAll [data-v="after"]').disabled = E.cur === E.frames.length - 1;
     $('#fmSketch').hidden = !E.project.hasVideo;
     openSheet('sheetFrame');
   });
@@ -3677,6 +3694,39 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     scheduleSave();
     showFrame(E.cur, false);
     if (items.length > 1) toast('Pasted on ' + items.length + ' frames. One undo takes it off them all.');
+  });
+  // Every frame takes this frame's hold, as one undo step.
+  $('#fmHoldAll').addEventListener('click', () => {
+    closeSheet('sheetFrame');
+    const v = holdOf(E.frames[E.cur]);
+    const items = [];
+    for (const f of E.frames) if (holdOf(f) !== v) { items.push({ fid: f.id, before: holdOf(f), after: v }); f.hold = v; f.dirty = true; }
+    if (!items.length) { toast('Every frame already holds ' + v + '×'); return; }
+    record({ type: 'holds', items });
+    buildStrip();
+    showFrame(E.cur, false);
+    scheduleSave();
+    toast('Every frame now holds ' + v + '×. One undo puts the old holds back.');
+  });
+  onPick($('#fmAll'), (v) => {
+    closeSheet('sheetFrame');
+    if (E.playing) stopPlay();
+    const frames = E.frames, cur = E.cur, n = frames.length;
+    if (v === 'reverse') {
+      if (n < 2) return;
+      changeFrames(frames.slice().reverse(), n - 1 - cur);
+      toast('Frames reversed. Undo puts them back.');
+      return;
+    }
+    // Trimming: everything before or after this frame goes, after a check.
+    const count = v === 'before' ? cur : n - 1 - cur;
+    if (!count) return;
+    const what = count === 1 ? 'frame' : count + ' frames';
+    confirmSheet({ title: 'Delete the ' + what + ' ' + v + ' this one?', body: 'This frame stays. One undo brings them all back.', ok: 'Delete', danger: true }).then((ok) => {
+      if (!ok || !E.project || E.frames !== frames) return;
+      changeFrames(v === 'before' ? frames.slice(cur) : frames.slice(0, cur + 1), v === 'before' ? 0 : cur);
+      toast('Deleted ' + (count === 1 ? '1 frame' : count + ' frames'));
+    });
   });
   $('#fmEarlier').addEventListener('click', frameAction(() => moveFrame(-1)));
   $('#fmLater').addEventListener('click', frameAction(() => moveFrame(1)));
