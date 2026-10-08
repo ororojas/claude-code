@@ -61,7 +61,7 @@ To move a frame, press and hold it in the filmstrip until it lifts, then drag it
 
 For traced clips, the frame options also have **Auto-sketch from the video**. It finds the edges in the video frame and draws them as real strokes in your current color and brush, for one frame or every frame. Pick how much detail and how heavy the lines are, check the preview, then keep, erase or trace over the result. One undo takes back a whole run.
 
-The sliders button opens the **light table** settings: video or photo opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode. Its **Gestures and shortcuts** button brings back the tips that show the first time you open the editor.
+The sliders button opens the **light table** settings: video or photo opacity and look, onion skin frames before and after, ghost strength, paper color, and stylus-only mode. **Look** shows the video in color, gray, or blue like non-photo-blue animation paper, which keeps its darkest parts mid-blue so your pencil lines stand out. It only changes what you see while drawing. Exports keep the real colors. Its **Gestures and shortcuts** button brings back the tips that show the first time you open the editor.
 
 ### Gestures and shortcuts
 

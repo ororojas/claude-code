@@ -768,6 +768,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <div class="row tight"><label class="label" for="rgRefOp" data-refl="{One} opacity">Video opacity</label><output class="mono small" id="outRefOp" for="rgRefOp">60%</output></div>
       <input type="range" id="rgRefOp" min="5" max="100" step="5">
     </div>
+    <div class="field">
+      <span class="label" id="lblRefLook" data-refl="{One} look">Video look</span>
+      <div class="chips" id="chRefLook" aria-labelledby="lblRefLook"><button type="button" data-v="color">Color</button><button type="button" data-v="gray">Gray</button><button type="button" data-v="blue">Blue</button></div>
+      <p class="hint" data-refl="Gray or blue can make your lines easier to see over a busy {one}. Exports keep its real colors.">Gray or blue can make your lines easier to see over a busy video. Exports keep its real colors.</p>
+    </div>
   </div>
   <div class="group">
     <div class="row"><label for="swOnion">Onion skin</label><button type="button" class="switch" role="switch" id="swOnion" aria-checked="true"><span></span></button></div>
@@ -1922,8 +1927,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   let toolBeforePicker = 'pen';
 
   function defaultSettings(hasVideo) {
-    return { showRef: true, refOpacity: 0.6, onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35, sound: true, loop: 'repeat' };
+    return { showRef: true, refOpacity: 0.6, refLook: 'color', onion: true, before: 1, after: hasVideo ? 0 : 1, ghost: 0.35, sound: true, loop: 'repeat' };
   }
+  // How the video or photos look on the light table. Blue is like non-photo-blue animation paper
+  // (its darkest parts stay mid-blue, so pencil lines always stand out). Only the screen and
+  // filmstrip change, never exports.
+  const REF_LOOKS = { gray: 'grayscale(1)', blue: 'grayscale(1) contrast(0.5) brightness(1.05) sepia(1) hue-rotate(185deg) saturate(2.6)' };
+  const refFilter = () => REF_LOOKS[E.settings.refLook] || 'none';
 
   const vp = $('#viewport');
   const stage = $('#stage');
@@ -2263,7 +2273,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.fillRect(0, 0, tw, th);
     if (f.refThumb && E.project.hasVideo && E.settings.showRef) {
       ctx.globalAlpha = E.settings.refOpacity;
+      if (refFilter() !== 'none' && 'filter' in ctx) ctx.filter = refFilter();
       ctx.drawImage(f.refThumb, 0, 0, tw, th);
+      ctx.filter = 'none';
       ctx.globalAlpha = 1;
     }
     if (f.ops.length) {
@@ -2517,7 +2529,14 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.fillStyle = p.paper;
     ctx.fillRect(0, 0, w, h);
     if (p.hasVideo && f.ref && E.settings.showRef) {
-      try { const bmp = await getRef(f); ctx.globalAlpha = E.settings.refOpacity; ctx.drawImage(bmp, 0, 0, w, h); ctx.globalAlpha = 1; } catch (e) { /* skip */ }
+      try {
+        const bmp = await getRef(f);
+        ctx.globalAlpha = E.settings.refOpacity;
+        if (refFilter() !== 'none' && 'filter' in ctx) ctx.filter = refFilter();
+        ctx.drawImage(bmp, 0, 0, w, h);
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1;
+      } catch (e) { /* skip */ }
     }
     if (E.project !== p) { freeCanvas(c); return p.thumb; }
     if (f.ops.length) drawScaled(ctx, getDrawing(f), w, h);
@@ -3728,7 +3747,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   const REC_MAX = 60;
   function recMime() {
     if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
-    return ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
+    // MP4 (AAC on Safari) first: it's the format phones play and export most reliably.
+    return ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((t) => MediaRecorder.isTypeSupported(t)) || '';
   }
   function setRecLabel(text) { $('#recLabel').textContent = text; }
   async function startRecording() {
@@ -4029,6 +4049,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#btnRef').hidden = !p.hasVideo;
     $('#btnRef').setAttribute('aria-pressed', String(s.showRef));
     cvRef.style.opacity = s.refOpacity;
+    cvRef.style.filter = refFilter() === 'none' ? '' : refFilter();
     stage.style.background = p.paper;
     $('#fmInsertLabel').textContent = p.hasVideo ? 'Insert a frame after this one' : 'Insert a blank frame after';
     applyRefLabels();
@@ -4362,6 +4383,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#swRef').setAttribute('aria-checked', String(s.showRef));
     $('#rgRefOp').value = Math.round(s.refOpacity * 100);
     $('#outRefOp').textContent = Math.round(s.refOpacity * 100) + '%';
+    setPressed($('#chRefLook'), s.refLook || 'color');
     $('#swOnion').setAttribute('aria-checked', String(s.onion));
     setPressed($('#chBefore'), s.before);
     setPressed($('#chAfter'), s.after);
@@ -4379,6 +4401,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     scheduleSave();
   });
   $('#rgRefOp').addEventListener('change', () => queueAllThumbs());
+  onPick($('#chRefLook'), (v) => {
+    E.settings.refLook = v;
+    setPressed($('#chRefLook'), v);
+    cvRef.style.filter = refFilter() === 'none' ? '' : refFilter();
+    queueAllThumbs();
+    scheduleSave();
+  });
   bindSwitch($('#swOnion'), (on) => { E.settings.onion = on; $('#btnOnion').setAttribute('aria-pressed', String(on)); renderOnion(); scheduleSave(); });
   onPick($('#chBefore'), (v) => { E.settings.before = +v; setPressed($('#chBefore'), v); renderOnion(); scheduleSave(); });
   onPick($('#chAfter'), (v) => { E.settings.after = +v; setPressed($('#chAfter'), v); renderOnion(); scheduleSave(); });
