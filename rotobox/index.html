@@ -125,7 +125,7 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .hero { width: 92px; height: 92px; flex: none; border-radius: 22px; background: #f6f0e1; box-shadow: var(--glow); }
 .wordmark { margin: 0; font: 800 clamp(40px, 10vw, 58px)/0.92 var(--font-display); letter-spacing: -0.035em; }
 .tagline { margin: 8px 0 0; color: var(--muted); max-width: 44ch; text-wrap: pretty; }
-.starts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 12px; }
+.starts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 12px; }
 .start {
   display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 14px; row-gap: 2px;
   padding: 18px; border-radius: 18px; text-align: left;
@@ -398,6 +398,29 @@ kbd { display: inline-block; min-width: 24px; padding: 2px 6px; border: 1px soli
 .trim-h { position: absolute; top: 0; width: 30px; height: 44px; margin-left: -15px; display: grid; place-items: center; touch-action: none; border-radius: 8px; }
 .trim-h::before { content: ""; width: 12px; height: 34px; border-radius: 6px; background: var(--lamp-fill); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
 
+.cam {
+  position: fixed; inset: 0; z-index: 45; display: grid; grid-template-rows: auto 1fr auto;
+  background: #0d0e10; color: #f4f4f2;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+.cam-top { display: flex; align-items: center; gap: 8px; padding: 10px 12px; }
+.cam-title { flex: 1; margin: 0; text-align: center; font: 700 17px var(--font-display); }
+.cam-title .mono { margin-left: 6px; font: 500 12px var(--font-mono); opacity: 0.7; }
+.cam-btn { width: 44px; height: 44px; flex: none; border-radius: 50%; display: grid; place-items: center; color: inherit; background: rgba(255, 255, 255, 0.12); }
+.cam-btn:disabled, .cam-done:disabled, .cam-shutter:disabled { opacity: 0.35; }
+.cam-done { height: 40px; padding: 0 18px; border-radius: 99px; background: var(--lamp-fill); color: var(--on-lamp); font: 700 15px var(--font-ui); }
+.cam-stage { min-height: 0; display: grid; place-items: center; overflow: hidden; }
+.cam-view { position: relative; overflow: hidden; border-radius: 10px; background: #000; }
+.cam-view video, .cam-view canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cam-view canvas { pointer-events: none; }
+.cam-flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-out; }
+.cam-flash.on { opacity: 0.8; transition: none; }
+.cam-bottom { display: grid; justify-items: center; gap: 10px; padding: 10px 16px 16px; }
+.cam-ghost { display: flex; align-items: center; gap: 12px; width: min(100%, 360px); font-size: 13px; }
+.cam-ghost input { flex: 1; }
+.cam-bar { display: flex; align-items: center; justify-content: center; gap: 40px; }
+.cam-shutter { width: 72px; height: 72px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px #0d0e10, 0 0 0 7px #fff; transition: transform 0.08s; }
+.cam-shutter:active { transform: scale(0.93); }
 .busy { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: var(--scrim); }
 .busy-card { width: min(380px, 100%); display: grid; gap: 12px; padding: 20px; border-radius: 22px; background: var(--tray); box-shadow: var(--lift); }
 .busy-card h2 { margin: 0; font: 700 20px/1.2 var(--font-display); }
@@ -464,6 +487,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-marker" viewBox="0 0 24 24"><path d="M15 4l5 5-9 9H6v-5z"/><path d="M6 18l-2 2"/><path d="M12.5 6.5l5 5"/></symbol>
     <symbol id="i-sketch" viewBox="0 0 24 24"><path d="M4 18c3-6 5-11 8-11 2.6 0 1.4 6 4 6 1.6 0 2.6-2 4-4"/><path d="M4 21h16"/><path d="M17.5 3.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V4.5h14V7M12 4.5v15M9 19.5h6"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.6-2.4h6.8L17 8h3v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-switch" viewBox="0 0 24 24"><path d="M4 9h13l-3-3M20 15H7l3 3"/></symbol>
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 9"/></symbol>
   </defs>
 </svg>
@@ -494,6 +520,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         <span class="ico"><svg class="i"><use href="#i-image"/></svg></span>
         <b>Animate photos</b>
         <span>Each photo you pick becomes a frame. Made for stop motion.</span>
+      </button>
+      <button type="button" class="start" id="btnCamera">
+        <span class="ico"><svg class="i"><use href="#i-camera"/></svg></span>
+        <b>Shoot stop motion</b>
+        <span>Take photos one at a time, with the last one ghosted on screen.</span>
       </button>
     </div>
 
@@ -603,6 +634,29 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 </div>
 
 <!-- ============ Sheets ============ -->
+<div class="cam" id="cam" role="dialog" aria-modal="true" aria-labelledby="camTitle" hidden>
+  <div class="cam-top">
+    <button type="button" class="cam-btn" id="camClose" aria-label="Close the camera"><svg class="i"><use href="#i-close"/></svg></button>
+    <h2 class="cam-title" id="camTitle">Stop motion<span class="mono" id="camCount">0 photos</span></h2>
+    <button type="button" class="cam-done" id="camDone" disabled>Done</button>
+  </div>
+  <div class="cam-stage" id="camStage">
+    <div class="cam-view" id="camView">
+      <video id="camVideo" playsinline muted autoplay></video>
+      <canvas id="camGhost" hidden></canvas>
+      <div class="cam-flash" id="camFlash"></div>
+    </div>
+  </div>
+  <div class="cam-bottom">
+    <div class="cam-ghost"><label for="rgCamGhost">Ghost of the last photo</label><input type="range" id="rgCamGhost" min="0" max="80" step="5"></div>
+    <div class="cam-bar">
+      <button type="button" class="cam-btn" id="camUndo" aria-label="Remove the last photo" disabled><svg class="i"><use href="#i-undo"/></svg></button>
+      <button type="button" class="cam-shutter" id="camShoot" aria-label="Take a photo"></button>
+      <button type="button" class="cam-btn" id="camFlip" aria-label="Switch camera"><svg class="i"><use href="#i-switch"/></svg></button>
+    </div>
+  </div>
+</div>
+
 <div class="scrim" id="scrim" hidden></div>
 
 <div class="sheet" id="sheetImport" role="dialog" aria-modal="true" aria-labelledby="impTitle" data-sticky="1" hidden>
@@ -907,6 +961,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <button type="button" id="fmEarlier"><svg class="i"><use href="#i-left"/></svg>Move earlier</button>
     <button type="button" id="fmLater"><svg class="i"><use href="#i-right"/></svg>Move later</button>
     <button type="button" id="fmPhotos"><svg class="i"><use href="#i-image"/></svg>Add photos after this frame</button>
+    <button type="button" id="fmCamera"><svg class="i"><use href="#i-camera"/></svg>Take photos after this frame</button>
     <button type="button" id="fmSketch"><svg class="i"><use href="#i-sketch"/></svg><span data-refl="Auto-sketch from the {one}">Auto-sketch from the video</span></button>
     <button type="button" id="fmClear"><svg class="i"><use href="#i-eraser"/></svg>Clear drawing</button>
     <button type="button" id="fmDelete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Delete frame</button>
@@ -4450,6 +4505,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   // ---------- Keyboard ----------
   document.addEventListener('keydown', (e) => {
+    if (!$('#cam').hidden && !sheetStack.length) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) shoot(); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeCamera(); }
+      return;
+    }
     if (rc.stream) {
       if (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stopRecording(); }
       return;
@@ -5664,6 +5724,229 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
   }
 
+  // ---------- Stop-motion camera ----------
+  // Photos taken one at a time, with the last one ghosted over the live picture so the next shot
+  // lines up. Done turns them into frames, the same way picked photos become a stop-motion animation.
+  const cam = { stream: null, facing: 'environment', adding: false, w: 0, h: 0, shots: [], thumbs: [], cover: null, wake: null, busy: false, opening: false };
+  $('#btnCamera').addEventListener('click', () => openCamera(false));
+  $('#fmCamera').addEventListener('click', () => { closeSheet('sheetFrame'); openCamera(true); });
+  async function openCamera(adding) {
+    if (cam.stream || cam.opening) return;
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+      showError('No camera here', 'This browser can’t use a camera. You can still pick photos you took with another app.');
+      return;
+    }
+    cam.adding = adding && !!E.project;
+    if (cam.adding) { if (E.playing) stopPlay(); settle(); }
+    cam.shots = [];
+    cam.thumbs = [];
+    cam.cover = null;
+    cam.w = cam.h = 0;
+    cam.opening = true;
+    const ok = await startCamStream();
+    cam.opening = false;
+    if (!ok) return;
+    $('#cam').hidden = false;
+    layoutCam();
+    $('#rgCamGhost').value = Math.round(Prefs.get('camGhost', 0.4) * 100);
+    $('#camGhost').style.opacity = +$('#rgCamGhost').value / 100;
+    updateCamUI();
+    const wake = await holdWake();
+    if ($('#cam').hidden) releaseWake(wake); else cam.wake = wake;
+  }
+  async function startCamStream() {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: cam.facing }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    } catch (e) {
+      const blocked = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError');
+      if (blocked) showError('Rotobox can’t use your camera', 'Allow the camera for this page in your browser’s settings, then try again. Some app viewers don’t allow it at all, so you may need to open Rotobox on its own.');
+      else showError('No camera found', 'Connect or turn on a camera, then try again. You can also pick photos you took with another app.');
+      return false;
+    }
+    const v = $('#camVideo');
+    v.srcObject = stream;
+    v.play().catch(() => {});
+    if (!v.videoWidth) await new Promise((r) => { const t = setTimeout(r, 4000); v.onloadedmetadata = () => { clearTimeout(t); r(); }; });
+    v.onloadedmetadata = null;
+    if (!v.videoWidth) {
+      stream.getTracks().forEach((t) => t.stop());
+      v.srcObject = null;
+      showError('The camera didn’t start', 'Close other apps that might be using it, then try again.');
+      return false;
+    }
+    cam.stream = stream;
+    // The frame's shape: the animation's when adding to one, otherwise the camera's, at most 1280 px long.
+    if (cam.adding) { cam.w = E.W; cam.h = E.H; }
+    else if (!cam.shots.length) {
+      const sc = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+      cam.w = even(v.videoWidth * sc);
+      cam.h = even(v.videoHeight * sc);
+    }
+    return true;
+  }
+  function stopCamStream() {
+    if (cam.stream) cam.stream.getTracks().forEach((t) => t.stop());
+    cam.stream = null;
+    $('#camVideo').srcObject = null;
+  }
+  // The preview box has the frame's shape, so what you see is exactly what's kept.
+  function layoutCam() {
+    const st = $('#camStage').getBoundingClientRect(), view = $('#camView');
+    if (!cam.w || !st.width) return;
+    const ar = cam.w / cam.h;
+    let w = st.width - 24, h = w / ar;
+    if (h > st.height - 8) { h = st.height - 8; w = h * ar; }
+    view.style.width = Math.max(1, Math.floor(w)) + 'px';
+    view.style.height = Math.max(1, Math.floor(h)) + 'px';
+  }
+  addEventListener('resize', () => { if (!$('#cam').hidden) layoutCam(); });
+  function camRoom() { return cam.adding && E.project ? MAX_FRAMES - E.frames.length : MAX_FRAMES; }
+  function updateCamUI() {
+    const n = cam.shots.length;
+    $('#camCount').textContent = n + (n === 1 ? ' photo' : ' photos');
+    $('#camDone').disabled = !n;
+    $('#camUndo').disabled = !n;
+    $('#camShoot').disabled = n >= camRoom();
+    $('#camGhost').hidden = !n;
+  }
+  $('#rgCamGhost').addEventListener('input', (e) => { const v = +e.target.value / 100; $('#camGhost').style.opacity = v; Prefs.set('camGhost', v); });
+  async function shoot() {
+    const v = $('#camVideo');
+    if (!cam.stream || cam.busy || !v.videoWidth || cam.shots.length >= camRoom()) return;
+    cam.busy = true;
+    const c = makeCanvas(cam.w, cam.h);
+    try {
+      const s = Math.max(cam.w / v.videoWidth, cam.h / v.videoHeight);
+      const dw = v.videoWidth * s, dh = v.videoHeight * s;
+      c.getContext('2d').drawImage(v, (cam.w - dw) / 2, (cam.h - dh) / 2, dw, dh);
+      const fl = $('#camFlash');
+      fl.classList.add('on');
+      requestAnimationFrame(() => requestAnimationFrame(() => fl.classList.remove('on')));
+      const blob = await toBlob(c, 'image/jpeg', 0.86);
+      const td = thumbDims(cam.w, cam.h);
+      const t = makeCanvas(td.pw, td.ph);
+      t.getContext('2d').drawImage(c, 0, 0, td.pw, td.ph);
+      if (!cam.adding && !cam.shots.length) cam.cover = await makeCover(c, 1, '#ffffff');
+      if (!cam.stream) { freeCanvas(t); return; } // closed meanwhile
+      cam.shots.push(blob);
+      cam.thumbs.push(t);
+      const g = $('#camGhost');
+      g.width = cam.w;
+      g.height = cam.h;
+      g.getContext('2d').drawImage(c, 0, 0);
+      updateCamUI();
+    } catch (e) {
+      console.warn('Couldn’t take that photo', e);
+    } finally {
+      freeCanvas(c);
+      cam.busy = false;
+    }
+  }
+  async function undoShot() {
+    if (!cam.shots.length || cam.busy) return;
+    cam.busy = true;
+    try {
+      cam.shots.pop();
+      freeCanvas(cam.thumbs.pop());
+      if (!cam.shots.length) cam.cover = null;
+      else {
+        const g = $('#camGhost');
+        const bmp = await decodeImage(cam.shots[cam.shots.length - 1]).catch(() => null);
+        if (bmp) { g.getContext('2d').drawImage(bmp, 0, 0, g.width, g.height); if (bmp.close) bmp.close(); }
+      }
+      updateCamUI();
+    } finally {
+      cam.busy = false;
+    }
+  }
+  async function flipCamera() {
+    if (!cam.stream || cam.busy) return;
+    cam.busy = true;
+    const before = cam.facing;
+    cam.facing = before === 'environment' ? 'user' : 'environment';
+    stopCamStream();
+    let ok = await startCamStream();
+    if (!ok) { cam.facing = before; ok = await startCamStream(); }
+    cam.busy = false;
+    if (ok) layoutCam(); else endCamera();
+  }
+  async function closeCamera() {
+    const n = cam.shots.length;
+    if (n) {
+      const ok = await confirmSheet({ title: n === 1 ? 'Throw away this photo?' : 'Throw away these ' + n + ' photos?', body: 'They haven’t been added to an animation yet.', ok: 'Throw away', danger: true });
+      if (!ok) return;
+    }
+    endCamera();
+  }
+  function endCamera() {
+    stopCamStream();
+    releaseWake(cam.wake);
+    cam.wake = null;
+    cam.thumbs.forEach(freeCanvas);
+    cam.shots = [];
+    cam.thumbs = [];
+    cam.cover = null;
+    const g = $('#camGhost');
+    g.width = g.height = 1;
+    $('#cam').hidden = true;
+  }
+  async function camDone() {
+    if (!cam.shots.length || cam.busy) return;
+    const shots = cam.shots, thumbs = cam.thumbs, cover = cam.cover, w = cam.w, h = cam.h;
+    const adding = cam.adding && !!E.project;
+    cam.thumbs = [];
+    endCamera();
+    const ctl = busyOpen(adding ? 'Adding your photos' : 'Making your animation', { cancel: false });
+    try {
+      if (adding) {
+        const nfs = shots.map((ref) => newFrame(ref));
+        const bmps = await toRefThumbs(nfs, thumbs);
+        nfs.forEach((f) => { f.refThumb = bmps.get(f.id); });
+        ctl.close();
+        if (!E.project.hasVideo) {
+          E.project.hasVideo = true;
+          if (!E.project.source) E.project.source = 'photos';
+          updateEditorUI();
+        }
+        const list = E.frames.slice();
+        list.splice(E.cur + 1, 0, ...nfs);
+        changeFrames(list, E.cur + 1);
+        toast('Added ' + nfs.length + (nfs.length === 1 ? ' frame.' : ' frames.'));
+        return;
+      }
+      const pid = uid();
+      const frames = shots.map((ref) => ({ id: uid(), project: pid, ref, ops: [] }));
+      const now = Date.now();
+      const p = {
+        id: pid, name: 'Stop motion', w, h, fps: Prefs.get('phFps', 8), paper: '#ffffff', hasVideo: true, source: 'photos',
+        frames: frames.map((f) => f.id), created: now, updated: now, thumb: cover, cur: 0, hasAudio: false,
+        settings: Object.assign(defaultSettings(true), { refOpacity: 1, expRef: true }),
+      };
+      await Store.save(p, frames);
+      const refThumbs = await toRefThumbs(frames, thumbs);
+      ctl.close();
+      await openProject(pid, { refThumbs });
+      toast('Press play to watch it.');
+    } catch (e) {
+      ctl.close();
+      thumbs.forEach(freeCanvas);
+      console.error(e);
+      showError('Couldn’t make frames from these photos', 'There may not be enough space on this device.');
+    }
+  }
+  $('#camShoot').addEventListener('click', shoot);
+  $('#camUndo').addEventListener('click', undoShot);
+  $('#camFlip').addEventListener('click', flipCamera);
+  $('#camClose').addEventListener('click', closeCamera);
+  $('#camDone').addEventListener('click', camDone);
+  // Phones stop the camera in the background. Coming back starts it again.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible' || $('#cam').hidden || cam.busy) return;
+    const live = cam.stream && cam.stream.getVideoTracks().some((t) => t.readyState === 'live');
+    if (!live) { stopCamStream(); startCamStream().then((ok) => { if (!ok) endCamera(); }); }
+  });
+
   // ---------- Auto-sketch ----------
   // Canny-style edges (blur, Sobel, thin, hysteresis), traced into chains and simplified into strokes.
   const SKETCH = {
@@ -6688,7 +6971,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   reduceMotion.addEventListener && reduceMotion.addEventListener('change', () => { if (!E.project) startHero(); });
 
-  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32, renderOps, renderDrawing, floodRuns, recordingLive: () => !!rc.stream };
+  window.Rotobox = { E, prefs, flags, Store, openProject, closeProject, saveNow, view, audio: A, selection: () => sel, buildBackup, readZip, exportGif, exportVideo, exportZip, makeZip, crc32, renderOps, renderDrawing, floodRuns, recordingLive: () => !!rc.stream, cameraLive: () => !!cam.stream };
   boot();
 })();
 </script>

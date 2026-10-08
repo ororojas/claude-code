@@ -1,10 +1,11 @@
 # Rotobox
 
-Rotobox is a small animation app that runs in a web browser. You can use it three ways:
+Rotobox is a small animation app that runs in a web browser. You can use it four ways:
 
 - **Trace a video.** Pick a clip from your camera roll, trim it, and Rotobox splits it into frames. Each frame of the video sits under your drawing like paper on a light table, so you can trace the motion frame by frame. This technique is called rotoscoping.
 - **Blank animation.** Start on empty paper and draw a flipbook animation one frame at a time.
 - **Animate photos.** Pick a set of photos and each one becomes a frame. Play them as stop motion, draw effects on top, or trace over them.
+- **Shoot stop motion.** Take the photos right in the app. The last photo shows as a faint ghost over the camera picture, so you can line up the next shot.
 
 When you're done, export it as an MP4 video, an animated GIF, a ZIP of PNG frames, or a single PNG.
 
@@ -28,6 +29,8 @@ The whole app is one file, `index.html`. It has no build step and no server, and
 - **Framing.** The first photo sets the frame's shape. **Fill** crops other photos to fill it, and **Fit** shows each one whole.
 
 Shot a few more? **Add photos after this frame** in the frame options drops new photos into any animation, including a blank one. One undo takes them back out. Photos keep the way your camera held them, so portrait shots stay upright.
+
+**Shoot stop motion** on the home screen opens the camera instead. Move your model a little, tap the round button, and repeat. The photo you just took stays on screen as a ghost (the slider sets how strong), so you can see how far things moved. The arrow button takes back the last photo, the switch button flips between the front and back cameras, and on a computer the space bar takes a photo too. **Done** turns the photos into a stop-motion animation with the camera's shape. **Take photos after this frame** in the frame options does the same inside an animation you already have, cropping each shot to its shape. The camera needs permission, which some app viewers don't allow, so if it's blocked, open Rotobox on its own.
 
 ### Sound
 
