@@ -237,7 +237,8 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
   scrollbar-width: none; -webkit-overflow-scrolling: touch;
 }
 .strip::-webkit-scrollbar { display: none; }
-.cell { flex: none; display: grid; justify-items: center; gap: 4px; border-radius: 6px; }
+.cell { position: relative; flex: none; display: grid; justify-items: center; gap: 4px; border-radius: 6px; }
+.cell .hold { position: absolute; top: 3px; right: 3px; padding: 1px 4px; border-radius: 4px; background: var(--ink); color: var(--tray); font: 500 9px/1.2 var(--font-mono); }
 .cell .thumb { display: block; border-radius: 4px; box-shadow: 0 0 0 1px var(--rule); background: #fff; }
 .cell .num { font: 500 10px/1 var(--font-mono); color: var(--muted); }
 .cell.cur .thumb { box-shadow: 0 0 0 2px var(--lamp-fill); }
@@ -675,6 +676,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
 <div class="sheet" id="sheetFrame" role="dialog" aria-modal="true" aria-labelledby="fmTitle" hidden>
   <h2 id="fmTitle">Frame 1</h2>
+  <div class="field" style="margin-bottom:10px">
+    <span class="label" id="lblHold">Hold this drawing</span>
+    <div class="chips mono" id="fmHold" aria-labelledby="lblHold"><button type="button" data-v="1">1×</button><button type="button" data-v="2">2×</button><button type="button" data-v="3">3×</button><button type="button" data-v="4">4×</button></div>
+    <p class="hint">Shows the drawing for longer without copying it. 2× at 24 fps is animating on twos.</p>
+  </div>
   <div class="menu">
     <button type="button" id="fmInsert"><svg class="i"><use href="#i-plus"/></svg><span id="fmInsertLabel">Insert a blank frame after</span></button>
     <button type="button" id="fmDup"><svg class="i"><use href="#i-dup"/></svg>Duplicate frame</button>
@@ -1534,11 +1540,17 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       b.type = 'button';
       b.className = 'cell';
       b.dataset.i = i;
-      b.setAttribute('aria-label', 'Frame ' + (i + 1));
+      b.setAttribute('aria-label', 'Frame ' + (i + 1) + (holdOf(f) > 1 ? ', held ' + holdOf(f) + ' beats' : ''));
       const n = document.createElement('span');
       n.className = 'num';
       n.textContent = pad3(i + 1);
       b.append(f.thumb, n);
+      if (holdOf(f) > 1) {
+        const h = document.createElement('span');
+        h.className = 'hold';
+        h.textContent = '×' + holdOf(f);
+        b.append(h);
+      }
       frag.append(b);
     });
     strip.append(frag);
@@ -1668,6 +1680,13 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       f.dirty = true;
       queueThumb(f);
       showFrame(idx);
+    } else if (h.type === 'hold') {
+      const idx = E.frames.findIndex((f) => f.id === h.fid);
+      if (idx < 0) return;
+      E.frames[idx].hold = isUndo ? h.before : h.after;
+      E.frames[idx].dirty = true;
+      buildStrip();
+      showFrame(idx);
     } else {
       E.frames = (isUndo ? h.before : h.after).slice();
       E.frames.forEach((f) => { if (!f.thumb) f.dirty = true; });
@@ -1701,7 +1720,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 
   // ---------- Frame operations ----------
   function newFrame(ref, ops = []) {
-    return { id: uid(), ref: ref || null, ops, ver: 0, dirty: true, thumb: null, refThumb: null, thumbVer: -1 };
+    return { id: uid(), ref: ref || null, ops, hold: 1, ver: 0, dirty: true, thumb: null, refThumb: null, thumbVer: -1 };
+  }
+  // A hold shows one drawing for several beats of the frame rate.
+  const holdOf = (f) => f.hold || 1;
+  const totalBeats = () => E.frames.reduce((b, f) => b + holdOf(f), 0);
+  function setHold(v) {
+    const f = E.frames[E.cur];
+    const before = holdOf(f);
+    if (before === v) return;
+    f.hold = v;
+    f.dirty = true;
+    record({ type: 'hold', fid: f.id, before, after: v });
+    buildStrip();
+    scheduleSave();
   }
   function insertFrame() {
     if (E.playing) stopPlay();
@@ -1717,6 +1749,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const f = E.frames[E.cur];
     const nf = newFrame(f.ref, f.ops.slice());
     nf.refThumb = f.refThumb;
+    nf.hold = holdOf(f);
     const list = E.frames.slice();
     list.splice(E.cur + 1, 0, nf);
     changeFrames(list, E.cur + 1);
@@ -1768,7 +1801,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     p.updated = Date.now();
     p.settings = Object.assign({}, E.settings);
     p.cur = E.cur;
-    const recs = dirty.map((f) => ({ id: f.id, project: p.id, ref: f.ref, ops: f.ops }));
+    const recs = dirty.map((f) => ({ id: f.id, project: p.id, ref: f.ref, ops: f.ops, hold: holdOf(f) }));
     const thumbFrame = E.frames[E.cur];
     const job = async () => {
       try {
@@ -2510,22 +2543,28 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     setPlayIcon(true);
     cvOnion.hidden = true;
     const token = ++E.playToken;
-    const startIdx = E.cur;
+    const n = E.frames.length;
+    const starts = new Float64Array(n);
+    let beats = 0;
+    for (let k = 0; k < n; k++) { starts[k] = beats; beats += holdOf(E.frames[k]); }
+    const startBeat = starts[E.cur];
     const t0 = performance.now();
     let shown = -1;
     E.soundLoop = -1;
     if (E.project.hasAudio && E.settings.sound) { ensureAudioContext(); loadProjectAudio(); }
     const loop = (now) => {
       if (token !== E.playToken) return;
-      const fps = E.project.fps, n = E.frames.length;
-      const pos = startIdx + ((now - t0) * fps) / 1000;
-      const i = Math.floor(pos) % n;
-      if (i !== shown) { shown = i; paintPlayFrame(i); }
+      const fps = E.project.fps;
+      const pos = startBeat + ((now - t0) * fps) / 1000;
+      const lap = Math.floor(pos / beats);
+      const inLap = pos - lap * beats;
+      let lo = 0, hi = n - 1;
+      while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= inLap) lo = mid; else hi = mid - 1; }
+      if (lo !== shown && lo < E.frames.length) { shown = lo; paintPlayFrame(lo); }
       // The sound restarts with every loop of the animation.
-      const lap = Math.floor(pos / n);
       if (lap !== E.soundLoop && A.buffer && E.settings.sound) {
         E.soundLoop = lap;
-        startSound((pos - lap * n) / fps);
+        startSound(inLap / fps);
       }
       E.rafId = requestAnimationFrame(loop);
     };
@@ -2705,6 +2744,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   $('#btnFrameMenu').addEventListener('click', () => {
     if (E.playing) stopPlay();
     $('#fmTitle').textContent = 'Frame ' + (E.cur + 1) + ' of ' + E.frames.length;
+    setPressed($('#fmHold'), holdOf(E.frames[E.cur]));
     $('#fmPaste').disabled = !E.clipboard;
     $('#fmEarlier').disabled = E.cur === 0;
     $('#fmLater').disabled = E.cur === E.frames.length - 1;
@@ -2712,6 +2752,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     openSheet('sheetFrame');
   });
   const frameAction = (fn) => () => { closeSheet('sheetFrame'); fn(); };
+  onPick($('#fmHold'), (v) => { setHold(+v); setPressed($('#fmHold'), v); });
   $('#fmInsert').addEventListener('click', frameAction(insertFrame));
   $('#fmDup').addEventListener('click', frameAction(duplicateFrame));
   $('#fmCopy').addEventListener('click', frameAction(() => {
@@ -2964,6 +3005,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       case 'o': $('#btnOnion').click(); break;
       case 'v': if (E.project.hasVideo) setShowRef(!E.settings.showRef, true); break;
       case 'n': insertFrame(); break;
+      case 'h': { const v = (holdOf(E.frames[E.cur]) % 4) + 1; setHold(v); toast('Hold ' + v + '×', 1200); break; }
       case 'enter': e.preventDefault(); togglePlay(); break;
       case '0': fitView(); break;
       case 'r': { const rc = vp.getBoundingClientRect(); vpRect = rc; rotateAt(rc.left + rc.width / 2, rc.top + rc.height / 2, 0); break; }
@@ -2996,7 +3038,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (!r) continue;
       byId.delete(fid);
       frames.push({
-        id: r.id, ref: r.ref || null, ops: Array.isArray(r.ops) ? r.ops : [], ver: 0, dirty: false,
+        id: r.id, ref: r.ref || null, ops: Array.isArray(r.ops) ? r.ops : [], hold: r.hold || 1, ver: 0, dirty: false,
         thumb: null, refThumb: (extras.refThumbs && extras.refThumbs.get(r.id)) || null, thumbVer: -1,
       });
     }
@@ -3135,7 +3177,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const recs = await Store.frames(p.id);
     const byId = new Map(recs.map((r) => [r.id, r]));
     const nid = uid();
-    const frames = (p.frames || []).map((fid) => byId.get(fid)).filter(Boolean).map((r) => ({ id: uid(), project: nid, ref: r.ref || null, ops: r.ops || [] }));
+    const frames = (p.frames || []).map((fid) => byId.get(fid)).filter(Boolean).map((r) => ({ id: uid(), project: nid, ref: r.ref || null, ops: r.ops || [], hold: r.hold || 1 }));
     const copy = Object.assign({}, p, { id: nid, name: (p.name + ' copy').slice(0, 80), frames: frames.map((f) => f.id), created: Date.now(), updated: Date.now(), example: false });
     if (p.hasAudio) {
       const rec = await Store.kvGet(audioKey(p.id)).catch(() => null);
@@ -3705,7 +3747,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#expLoopsField').hidden = fmt !== 'mp4';
     $('#expSoundRow').hidden = !(fmt === 'mp4' && E.project.hasAudio);
     $('#swExpSound').setAttribute('aria-checked', String(X.sound));
-    if (!X.loops) { const dur = E.frames.length / E.project.fps; X.loops = dur < 1.5 ? 3 : dur < 3 ? 2 : 1; }
+    if (!X.loops) { const dur = totalBeats() / E.project.fps; X.loops = dur < 1.5 ? 3 : dur < 3 ? 2 : 1; }
     setPressed($('#expLoops'), X.loops);
     $('#btnMake').textContent = { mp4: 'Create video', gif: 'Create GIF', zip: 'Create ZIP', png: 'Create PNG' }[fmt];
     $('#btnMake').disabled = fmt === 'mp4' && !canEncodeVideo();
@@ -3786,7 +3828,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         const r = await exportVideo(o, ctl);
         blob = r.blob;
         name = base + '.' + r.ext;
-        meta = (E.frames.length * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
+        meta = (totalBeats() * o.loops / E.project.fps).toFixed(1) + ' s' + (r.sound ? ' with sound' : '') + ' · ' + fmtBytes(blob.size);
       } else if (fmt === 'gif') {
         blob = await exportGif(o, ctl);
         name = base + '.gif';
@@ -3794,7 +3836,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       } else if (fmt === 'zip') {
         blob = await exportZip(o, ctl);
         name = base + '-frames.zip';
-        meta = E.frames.length + ' PNGs · ' + fmtBytes(blob.size);
+        meta = totalBeats() + ' PNGs · ' + fmtBytes(blob.size);
       } else {
         const c = makeCanvas(o.w, o.h);
         await compositeFrame(E.frames[E.cur], c.getContext('2d'), o.w, o.h, o);
@@ -3839,7 +3881,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       z.className = 'zip';
       z.innerHTML = '<svg class="i" style="width:40px;height:40px"><use href="#i-onion"/></svg>';
       const s = document.createElement('span');
-      s.textContent = E.frames.length + ' images inside';
+      s.textContent = totalBeats() + ' images inside';
       z.append(s);
       pv.append(z);
     }
@@ -3921,14 +3963,17 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const source = new MB.CanvasSource(c, { codec, quality: MB.QUALITY_HIGH, keyFrameInterval: 2 });
     output.addVideoTrack(source, { frameRate: outFps });
     const n = E.frames.length, total = n * o.loops;
-    const sound = o.sound ? await prepareExportSound(MB, output, n / fps, o.loops).catch((e) => { console.warn('Exporting without sound', e); return null; }) : null;
+    const sound = o.sound ? await prepareExportSound(MB, output, totalBeats() / fps, o.loops).catch((e) => { console.warn('Exporting without sound', e); return null; }) : null;
     await output.start();
+    let beat = 0;
     try {
       for (let k = 0; k < total; k++) {
         if (ctl.signal.aborted) throw abortError();
-        if (sound) await sound.feedUntil(k / fps + 0.5);
-        await compositeFrame(E.frames[k % n], ctx, w, h, Object.assign({}, o, { transparent: false }));
-        for (let r = 0; r < rep; r++) await source.add((k * rep + r) / outFps, 1 / outFps);
+        const f = E.frames[k % n], hold = holdOf(f);
+        if (sound) await sound.feedUntil(beat / fps + 0.5);
+        await compositeFrame(f, ctx, w, h, Object.assign({}, o, { transparent: false }));
+        for (let r = 0; r < rep * hold; r++) await source.add((beat * rep + r) / outFps, 1 / outFps);
+        beat += hold;
         ctl.set((k + 1) / total, 'Frame ' + ((k % n) + 1) + ' of ' + n + (o.loops > 1 ? ' · pass ' + (Math.floor(k / n) + 1) + ' of ' + o.loops : ''), c);
       }
       if (sound) await sound.feedUntil(Infinity);
@@ -4021,16 +4066,18 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       ctx.drawImage(await get(0), 0, 0, w, h);
       rec.start(250);
       const t0 = performance.now();
+      let beat = 0;
       for (let k = 0; k < total; k++) {
         if (ctl.signal.aborted) { rec.stop(); await stopped; throw abortError(); }
         const i = k % n;
+        beat += holdOf(E.frames[i]);
         const img = await get(i);
         ctx.drawImage(img, 0, 0, w, h);
         if (manual) liveTrack.requestFrame();
         get((i + 1) % n);
         get((i + 2) % n);
         if (n > 4) drop((i - 2 + n) % n);
-        const wait = t0 + ((k + 1) * 1000) / fps - performance.now();
+        const wait = t0 + (beat * 1000) / fps - performance.now();
         if (wait > 0) await sleep(wait);
         ctl.set(0.25 + (0.75 * (k + 1)) / total, 'Recording frame ' + (i + 1) + ' of ' + n);
       }
@@ -4094,12 +4141,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const ctx = c.getContext('2d');
     const files = [];
     const n = E.frames.length;
+    let num = 0;
     try {
       for (let i = 0; i < n; i++) {
         if (ctl.signal.aborted) throw abortError();
         await compositeFrame(E.frames[i], ctx, o.w, o.h, o);
         const b = await toBlob(c, 'image/png');
-        files.push({ name: 'frame-' + pad3(i + 1) + '.png', data: new Uint8Array(await b.arrayBuffer()) });
+        const data = new Uint8Array(await b.arrayBuffer());
+        // Held drawings repeat in the sequence so the images keep their timing.
+        for (let r = 0; r < holdOf(E.frames[i]); r++) files.push({ name: 'frame-' + pad3(++num) + '.png', data });
         ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n, c);
       }
     } finally {
@@ -4338,11 +4388,14 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const palette = buildPalette(hist, sums, exactColors(o.transparent), o.transparent ? 255 : 256);
       const quantize = makeQuantizer(palette);
       const gif = new GifEncoder(w, h, palette, o.transparent ? 255 : -1);
+      let beat = 0;
       for (let i = 0; i < n; i++) {
         if (ctl.signal.aborted) throw abortError();
         await compositeFrame(E.frames[i], ctx, w, h, o);
         const idx = quantize(ctx.getImageData(0, 0, w, h).data, w, h, o.video, o.transparent);
-        gif.addFrame(idx, Math.round(((i + 1) * 100) / fps) - Math.round((i * 100) / fps));
+        const hold = holdOf(E.frames[i]);
+        gif.addFrame(idx, Math.round(((beat + hold) * 100) / fps) - Math.round((beat * 100) / fps));
+        beat += hold;
         ctl.set((i + 1) / n, 'Frame ' + (i + 1) + ' of ' + n, c);
         await yieldUI();
       }

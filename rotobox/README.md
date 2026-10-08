@@ -30,6 +30,8 @@ If your clip has sound, Rotobox keeps it. It plays along when you press play (ta
 | Lasso | Draw a loop around part of a frame, then drag it, resize it from the corner handle, rotate it from the top handle, flip it or delete it. **Select all** grabs the whole frame. |
 | Color | Pick a swatch, mix your own, or use **Pick a color from the canvas** to grab one from your drawing or the video. |
 
+The **⋯** button next to the filmstrip has frame options: insert, duplicate, copy and paste a drawing, reorder, clear, delete, and **Hold this drawing** (1× to 4×), which keeps a drawing on screen for extra beats without copying it. Held frames show a ×2-style badge in the filmstrip, and holds carry into playback and every export.
+
 The sliders button opens the **light table** settings: video opacity, onion skin frames before and after, ghost strength, paper color, and stylus-only mode.
 
 ### Gestures and shortcuts
@@ -51,6 +53,7 @@ On a keyboard:
 | `←` `→` | Previous / next frame |
 | `Space` | Play or pause (hold and drag to pan) |
 | `N` | Insert a frame after this one |
+| `H` | Cycle the hold of this frame (1× to 4×) |
 | `O` / `V` | Onion skin / video on or off |
 | `Ctrl+Z`, `Ctrl+Shift+Z` | Undo / redo |
 | `0`, `+`, `-` | Fit to screen / zoom in / zoom out |
