@@ -251,29 +251,24 @@ button:disabled { opacity: 0.4; pointer-events: none; }
 .bj-arc { width: min(100%, 640px); height: auto; margin-top: -4px; }
 .bj-arc text { fill: #e8c778; font-family: Georgia, serif; font-size: 34px; letter-spacing: 6px; }
 .bj-print { width: 100%; display: flex; flex-direction: column; align-items: center; }
-.bj-rules { margin-top: -18px; font-size: 13px; color: rgba(243,231,196,0.7); letter-spacing: 0.06em; text-align: center; }
+.bj-rules { margin-top: -4px; font-size: 13px; color: rgba(243,231,196,0.7); letter-spacing: 0.06em; text-align: center; }
 .bj-msg { padding: 8px 16px; border-radius: 999px; background: rgba(0,0,0,0.42); font-weight: 650; font-size: 15px; text-align: center; border: 1px solid rgba(232,199,120,0.3); max-width: 100%; }
 
-.bj-panel { --pc: #fff; width: min(100%, 720px); padding: 12px; border-radius: 20px; background: rgba(0,0,0,0.5); border: 2px solid var(--pc); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc) 22%, transparent); display: grid; gap: 10px; }
-.bj-panel[hidden] { display: none; }
-.turn-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.turn-who { display: flex; flex-direction: column; }
-.turn-who b { font-size: 17px; }
-.turn-who span { font-size: 13px; color: var(--muted); font-weight: 600; }
-.turn-acts { margin-left: auto; display: flex; gap: 8px; }
-.pill { padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,0.1); font-weight: 750; border: 1px solid rgba(255,255,255,0.14); }
-.pill:active { transform: scale(0.96); }
-.keypad { display: grid; grid-template-columns: 1.1fr 1.6fr repeat(5, 1fr); gap: 8px; }
-.key { height: 54px; border-radius: 14px; font-size: 21px; font-weight: 800; background: linear-gradient(180deg, #fffdf6, #e9e1cc); color: #1c1c1c; box-shadow: 0 4px 0 #b7aa86, 0 6px 12px rgba(0,0,0,0.35); }
-.key:active { transform: translateY(3px); box-shadow: 0 1px 0 #b7aa86; }
-.key.low { font-size: 15px; }
-.key.bust { font-size: 16px; background: linear-gradient(180deg, #e2414c, #a8141e); color: #fff; box-shadow: 0 4px 0 #6d0a11, 0 6px 12px rgba(0,0,0,0.35); }
-
 .bj-seats { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: auto; }
-.seat { --pc: #fff; width: 150px; padding: 8px; border-radius: 18px; background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .2s, border-color .2s; }
+.seat { --pc: #fff; width: 178px; padding: 8px; border-radius: 18px; background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .2s, border-color .2s; }
 .seat.active { border-color: color-mix(in srgb, var(--pc) 70%, transparent); }
 .seat.turn { border-color: var(--pc); transform: translateY(-4px); box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc) 25%, transparent), 0 10px 22px rgba(0,0,0,0.4); }
 .seat.out { opacity: 0.45; }
+.seat.todo { border-color: rgba(232,199,120,0.7); }
+.hand-wrap { display: grid; gap: 6px; }
+.outcomes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.oc.bj { grid-column: 1 / -1; }
+.oc { padding: 9px 2px; border-radius: 10px; font-size: 12.5px; font-weight: 800; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); }
+.oc.on.win, .oc.on.bj { background: #2f9e5b; border-color: #7ef0a0; }
+.oc.on.push { background: #6b6b6b; border-color: #cfcfcf; }
+.oc.on.lose { background: #a8141e; border-color: #ff8a8a; }
+.oc.bj { color: var(--gold); }
+.oc.on.bj { color: #fff; }
 .seat-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
 .seat-head .pchip { width: 32px; height: 32px; font-size: 13px; }
 .seat-head .pname { font-size: 14px; max-width: 90px; }
@@ -304,7 +299,7 @@ button:disabled { opacity: 0.4; pointer-events: none; }
   #actions, #bjActions { margin-left: auto; }
   .bj-felt { --cw: clamp(70px, 13vw, 132px); justify-content: space-evenly; }
   .bj-seats { margin-top: 0; }
-  .seat { width: 180px; padding: 12px; }
+  .seat { width: 190px; padding: 12px; }
   .bj-arc { width: min(100%, 720px); }
 }
 @media (max-width: 1050px) and (orientation: landscape) {
@@ -384,7 +379,6 @@ button:disabled { opacity: 0.4; pointer-events: none; }
       <div class="bj-rules">Dealer stands on all 17s · Insurance pays 2 to 1 · 6 decks</div>
       </div>
       <div class="bj-msg" id="bjMsg"></div>
-      <div class="bj-panel" id="bjPanel" hidden></div>
       <div class="bj-seats" id="bjSeats"></div>
     </div>
   </main>
@@ -428,7 +422,7 @@ button:disabled { opacity: 0.4; pointer-events: none; }
 <div class="overlay" id="menuSheet">
   <div class="sheet">
     <h2>Menu</h2>
-    <p>Blackjack: the iPad deals and plays the dealer's hand. Deal two real cards to each player, tap Blackjack or Insurance on your seat if you need them, then on your turn play your cards and tap your final total.</p>
+    <p>Blackjack: the iPad is the dealer. Bet on your seat and tap DEAL, then deal two real cards to each player and play your hands. Tap Double or Split on your seat if you use them. Tap DEALER PLAYS, and once the dealer finishes, everyone taps Win, Push, Lose or Blackjack on their own seat, then PAY OUT.</p>
     <p>Tap a spot on the table to bet with the selected player's chips. Tap near a line to split, on a corner for four numbers, and on the outer edge for a street. Swipe across the wheel to launch the ball yourself.</p>
     <p>Tip: in Safari, use Share → Add to Home Screen to play full screen.</p>
     <div class="row"><button class="dangerbtn" id="newGameBtn">New game</button><button class="goldbtn" id="menuClose" style="flex:1">Back to table</button></div>
