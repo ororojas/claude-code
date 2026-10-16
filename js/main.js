@@ -2,6 +2,7 @@ import { RouletteSim, colorOf, GEO } from './physics.js';
 import { Wheel3D } from './wheel3d.js';
 import { BettingTable, payoutMultiplier } from './table.js';
 import { Sfx } from './audio.js';
+import { Blackjack } from './blackjack.js';
 
 const COLORS = ['#f5c542', '#38bdf8', '#f472b6', '#a3e635', '#fb923c', '#f1f5f9', '#a78bfa', '#2dd4bf'];
 const CHIPS = [
@@ -10,6 +11,7 @@ const CHIPS = [
   { v: 25, c: '#1f8a4c', t: '#fff' },
   { v: 100, c: '#1b1b1b', t: '#fff' },
   { v: 500, c: '#6d3fc4', t: '#fff' },
+  { v: 'all' },
 ];
 const MAX_PLAYERS = 8;
 const STORE = 'roulette-night-v1';
@@ -23,6 +25,8 @@ const state = {
   players: [],
   activeId: null,
   chip: 25,
+  lastChip: 25,
+  mode: 'roulette',
   phase: 'betting',
   history: [],
   lastBets: new Map(),
@@ -45,6 +49,21 @@ try {
 }
 
 const active = () => state.players.find((p) => p.id === state.activeId) || null;
+const chipAmount = (p) => (state.chip === 'all' ? p.balance : state.chip);
+const staked = (p) => betTotal(p) + bj.staked(p);
+
+function chipUsed() {
+  if (state.chip !== 'all') return;
+  state.chip = state.lastChip;
+  renderChips();
+}
+
+const bj = new Blackjack({
+  state, sfx, toast, money, signed, luminance, active, chipAmount, chipUsed,
+  floatOnTile: (...a) => floatOnTile(...a),
+  select: (id) => selectPlayer(id),
+  onChange: () => changed(),
+});
 
 function makePlayer(name, color, balance) {
   return { id: nextId++, name, color, balance, bets: new Map(), undo: [] };
@@ -53,9 +72,10 @@ function makePlayer(name, color, balance) {
 function save() {
   try {
     localStorage.setItem(STORE, JSON.stringify({
-      players: state.players.map((p) => ({ name: p.name, color: p.color, balance: p.balance + betTotal(p) })),
+      players: state.players.map((p) => ({ name: p.name, color: p.color, balance: p.balance + staked(p) })),
       active: state.players.findIndex((p) => p.id === state.activeId),
-      chip: state.chip,
+      chip: state.lastChip,
+      mode: state.mode,
       history: state.history.slice(0, 40),
       sound: state.sound,
       topView: state.topView,
@@ -146,7 +166,7 @@ function refreshTiles() {
     if (!el) continue;
     el.tile.classList.toggle('active', p.id === state.activeId);
     el.bal.textContent = money(p.balance);
-    const t = betTotal(p);
+    const t = staked(p);
     el.bet.textContent = t ? `${money(t)} on table` : p.balance <= 0 ? 'Out of chips' : 'No bets';
   }
   updateControls();
@@ -157,6 +177,7 @@ function selectPlayer(id) {
   refreshTiles();
   tileEls.get(id)?.tile.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
   tableDirty = true;
+  bj.render();
   save();
 }
 
@@ -179,16 +200,22 @@ function renderChips() {
   const box = $('chips');
   box.textContent = '';
   for (const ch of CHIPS) {
+    const all = ch.v === 'all';
     const b = document.createElement('button');
-    b.className = 'chipbtn' + (ch.v === state.chip ? ' sel' : '');
-    b.style.setProperty('--c', ch.c);
-    b.style.setProperty('--t', ch.t);
+    b.className = 'chipbtn' + (all ? ' allin' : '') + (ch.v === state.chip ? ' sel' : '');
+    if (!all) {
+      b.style.setProperty('--c', ch.c);
+      b.style.setProperty('--t', ch.t);
+    }
     const s = document.createElement('span');
-    s.textContent = ch.v;
+    s.textContent = all ? 'ALL IN' : ch.v;
     b.append(s);
-    b.setAttribute('aria-label', `$${ch.v} chip`);
+    b.setAttribute('aria-label', all ? 'All in: next bet uses all of the player\'s chips' : `$${ch.v} chip`);
     b.addEventListener('click', () => {
-      state.chip = ch.v;
+      if (all && state.chip === 'all') state.chip = state.lastChip;
+      else state.chip = ch.v;
+      if (!all) state.lastChip = ch.v;
+      else if (state.chip === 'all') toast('All in: tap where to bet everything');
       sfx.unlock();
       sfx.chip();
       renderChips();
@@ -222,13 +249,15 @@ function changed() {
   tableDirty = true;
   refreshTiles();
   if (state.phase === 'betting') bettingStatus();
+  bj.render();
   save();
 }
 
 // ---------- Betting ----------
 
-function placeBet(bet, amount = state.chip, p = active(), quiet = false) {
+function placeBet(bet, amount, p = active(), quiet = false) {
   if (!p) return false;
+  amount ??= chipAmount(p);
   if (p.balance <= 0) {
     if (!quiet) toast(`${p.name} is out of chips`);
     return false;
@@ -241,7 +270,8 @@ function placeBet(bet, amount = state.chip, p = active(), quiet = false) {
   p.undo.push({ key: bet.key, amount: amt });
   if (!quiet) {
     sfx.chip();
-    if (amt < amount) toast(`${p.name} went all in`);
+    if (amt < amount || state.chip === 'all') toast(`${p.name} went all in`);
+    chipUsed();
     changed();
   }
   return true;
@@ -294,7 +324,8 @@ function previewAt(e) {
   const bet = table.hitTest(e.clientX - r.left, e.clientY - r.top);
   table.preview = bet;
   table.previewColor = active()?.color;
-  table.previewAmount = Math.min(state.chip, active()?.balance ?? 0) || state.chip;
+  const p = active();
+  table.previewAmount = p ? Math.min(chipAmount(p), p.balance) || p.balance : 0;
   const info = $('betInfo');
   if (bet) {
     info.textContent = `${bet.label} · pays ${payoutMultiplier(bet) - 1}:1`;
@@ -456,7 +487,7 @@ function openPlayerSheet(p) {
   $('psSub').textContent = p ? `${money(p.balance)} in chips` : 'Everyone gets their own chip color on the table.';
   $('psName').value = p ? p.name : '';
   $('psExtra').style.display = p ? 'flex' : 'none';
-  $('psRemove').disabled = state.phase !== 'betting';
+  $('psRemove').disabled = state.phase !== 'betting' || bj.busy();
   $('psRemove').textContent = 'Remove';
   removeArmed = false;
   const taken = new Set(state.players.filter((x) => x !== p).map((x) => x.color));
@@ -506,12 +537,13 @@ $('psTopup').addEventListener('click', () => {
   changed();
 });
 $('psRemove').addEventListener('click', () => {
-  if (!editing || state.phase !== 'betting') return;
+  if (!editing || state.phase !== 'betting' || bj.busy()) return;
   if (!removeArmed) {
     removeArmed = true;
     $('psRemove').textContent = 'Tap again to remove';
     return;
   }
+  bj.removePlayer(editing.id);
   state.players = state.players.filter((x) => x !== editing);
   if (state.activeId === editing.id) state.activeId = state.players[0]?.id ?? null;
   closePlayerSheet();
@@ -584,6 +616,7 @@ function startGame(players) {
   state.lastBets = new Map();
   table.winning = null;
   sim.reset();
+  bj.reset();
   wheel?.setFocus(false);
   $('result').classList.remove('show');
   $('welcome').classList.remove('show');
@@ -609,11 +642,49 @@ $('resumeBtn').addEventListener('click', () => {
   if (players[s.active]) selectPlayer(players[s.active].id);
 });
 
+function setMode(mode) {
+  if (mode === state.mode) return;
+  if (state.phase === 'spinning') {
+    toast('Wait for the ball to land');
+    return;
+  }
+  if (bj.busy()) {
+    toast('Finish the blackjack hand first');
+    return;
+  }
+  if (state.phase === 'result') nextRound();
+  if (bj.phase === 'settled') bj.nextHand();
+  state.mode = mode;
+  applyMode();
+  sfx.unlock();
+  changed();
+}
+
+function applyMode() {
+  const isBJ = state.mode === 'blackjack';
+  $('stage').hidden = isBJ;
+  $('actions').hidden = isBJ;
+  $('history').hidden = isBJ;
+  $('viewBtn').hidden = isBJ;
+  $('bjStage').hidden = !isBJ;
+  $('bjActions').hidden = !isBJ;
+  $('spacer').hidden = !isBJ;
+  $('brand').textContent = isBJ ? 'BLACKJACK' : 'ROULETTE';
+  for (const b of $('modes').children) b.classList.toggle('sel', b.dataset.mode === state.mode);
+  if (isBJ) bj.render();
+  else requestAnimationFrame(sizeAll);
+}
+
+$('modes').addEventListener('click', (e) => {
+  const b = e.target.closest('button');
+  if (b) setMode(b.dataset.mode);
+});
+
 $('menuBtn').addEventListener('click', () => $('menuSheet').classList.add('show'));
 $('menuClose').addEventListener('click', () => $('menuSheet').classList.remove('show'));
 $('newGameBtn').addEventListener('click', () => {
-  if (state.phase === 'spinning') {
-    toast('Wait for the ball to land');
+  if (state.phase === 'spinning' || bj.busy()) {
+    toast(bj.busy() ? 'Finish the blackjack hand first' : 'Wait for the ball to land');
     return;
   }
   $('menuSheet').classList.remove('show');
@@ -644,7 +715,8 @@ document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT') return;
   if (e.code === 'Space') {
     e.preventDefault();
-    if (state.phase === 'result') nextRound();
+    if (state.mode === 'blackjack') bj.primary();
+    else if (state.phase === 'result') nextRound();
     else spin();
   }
 });
@@ -677,8 +749,8 @@ function frame(now) {
   } else {
     sfx.roll(0, false);
   }
-  wheel?.render(sim, dt);
-  if (tableDirty || table.winning !== null) {
+  if (state.mode === 'roulette') wheel?.render(sim, dt);
+  if (state.mode === 'roulette' && (tableDirty || table.winning !== null)) {
     table.draw(state.players, state.activeId, now);
     tableDirty = false;
   }
@@ -691,7 +763,9 @@ const saved = loadSaved();
 if (saved) {
   state.sound = saved.sound !== false;
   state.topView = !!saved.topView;
-  state.chip = CHIPS.some((c) => c.v === saved.chip) ? saved.chip : 25;
+  state.chip = CHIPS.some((c) => c.v === saved.chip && c.v !== 'all') ? saved.chip : 25;
+  state.lastChip = state.chip;
+  state.mode = saved.mode === 'blackjack' ? 'blackjack' : 'roulette';
   state.buyin = saved.buyin || 1000;
   $('resumeBtn').style.display = 'block';
   saved.players.forEach((p) => addNameRow(p.name));
@@ -706,6 +780,7 @@ wheel?.setView(state.topView);
 renderChips();
 renderPlayers();
 renderHistory();
+applyMode();
 sizeAll();
 bettingStatus();
 requestAnimationFrame(frame);

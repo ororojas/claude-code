@@ -89,6 +89,24 @@ export class Sfx {
     }
   }
 
+  card() {
+    if (!this.ctx || !this.enabled) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noise;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(3200, t + 0.12);
+    f.Q.value = 1.2;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t, Math.random() * 0.8, 0.18);
+  }
+
   win() {
     if (!this.ctx || !this.enabled) return;
     const t = this.ctx.currentTime;
