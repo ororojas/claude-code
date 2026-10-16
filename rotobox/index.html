@@ -4096,9 +4096,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // ---------- Editor chrome ----------
   // Photo projects use the same light-table machinery as videos, so only the words change.
   function refWords() {
-    return E.project && E.project.source === 'photos'
-      ? { one: 'photo', all: 'photos', One: 'Photo', All: 'Photos' }
-      : { one: 'video', all: 'video', One: 'Video', All: 'Video' };
+    const src = E.project && E.project.source;
+    if (src === 'photos') return { one: 'photo', all: 'photos', One: 'Photo', All: 'Photos' };
+    if (src === 'gif') return { one: 'GIF', all: 'GIF', One: 'GIF', All: 'GIF' };
+    return { one: 'video', all: 'video', One: 'Video', All: 'Video' };
   }
   function applyRefLabels() {
     const w = refWords();
@@ -4343,7 +4344,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (!f || !f.ref) return;
     frameColors(f).then((cols) => {
       if (token !== frameColorsToken || !cols.length) return;
-      $('#lblFrameColors').textContent = refWords().one === 'photo' ? 'From this photo' : 'From this video frame';
+      $('#lblFrameColors').textContent = refWords().one === 'photo' ? 'From this photo' : 'From this ' + refWords().one + ' frame';
       buildSwatches($('#frameSw'), cols.map((c) => [c, 'From the ' + refWords().one + ', ' + c]));
       $('#frameColorsField').hidden = false;
     }, () => {});
@@ -4982,7 +4983,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         settings: Object.assign(defaultSettings(hasVideo), pr.settings && typeof pr.settings === 'object' ? pr.settings : {}),
         cur: 0, hasAudio: false,
       };
-      if (pr.source === 'photos') p.source = 'photos';
+      if (pr.source === 'photos' || pr.source === 'gif') p.source = pr.source;
       if (meta.audio && typeof meta.audio.file === 'string') {
         const blob = await zip.read(meta.audio.file, 'audio/mp4').catch(() => null);
         if (blob && blob.size) {
@@ -5558,7 +5559,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // ---------- Photos ----------
   // Each photo becomes a frame with the photo under it, just like a video frame. For stop motion
   // the photos show at full strength and exports include them; for tracing they sit faintly below.
-  const ph = { files: [], adding: false, running: false, mode: 'motion', order: 'picked', fps: 8, fit: 'fill', detail: 'std' };
+  const ph = { files: [], gifs: new Map(), adding: false, running: false, mode: 'motion', order: 'picked', fps: 8, fit: 'fill', detail: 'std' };
   const phThumbs = new Map();
   let phToken = 0;
   $('#btnPhotos').addEventListener('click', () => pickPhotos(false));
@@ -5569,10 +5570,20 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     i.value = '';
     i.click();
   }
-  $('#filePhotos').addEventListener('change', (e) => {
+  $('#filePhotos').addEventListener('change', async (e) => {
     const files = [...(e.target.files || [])].filter((f) => !f.type || f.type.startsWith('image/'));
     e.target.value = '';
     if (!files.length || (ph.adding && !E.project)) return;
+    // An animated GIF becomes all of its frames, not just the first one.
+    ph.gifs = new Map();
+    for (const f of files) {
+      if (f.type !== 'image/gif' && !/\.gif$/i.test(f.name || '')) continue;
+      try {
+        const buf = new Uint8Array(await f.arrayBuffer());
+        const info = gifInfo(buf);
+        if (info && info.count > 1 && info.w && info.h) ph.gifs.set(f, { buf, info });
+      } catch (err) { /* treated as a still */ }
+    }
     openPhotoSheet(files);
   });
   // An <img> applies the photo's camera orientation in every current browser.
@@ -5593,7 +5604,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     img.removeAttribute('src');
   }
   function drawPhoto(ctx, img, w, h, fit, paper) {
-    const nw = img.naturalWidth, nh = img.naturalHeight;
+    const nw = img.naturalWidth || img.width, nh = img.naturalHeight || img.height;
     const s = fit === 'fit' ? Math.min(w / nw, h / nh) : Math.max(w / nw, h / nh);
     const dw = nw * s, dh = nh * s;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -5612,6 +5623,170 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     return list;
   }
   const photoRoom = () => (ph.adding && E.project ? MAX_FRAMES - E.frames.length : MAX_FRAMES);
+  const framesIn = (list) => list.reduce((n, f) => n + (ph.gifs.has(f) ? ph.gifs.get(f).info.count : 1), 0);
+  // A single animated GIF keeps its own timing.
+  const soloGif = (list) => (list.length === 1 && ph.gifs.has(list[0]) ? ph.gifs.get(list[0]) : null);
+
+  // ---------- GIF frames ----------
+  // Frame count, size and delays (ms), without decompressing anything.
+  function gifInfo(buf) {
+    const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    if (b.length < 13 || b[0] !== 0x47 || b[1] !== 0x49 || b[2] !== 0x46) return null;
+    const w = b[6] | (b[7] << 8), h = b[8] | (b[9] << 8);
+    let p = 13;
+    if (b[10] & 0x80) p += 3 * (2 << (b[10] & 7));
+    const delays = [];
+    let delay = 0;
+    const skipBlocks = () => { while (p < b.length) { const n = b[p++]; if (!n) break; p += n; } };
+    while (p < b.length) {
+      const code = b[p++];
+      if (code === 0x3b) break;
+      if (code === 0x21) {
+        const label = b[p++];
+        if (label === 0xf9 && b[p] >= 4) delay = (b[p + 2] | (b[p + 3] << 8)) * 10;
+        skipBlocks();
+      } else if (code === 0x2c) {
+        const ff = b[p + 8];
+        p += 9;
+        if (ff & 0x80) p += 3 * (2 << (ff & 7));
+        p++; // LZW minimum code size
+        skipBlocks();
+        delays.push(delay);
+        delay = 0;
+      } else break;
+    }
+    return { w, h, count: delays.length, delays };
+  }
+
+  // Each frame as the whole picture (RGBA, w*h*4), with its delay in ms. The same buffer is reused,
+  // so a frame is only valid until the next one is asked for.
+  function* gifFrames(buf) {
+    const b = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+    const w = b[6] | (b[7] << 8), h = b[8] | (b[9] << 8);
+    let p = 13;
+    let gct = null;
+    if (b[10] & 0x80) { const n = 2 << (b[10] & 7); gct = b.subarray(p, p + 3 * n); p += 3 * n; }
+    const pic = new Uint8ClampedArray(w * h * 4);
+    let gce = { disposal: 0, delay: 0, trans: -1 };
+    let saved = null;
+    while (p < b.length) {
+      const code = b[p++];
+      if (code === 0x3b) break;
+      if (code === 0x21) {
+        const label = b[p++];
+        if (label === 0xf9 && b[p] >= 4) {
+          const pf = b[p + 1];
+          gce = { disposal: (pf >> 2) & 7, delay: (b[p + 2] | (b[p + 3] << 8)) * 10, trans: pf & 1 ? b[p + 4] : -1 };
+        }
+        while (p < b.length) { const n = b[p++]; if (!n) break; p += n; }
+        continue;
+      }
+      if (code !== 0x2c) break;
+      const fx = b[p] | (b[p + 1] << 8), fy = b[p + 2] | (b[p + 3] << 8);
+      const fw = b[p + 4] | (b[p + 5] << 8), fh = b[p + 6] | (b[p + 7] << 8);
+      const ff = b[p + 8];
+      p += 9;
+      let ct = gct;
+      if (ff & 0x80) { const n = 2 << (ff & 7); ct = b.subarray(p, p + 3 * n); p += 3 * n; }
+      const minSize = b[p++];
+      // The image data comes in sub-blocks; join them.
+      let total = 0;
+      for (let q = p; q < b.length;) { const n = b[q]; if (!n) break; total += n; q += n + 1; }
+      const data = new Uint8Array(total);
+      let at = 0;
+      while (p < b.length) { const n = b[p++]; if (!n) break; data.set(b.subarray(p, p + n), at); at += n; p += n; }
+      const idx = lzwDecode(data, minSize, fw * fh);
+      if (gce.disposal === 3) saved = pic.slice();
+      // Interlaced images store rows in four passes.
+      let rows = null;
+      if (ff & 0x40) {
+        rows = [];
+        for (const [start, step] of [[0, 8], [4, 8], [2, 4], [1, 2]]) for (let y = start; y < fh; y += step) rows.push(y);
+      }
+      if (ct) {
+        const n = ct.length / 3;
+        for (let r = 0; r < fh; r++) {
+          const y = fy + (rows ? rows[r] : r);
+          if (y >= h) continue;
+          for (let c = 0; c < fw; c++) {
+            const x = fx + c;
+            if (x >= w) continue;
+            const ci = idx[r * fw + c];
+            if (ci === gce.trans || ci >= n) continue;
+            const o = (y * w + x) * 4;
+            pic[o] = ct[ci * 3];
+            pic[o + 1] = ct[ci * 3 + 1];
+            pic[o + 2] = ct[ci * 3 + 2];
+            pic[o + 3] = 255;
+          }
+        }
+      }
+      yield { data: pic, delay: gce.delay, w, h };
+      // What happens to this frame before the next one is drawn.
+      if (gce.disposal === 2) {
+        for (let y = fy; y < Math.min(h, fy + fh); y++) pic.fill(0, (y * w + fx) * 4, (y * w + Math.min(w, fx + fw)) * 4);
+      } else if (gce.disposal === 3 && saved) pic.set(saved);
+      gce = { disposal: 0, delay: 0, trans: -1 };
+    }
+  }
+
+  // Variable-width LZW, as GIF uses it.
+  function lzwDecode(data, minSize, npix) {
+    const out = new Uint8Array(npix);
+    const clearCode = 1 << minSize, eoi = clearCode + 1;
+    const prefix = new Int16Array(4096), suffix = new Uint8Array(4096), first = new Uint8Array(4096), len = new Uint16Array(4096);
+    for (let i = 0; i < clearCode; i++) { prefix[i] = -1; suffix[i] = i; first[i] = i; len[i] = 1; }
+    let size = minSize + 1, next = eoi + 1, prev = -1;
+    let acc = 0, bits = 0, pos = 0, op = 0;
+    while (op < npix) {
+      while (bits < size) {
+        if (pos >= data.length) return out;
+        acc |= data[pos++] << bits;
+        bits += 8;
+      }
+      const code = acc & ((1 << size) - 1);
+      acc >>>= size;
+      bits -= size;
+      if (code === clearCode) { size = minSize + 1; next = eoi + 1; prev = -1; continue; }
+      if (code === eoi) break;
+      if (prev === -1) {
+        if (code >= clearCode) break;
+        out[op++] = code;
+        prev = code;
+        continue;
+      }
+      if (code > next) break; // damaged data: keep what came before
+      if (next < 4096) {
+        prefix[next] = prev;
+        suffix[next] = code === next ? first[prev] : first[code];
+        first[next] = first[prev];
+        len[next] = len[prev] + 1;
+        next++;
+        if (next === 1 << size && size < 12) size++;
+      }
+      const s = code;
+      const L = len[s];
+      for (let k = s, a = op + L - 1; k >= 0; k = prefix[k], a--) if (a < npix) out[a] = suffix[k];
+      op += L;
+      prev = code;
+    }
+    return out;
+  }
+  // Browsers show very short GIF delays as a tenth of a second, so the GIF keeps the pace it has
+  // there. With fps given, holds are fitted to it; otherwise the frame rate that matches the delays
+  // best is picked, the slower one when two match equally well.
+  function gifTiming(delays, fps) {
+    const ds = delays.map((d) => (d < 20 ? 100 : d));
+    const fit = (r) => {
+      let err = 0;
+      const holds = ds.map((d) => { const beats = (d * r) / 1000, hd = clamp(Math.round(beats), 1, 4); err += Math.abs(beats - hd) / r; return hd; });
+      return { fps: r, holds, err, secs: holds.reduce((a, b) => a + b, 0) / r };
+    };
+    if (fps) return fit(fps);
+    let best = null;
+    for (const r of [6, 8, 10, 12, 15, 24, 30]) { const t = fit(r); if (!best || t.err < best.err - 1e-6) best = t; }
+    return best;
+  }
   function openPhotoSheet(files) {
     ph.files = files;
     ph.mode = Prefs.get('phMode', 'motion');
@@ -5629,19 +5804,32 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     renderPhotoSheet(true);
     openSheet('sheetPhotos')._onClose = () => {
       phToken++;
+      for (const c of $$('#phStrip canvas')) if (![...phThumbs.values()].includes(c)) freeCanvas(c);
       $('#phStrip').textContent = '';
       phThumbs.forEach(freeCanvas);
       phThumbs.clear();
-      if (!ph.running) ph.files = [];
+      if (!ph.running) { ph.files = []; ph.gifs = new Map(); }
     };
   }
   function renderPhotoSheet(strip) {
     const list = sortedPhotos();
-    const n = Math.min(list.length, Math.max(0, photoRoom()));
-    const fps = ph.adding && E.project ? E.project.fps : ph.fps;
-    let text = n + (n === 1 ? ' photo · ' : ' photos · ') + (n / fps).toFixed(1) + ' s at ' + fps + ' fps';
-    if (list.length > n) text += ' · ' + (list.length - n) + ' won’t fit';
+    const total = framesIn(list);
+    const n = Math.min(total, Math.max(0, photoRoom()));
+    const gif = soloGif(list);
+    let text;
+    if (gif) {
+      const t = gifTiming(gif.info.delays.slice(0, n), ph.adding && E.project ? E.project.fps : 0);
+      text = n + ' frames from the GIF · ' + t.secs.toFixed(1) + ' s at ' + t.fps + ' fps, timed like the GIF';
+    } else {
+      const fps = ph.adding && E.project ? E.project.fps : ph.fps;
+      const unit = ph.gifs.size ? (n === 1 ? ' frame · ' : ' frames · ') : (n === 1 ? ' photo · ' : ' photos · ');
+      text = n + unit + (n / fps).toFixed(1) + ' s at ' + fps + ' fps';
+    }
+    if (total > n) text += ' · ' + (total - n) + ' won’t fit';
     $('#phCount').textContent = text;
+    $('#phFpsField').hidden = ph.adding || !!gif;
+    $('#phOrder').closest('.field').hidden = list.length < 2;
+    $('#phFit').closest('.field').hidden = !!gif && !ph.adding;
     $('#phModeHint').textContent = ph.mode === 'motion'
       ? 'The photos play as the animation, and exports include them. Draw on top to add effects.'
       : 'The photos sit faintly under your paper, and exports show only your drawing.';
@@ -5654,6 +5842,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   // Small previews, decoded one photo at a time so a phone never holds several full-size photos.
   function renderPhotoStrip(list) {
+    const gif = soloGif(list);
+    if (gif) { renderGifStrip(gif); return; }
     const token = ++phToken;
     const box = $('#phStrip');
     box.textContent = '';
@@ -5691,6 +5881,33 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       }
     })();
   }
+  function renderGifStrip(gif) {
+    const token = ++phToken;
+    const box = $('#phStrip');
+    box.textContent = '';
+    const show = Math.min(gif.info.count, 10);
+    const src = makeCanvas(gif.info.w, gif.info.h);
+    const sctx = src.getContext('2d');
+    let k = 0;
+    for (const fr of gifFrames(gif.buf)) {
+      if (k >= show || token !== phToken) break;
+      sctx.putImageData(new ImageData(fr.data, fr.w, fr.h), 0, 0);
+      const c = makeCanvas(136, 136);
+      drawPhoto(c.getContext('2d'), src, 136, 136, 'fill', '#000');
+      const fig = document.createElement('figure');
+      const cap = document.createElement('figcaption');
+      cap.textContent = ++k;
+      fig.append(c, cap);
+      box.append(fig);
+    }
+    freeCanvas(src);
+    if (gif.info.count > show) {
+      const more = document.createElement('figure');
+      more.className = 'ph-more';
+      more.textContent = '+' + (gif.info.count - show);
+      box.append(more);
+    }
+  }
   onPick($('#phMode'), (v) => { ph.mode = v; Prefs.set('phMode', v); setPressed($('#phMode'), v); renderPhotoSheet(false); });
   onPick($('#phOrder'), (v) => { ph.order = v; Prefs.set('phOrder', v); setPressed($('#phOrder'), v); renderPhotoSheet(true); });
   onPick($('#phFps'), (v) => { ph.fps = +v; Prefs.set('phFps', ph.fps); setPressed($('#phFps'), v); renderPhotoSheet(false); });
@@ -5702,8 +5919,12 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   async function runPhotos() {
     if (ph.running) return;
     const adding = ph.adding && !!E.project;
-    const files = sortedPhotos().slice(0, Math.max(0, photoRoom()));
-    if (!files.length) return;
+    const room = Math.max(0, photoRoom());
+    const files = sortedPhotos();
+    if (!files.length || !room) return;
+    const gif = soloGif(files);
+    const gifs = ph.gifs;
+    const total = Math.min(framesIn(files), room);
     const { mode, fps, fit } = ph;
     const long = ph.detail === 'hd' ? 1920 : 1280;
     const motion = mode === 'motion';
@@ -5712,43 +5933,70 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     closeSheet('sheetPhotos');
     const ctl = busyOpen(adding ? 'Adding your photos' : 'Turning photos into frames', { cancel: true });
     const wake = await holdWake();
-    const refs = [], thumbs = [];
-    let c = null, cover = null, failed = 0;
+    const refs = [], thumbs = [], delays = [];
+    let c = null, cover = null, failed = 0, gifSrc = null;
     let w = adding ? E.W : 0, h = adding ? E.H : 0;
+    // Every frame-to-be in order: each photo, and every frame of each animated GIF.
+    async function* sources() {
+      for (const file of files) {
+        const g = gifs.get(file);
+        if (!g) {
+          const img = await loadPhoto(file).catch(() => null);
+          if (!img || !img.naturalWidth) { failed++; if (img) releasePhoto(img); continue; }
+          yield { pic: img, gif: false, done: () => releasePhoto(img) };
+          continue;
+        }
+        if (!gifSrc || gifSrc.width !== g.info.w || gifSrc.height !== g.info.h) { freeCanvas(gifSrc); gifSrc = makeCanvas(g.info.w, g.info.h); }
+        const gctx = gifSrc.getContext('2d');
+        let any = false;
+        for (const fr of gifFrames(g.buf)) {
+          any = true;
+          gctx.putImageData(new ImageData(fr.data, fr.w, fr.h), 0, 0);
+          yield { pic: gifSrc, gif: true, delay: fr.delay, done: () => {} };
+        }
+        if (!any) failed++;
+      }
+    }
     try {
-      for (let i = 0; i < files.length; i++) {
+      for await (const src of sources()) {
         if (ctl.signal.aborted) throw abortError();
-        const img = await loadPhoto(files[i]).catch(() => null);
-        if (!img || !img.naturalWidth) { failed++; if (img) releasePhoto(img); continue; }
+        if (refs.length >= room) { src.done(); break; }
+        const pw = src.pic.naturalWidth || src.pic.width, phh = src.pic.naturalHeight || src.pic.height;
         if (!w) {
-          // The first photo that opens sets the frame's shape.
-          const sc = Math.min(1, long / Math.max(img.naturalWidth, img.naturalHeight));
-          w = even(img.naturalWidth * sc);
-          h = even(img.naturalHeight * sc);
+          // The first picture that opens sets the frame's shape. Small GIFs are drawn bigger, so
+          // there's room to draw on them.
+          const L = Math.max(pw, phh);
+          const sc = src.gif && L < 720 ? 720 / L : Math.min(1, long / L);
+          w = even(pw * sc);
+          h = even(phh * sc);
         }
         if (!c) c = makeCanvas(w, h);
-        drawPhoto(c.getContext('2d'), img, w, h, fit, paper);
-        releasePhoto(img);
+        drawPhoto(c.getContext('2d'), src.pic, w, h, fit, paper);
+        src.done();
         refs.push(await toBlob(c, 'image/jpeg', 0.86));
+        delays.push(src.gif ? src.delay : 0);
         const td = thumbDims(w, h);
         const t = makeCanvas(td.pw, td.ph);
         t.getContext('2d').drawImage(c, 0, 0, td.pw, td.ph);
         thumbs.push(t);
         if (!adding && !cover) cover = await makeCover(c, motion ? 1 : defaultSettings(true).refOpacity, paper);
-        ctl.set((i + 1) / files.length, 'Photo ' + (i + 1) + ' of ' + files.length, c);
+        ctl.set(refs.length / total, (gifs.size ? 'Frame ' : 'Photo ') + refs.length + ' of ' + total, c);
         await yieldUI();
       }
       if (ctl.signal.aborted) throw abortError();
       if (!refs.length) { const e = new Error('No photo could be read'); e.noPhotos = true; throw e; }
       const skipped = failed ? ' ' + failed + (failed === 1 ? ' photo couldn’t be read and was skipped.' : ' photos couldn’t be read and were skipped.') : '';
+      // A lone GIF keeps its timing: its own frame rate for a new animation, or holds fitted to
+      // this animation's frame rate when adding.
+      const timing = gif ? gifTiming(delays, adding ? E.project.fps : 0) : null;
       if (adding) {
-        const nfs = refs.map((ref) => newFrame(ref));
+        const nfs = refs.map((ref, k) => { const f = newFrame(ref); if (timing) f.hold = timing.holds[k]; return f; });
         const bmps = await toRefThumbs(nfs, thumbs);
         nfs.forEach((f) => { f.refThumb = bmps.get(f.id); });
         ctl.close();
         if (!E.project.hasVideo) {
           E.project.hasVideo = true;
-          if (!E.project.source) E.project.source = 'photos';
+          if (!E.project.source) E.project.source = gif ? 'gif' : 'photos';
           updateEditorUI();
         }
         const list = E.frames.slice();
@@ -5758,10 +6006,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         return;
       }
       const pid = uid();
-      const frames = refs.map((ref) => ({ id: uid(), project: pid, ref, ops: [] }));
+      const frames = refs.map((ref, k) => ({ id: uid(), project: pid, ref, ops: [], hold: timing ? timing.holds[k] : 1 }));
       const now = Date.now();
+      const name = gif ? baseName(files[0].name) || 'GIF' : motion ? 'Stop motion' : 'Traced photos';
       const p = {
-        id: pid, name: motion ? 'Stop motion' : 'Traced photos', w, h, fps, paper, hasVideo: true, source: 'photos',
+        id: pid, name, w, h, fps: timing ? timing.fps : fps, paper, hasVideo: true, source: gif ? 'gif' : 'photos',
         frames: frames.map((f) => f.id), created: now, updated: now, thumb: cover, cur: 0, hasAudio: false,
         settings: Object.assign(defaultSettings(true), motion ? { refOpacity: 1, expRef: true } : {}),
       };
@@ -5779,8 +6028,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     } finally {
       ph.running = false;
       ph.files = [];
+      ph.gifs = new Map();
       releaseWake(wake);
       freeCanvas(c);
+      freeCanvas(gifSrc);
     }
   }
 
