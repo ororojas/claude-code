@@ -61,7 +61,7 @@
     --sun: #a9c1e3;
     --hemi-sky: #3a5170;
     --hemi-ground: #23201d;
-    --ground: #9a958c;
+    --ground: #aaa59b;
     --scene: night;
     color-scheme: dark;
   }
@@ -88,11 +88,12 @@
   --sun: #a9c1e3;
   --hemi-sky: #3a5170;
   --hemi-ground: #23201d;
-  --ground: #9a958c;
+  --ground: #aaa59b;
   --scene: night;
   color-scheme: dark;
 }
 
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -293,20 +294,21 @@ button { cursor: pointer; }
 /* ----- stats (bottom right) and toast ----- */
 .stats {
   position: fixed;
-  right: 16px;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  transform: translateX(-50%);
   font: 11.5px/1.5 var(--font-mono); font-variant-numeric: tabular-nums;
   color: var(--ink);
-  text-align: right;
-  padding: 6px 10px;
-  border-radius: 6px;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 99px;
   background: var(--panel);
   border: 1px solid var(--line);
   pointer-events: none;
 }
 .stats b { font-weight: 600; }
 .toast {
-  position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px));
+  position: fixed; left: 50%; top: calc(52px + env(safe-area-inset-top, 0px));
   transform: translateX(-50%);
   padding: 8px 14px; border-radius: 6px;
   font: 600 13px/1.3 var(--font-display); letter-spacing: 0.04em;
@@ -319,8 +321,9 @@ button { cursor: pointer; }
 .toast[hidden] { display: none !important; }
 .nogl { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
 
-@media (max-width: 1180px) {
+@media (max-width: 1100px) {
   .stats { display: none; }
+  .toast { top: calc(16px + env(safe-area-inset-top, 0px)); }
 }
 @media (max-width: 980px) {
   .inspector { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
@@ -342,9 +345,11 @@ button { cursor: pointer; }
   }
   .panel:not(.open) { display: none; }
   .panel-toggle { display: flex; }
-  .dock { left: 10px; right: 10px; transform: none; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); justify-content: space-between; overflow-x: auto; }
-  .tool { min-width: 44px; padding: 6px 3px 5px; font-size: 10px; }
-  .tool kbd { display: none; }
+  .dock { left: 10px; right: 10px; transform: none; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); justify-content: space-between; gap: 1px; padding: 4px; overflow-x: auto; }
+  .dock .sep { margin: 4px 1px; }
+  .tool { min-width: 0; flex: 1 1 0; padding: 6px 1px 5px; font-size: 9.5px; letter-spacing: 0.04em; }
+  .tool svg { width: 20px; height: 20px; }
+  .tool kbd, #step { display: none; }
   .speed { display: none; }
   .inspector { left: 10px; right: 10px; width: auto; bottom: calc(84px + env(safe-area-inset-bottom, 0px)); padding: 9px 11px; }
   .insp-grid { grid-template-columns: auto 1fr auto 1fr; margin: 6px 0 6px; }
@@ -536,11 +541,15 @@ const fmt = {
   time(t) { return t.toFixed(2) + ' s'; },
 };
 
-// App-only materials (pair friction combines as a geometric mean, so the lane
-// values are chosen to give 0.04 on oil and 0.20 on dry boards with urethane).
-const LANE_OIL = { key: 'laneOil', name: 'Oiled lane', density: 900, friction: 0.0064, restitution: 0.3, rolling: 0.002 };
-const LANE_DRY = { key: 'laneDry', name: 'Dry lane', density: 900, friction: 0.16, restitution: 0.3, rolling: 0.002 };
-const CRADLE_STEEL = { ...MATERIALS.steel, key: 'steel', name: 'Hardened steel', restitution: 0.97, friction: 0.05, rolling: 0 };
+// App-only materials. Pair friction is the geometric mean of the two
+// materials, so a 0.16 lane gives urethane 0.20 on dry boards, and a ball
+// coated in lane oil (0.01) gets 0.04. The lane is one seamless box; the ball
+// switches coat when it crosses the end of the oil pattern.
+const LANE_DRY = { key: 'laneDry', name: 'Maple lane', density: 900, friction: 0.16, restitution: 0.3, rolling: 0.002 };
+const LANE_OIL = { ...LANE_DRY, key: 'laneOil', name: 'Oiled lane' };
+const BALL_OILY = { ...MATERIALS.bowling, friction: 0.01 };
+const OIL_END = -12.19;
+const CRADLE_STEEL = { ...MATERIALS.steel, key: 'steel', name: 'Hardened steel', restitution: 0.99, friction: 0.05, rolling: 0 };
 const ALL_MATERIALS = { ...MATERIALS, laneOil: LANE_OIL, laneDry: LANE_DRY };
 
 const SPAWN_MATERIALS = ['wood', 'pine', 'steel', 'rubber', 'ice', 'glass', 'concrete', 'foam', 'gold', 'plastic'];
@@ -1195,10 +1204,12 @@ function updateCamera(dt) {
   dth = Math.atan2(Math.sin(dth), Math.cos(dth));
   orbit.theta += dth * k;
   const sp = Math.sin(orbit.phi);
+  // portrait screens see less sideways, so stand further back
+  const r = orbit.radius * Math.max(1, Math.pow(1.25 / camera.aspect, 0.6));
   camera.position.set(
-    orbit.target.x + orbit.radius * sp * Math.sin(orbit.theta),
-    orbit.target.y + orbit.radius * Math.cos(orbit.phi),
-    orbit.target.z + orbit.radius * sp * Math.cos(orbit.theta),
+    orbit.target.x + r * sp * Math.sin(orbit.theta),
+    orbit.target.y + r * Math.cos(orbit.phi),
+    orbit.target.z + r * sp * Math.cos(orbit.theta),
   );
   camera.lookAt(orbit.target);
   sky.position.copy(camera.position);
@@ -1245,12 +1256,13 @@ function applySceneLook() {
   scene.fog.far = pl.name === 'Venus' || pl.name === 'Titan' ? 260 : 900;
   groundMat.color.set(groundTint);
   groundMesh.visible = !pl.hideGround;
-  hemi.color.set(night ? cssVar('--hemi-sky') : pl.sky ? horizon : cssVar('--hemi-sky'));
-  hemi.groundColor.set(night ? cssVar('--hemi-ground') : pl.sky ? bottom : cssVar('--hemi-ground'));
-  hemi.intensity = night ? 0.55 : 1.05;
-  sun.color.set(night ? cssVar('--sun') : '#fff5e8');
-  sun.intensity = night ? 0.9 : pl.name === 'Venus' || pl.name === 'Titan' ? 1.6 : 2.6;
-  renderer.toneMappingExposure = night ? 1.15 : 1.0;
+  hemi.color.set(pl.hideGround ? '#5d6b84' : night ? cssVar('--hemi-sky') : pl.sky ? horizon : cssVar('--hemi-sky'));
+  hemi.groundColor.set(pl.hideGround ? '#22262e' : night ? cssVar('--hemi-ground') : pl.sky ? bottom : cssVar('--hemi-ground'));
+  // at night the range is floodlit: a cool key light and a brighter fill
+  hemi.intensity = night ? 1.0 : 1.05;
+  sun.color.set(night ? '#d4e0f5' : '#fff5e8');
+  sun.intensity = night ? 2.0 : pl.name === 'Venus' || pl.name === 'Titan' ? 1.6 : 2.6;
+  renderer.toneMappingExposure = night ? 1.2 : 1.0;
   // reflections for metals come from a blurred copy of the sky
   const envScene = new THREE.Scene();
   envScene.add(new THREE.Mesh(sky.geometry, skyMaterial));
@@ -1557,6 +1569,7 @@ const _n3 = new THREE.Matrix3();
 function pick(e) {
   rayFrom(e);
   refreshPickables();
+  scene.updateMatrixWorld(); // objects spawned since the last frame have no world matrix yet
   const hits = raycaster.intersectObjects(pickables, false);
   for (const h of hits) {
     const b = h.object.userData.body;
@@ -2125,7 +2138,9 @@ const SCENARIOS = [
     blurb: 'Five 30 cm hardened-steel balls on paired strings. Lift some and let go: momentum and energy can only both be conserved if the same number of balls swings out the other side.',
     setup(st) {
       setView([0.6, 1.7, 5.4], [0, 1.35, 0], true);
-      const r = 0.15, gap = 0.004, top = 2.6, z = 0.42;
+      // the 8 mm gaps keep resting balls outside each other's contact margin,
+      // so each collision is a clean two-ball exchange
+      const r = 0.15, gap = 0.008, top = 2.6, z = 0.42;
       st.r = r; st.top = top; st.L = 1.6;
       const frame = { look: 'frame', material: MATERIALS.steel };
       for (const zz of [-z, z]) {
@@ -2198,7 +2213,7 @@ const SCENARIOS = [
     name: 'Wrecking ball',
     blurb: 'A 3-tonne steel ball on a 7.2 m cable, pulled back to 60°. At the bottom of its swing it moves at about 8.5 m/s and carries roughly 110 kJ into a running-bond brick wall.',
     setup(st) {
-      setView([-3, 4.8, 15], [1.5, 2.8, 0], true);
+      setView([-4.5, 6.2, 19], [0.5, 4, 0], true);
       const frame = { look: 'hazard', material: MATERIALS.steel };
       solid([{ type: 'box', half: v3(0.3, 5.2, 0.3) }], { ...frame, position: v3(-6.2, 5.2, 0) });
       solid([{ type: 'box', half: v3(4.9, 0.22, 0.26) }], { ...frame, position: v3(-1.6, 10.6, 0) });
@@ -2230,8 +2245,8 @@ const SCENARIOS = [
     blurb: 'A regulation lane: 18.29 m to the head pin, oiled for the first 12 m (μ ≈ 0.04) and dry after that (μ ≈ 0.20). Side spin does little on the oil; once the ball reaches dry boards friction bites and it hooks into the pocket.',
     controls: [
       { id: 'speed', label: 'Ball speed', min: 5, max: 10, step: 0.1, value: 8, format: (v) => `${v.toFixed(1)} m/s · ${(v * 2.237).toFixed(0)} mph` },
-      { id: 'spin', label: 'Side spin', min: 0, max: 40, step: 1, value: 22, format: (v) => `${(v * 60 / (2 * Math.PI)).toFixed(0)} rpm` },
-      { id: 'line', label: 'Start board', min: -0.42, max: 0.42, step: 0.01, value: 0.3, format: (v) => `${(v * 100).toFixed(0)} cm ${v >= 0 ? 'right' : 'left'}` },
+      { id: 'spin', label: 'Side spin', min: 0, max: 30, step: 1, value: 13, format: (v) => `${(v * 60 / (2 * Math.PI)).toFixed(0)} rpm` },
+      { id: 'line', label: 'Start board', min: -0.42, max: 0.42, step: 0.01, value: 0.34, format: (v) => `${Math.abs(v * 100).toFixed(0)} cm ${v >= 0 ? 'right' : 'left'} of centre` },
     ],
     setup(st) {
       setView([0, 1.55, 3.6], [0, 0.65, -9], true);
@@ -2239,8 +2254,19 @@ const SCENARIOS = [
       st.top = top;
       const laneHalf = 0.527;
       solid([{ type: 'box', half: v3(0.95, top / 2, 2.4) }], { position: v3(0, top / 2, 2.4), material: LANE_DRY, look: 'laneDry' });
-      solid([{ type: 'box', half: v3(laneHalf, top / 2, 6.1) }], { position: v3(0, top / 2, -6.1), material: LANE_OIL, look: 'laneOil' });
-      solid([{ type: 'box', half: v3(laneHalf, top / 2, 3.65) }], { position: v3(0, top / 2, -15.85), material: LANE_DRY, look: 'laneDry' });
+      // one seamless lane from the foul line to the pit; two strips show the oil
+      solid([{ type: 'box', half: v3(laneHalf, top / 2, 9.75) }], {
+        position: v3(0, top / 2, -9.75), material: LANE_DRY,
+        visual: () => {
+          const g = new THREE.Group();
+          const oil = new THREE.Mesh(boxGeo(v3(laneHalf, top / 2, -OIL_END / 2)), look('laneOil'));
+          oil.position.set(0, 0, 9.75 + OIL_END / 2);
+          const dry = new THREE.Mesh(boxGeo(v3(laneHalf, top / 2, (19.5 + OIL_END) / 2)), look('laneDry'));
+          dry.position.set(0, 0, 9.75 + OIL_END - (19.5 + OIL_END) / 2);
+          g.add(oil, dry);
+          return g;
+        },
+      });
       for (const s of [-1, 1]) {
         solid([{ type: 'box', half: v3(0.12, (top - 0.09) / 2, 9.75) }], { position: v3(s * (laneHalf + 0.12), (top - 0.09) / 2, -9.75), look: 'frame', material: MATERIALS.steel });
         solid([{ type: 'box', half: v3(0.04, 0.45, 11.7) }], { position: v3(s * (laneHalf + 0.28), top - 0.05, -7.8), look: 'frame', material: MATERIALS.steel });
@@ -2256,6 +2282,7 @@ const SCENARIOS = [
     ],
     afterStep(st) {
       if (st.ball && st.ball.world) {
+        st.ball.shapes[0].material = st.ball.position.z > OIL_END ? BALL_OILY : MATERIALS.bowling;
         st.vNow = M.vlen(st.ball.velocity);
         if (st.ball.position.z < -17.6 && st.entry == null) st.entry = st.vNow;
         if (st.ball.position.z < -21 || st.ball.position.y < -2) {
@@ -2275,7 +2302,7 @@ const SCENARIOS = [
     substeps: 6,
     blurb: 'Four racers on a 15° maple ramp. Mass does not decide the winner, shape does: a solid ball spends 2/7 of its energy on spin, a hollow shell spends 2/5, and an ice block barely spins at all but has to fight a little friction.',
     setup(st) {
-      setView([1.5, 4.6, 10.5], [0.5, 1.2, 0], true);
+      setView([-0.6, 4.9, 11.2], [-1.2, 1.1, 0], true);
       const th = (15 * Math.PI) / 180;
       const a = 5.2, t = 0.15;
       const center = v3(0, a * Math.sin(th) - t * Math.cos(th), 0);
@@ -2285,7 +2312,8 @@ const SCENARIOS = [
       const ax = v3(Math.cos(th), -Math.sin(th), 0), nrm = v3(Math.sin(th), Math.cos(th), 0);
       const at = (s, h, z) => M.vadd(M.vadd(center, M.vscale(ax, s)), M.vadd(M.vscale(nrm, t + h), v3(0, 0, z)));
       for (const z of [-1.2, 0, 1.2]) solid([{ type: 'box', half: v3(a, 0.07, 0.02) }], { position: at(0, 0.07, z), quaternion: q, look: 'frame', material: MATERIALS.steel });
-      st.gate = solid([{ type: 'box', half: v3(0.03, 0.25, 2.45) }], { position: at(-4.25, 0.25, 0), quaternion: q, look: 'hazard', material: MATERIALS.steel });
+      // the gate touches the racers, so everyone starts from rest on the line
+      st.gate = solid([{ type: 'box', half: v3(0.03, 0.25, 2.45) }], { position: at(-4.6 + 0.15 + 0.03 + 0.004, 0.25, 0), quaternion: q, look: 'hazard', material: MATERIALS.steel });
       const finish = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 4.9), new THREE.MeshBasicMaterial({ color: '#15191c' }));
       const fp = at(4.6, 0.002, 0);
       finish.position.set(fp.x, fp.y, fp.z);
@@ -2459,7 +2487,7 @@ const SCENARIOS = [
     name: 'Castle siege',
     blurb: 'A limestone curtain wall and two towers 30 m away. The cannon fires a 111 kg iron ball at 60 m/s, about 200 kJ per shot. You can also pick Launch and fire from the camera.',
     setup(st) {
-      setView([1.6, 2.7, 6.5], [0, 2, -28], true);
+      setView([4.2, 4.2, 9.5], [0, 2.2, -27], true);
       st.blocks = buildCastle(-30);
       const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.26, 2.2, 24), look('frame'));
       barrel.rotation.x = Math.PI / 2 - 0.08;
@@ -2545,8 +2573,8 @@ function bowl(st) {
   st.entry = null;
   const r = 0.1085;
   const ball = addBody({
-    name: 'Bowling ball', material: MATERIALS.bowling, position: v3(st.line ?? 0.3, st.top + r + 0.002, -0.4),
-    velocity: v3(0, 0, -(st.speed ?? 8)), angularVelocity: v3(0, 0, st.spin ?? 22),
+    name: 'Bowling ball', material: BALL_OILY, position: v3(st.line ?? 0.34, st.top + r + 0.002, -0.4),
+    velocity: v3(0, 0, -(st.speed ?? 8)), angularVelocity: v3(0, 0, st.spin ?? 13),
     shapes: [{ type: 'sphere', radius: r, mass: 7 }],
   }, { look: 'bowling', variant: Math.floor(Math.random() * 3) });
   ball.canSleep = false;
@@ -2854,7 +2882,7 @@ window.addEventListener('keydown', (e) => {
 let acc = 0;
 let stepOnce = false;
 let last = performance.now();
-let physMs = 0, fps = 60, frameCount = 0, statT = 0, readT = 0;
+let physMs = 0, fps = 60, frameCount = 0, statT = performance.now(), readT = 0;
 
 function physicsStep() {
   for (const b of live) {
@@ -2944,12 +2972,11 @@ function frame(now) {
   updateLabels();
   updateInspector();
   frameCount++;
-  statT += dt;
   readT += dt;
-  if (statT >= 0.5) {
-    fps = frameCount / statT;
+  if (now - statT >= 500) {
+    fps = (frameCount * 1000) / (now - statT);
     frameCount = 0;
-    statT = 0;
+    statT = now;
     const n = [...live].filter((b) => b.invMass > 0).length;
     $('stats').innerHTML = `<b>${n}</b> bodies · <b>${world.stats.points}</b> contacts · physics <b>${physMs.toFixed(1)}</b> ms · <b>${fps.toFixed(0)}</b> fps · t <b>${world.time.toFixed(1)}</b> s`;
   }
@@ -2974,7 +3001,25 @@ sun.castShadow = settings.shadows;
 requestAnimationFrame((t) => { last = t; frame(t); });
 
 // a small handle for automated checks
-window.provingGround = { world, loadScenario, SCENARIOS, settings, setTool, select, spawnKind, get scenario() { return scenario; } };
+window.provingGround = {
+  world, loadScenario, SCENARIOS, settings, setTool, select, spawnKind, setPlanet,
+  get scenario() { return scenario; },
+  get selected() { return selected; },
+  // where a body appears on screen, in CSS pixels
+  screenOf(b) {
+    const p = b.userData.vis.position.clone().project(camera);
+    const r = canvas.getBoundingClientRect();
+    return { x: r.left + ((p.x + 1) / 2) * r.width, y: r.top + ((1 - p.y) / 2) * r.height };
+  },
+  get cameraState() { return { radius: orbit.goal.radius, theta: orbit.goal.theta, phi: orbit.goal.phi }; },
+  // run the simulation forward without waiting for frames (used by automated checks)
+  advance(seconds) {
+    const n = Math.round(seconds / STEP);
+    for (let i = 0; i < n; i++) physicsStep();
+    syncVisuals(1);
+    if (scenario && scenario.readout) $('sc-readout').innerHTML = scenario.readout.call(scenario, scenario.state);
+  },
+};
 </script>
 <!-- artifact:end -->
 </body>
