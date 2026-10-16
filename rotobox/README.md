@@ -87,6 +87,7 @@ On a keyboard:
 | `L` | Lasso select. With a selection: arrow keys nudge it (`Shift` for 10 px), `Enter` keeps it, `Delete` removes it, `Esc` cancels |
 | `[` and `]` | Smaller / bigger brush |
 | `←` `→` | Previous / next frame |
+| `Home` `End` | First / last frame |
 | `Space` | Play or pause (hold and drag to pan) |
 | `N` | Insert a frame after this one |
 | `H` | Cycle the hold of this frame (1× to 4×) |

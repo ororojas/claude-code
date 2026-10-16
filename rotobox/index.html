@@ -884,6 +884,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <dt><kbd>U</kbd> <kbd>L</kbd> <kbd>I</kbd></dt><dd>Shapes, lasso, color picker</dd>
       <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>Smaller or bigger brush</dd>
       <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Previous or next frame</dd>
+      <dt><kbd>Home</kbd> <kbd>End</kbd></dt><dd>First or last frame</dd>
       <dt><kbd>Space</kbd></dt><dd>Play or pause. Hold it and drag to pan.</dd>
       <dt><kbd>N</kbd> <kbd>H</kbd></dt><dd>New frame, hold this one longer</dd>
       <dt><kbd>O</kbd> <kbd>V</kbd></dt><dd>Onion skin, video or photos</dd>
@@ -4609,6 +4610,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       case ']': changeSize(1); break;
       case 'arrowleft': case ',': e.preventDefault(); step(-1); break;
       case 'arrowright': case '.': e.preventDefault(); step(1); break;
+      case 'home': case 'end': e.preventDefault(); if (E.playing) stopPlay(); showFrame(k === 'home' ? 0 : E.frames.length - 1); scrubSound(); break;
       case 'o': $('#btnOnion').click(); break;
       case 'v': if (E.project.hasVideo) setShowRef(!E.settings.showRef, true); break;
       case 'n': insertFrame(); break;
