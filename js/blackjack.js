@@ -1,10 +1,12 @@
 // The iPad is the dealer: it deals and plays its own hand from a virtual
-// shoe, while players are dealt real cards and report their final totals.
+// shoe. Players hold real cards and, once the dealer finishes, tap whether
+// each of their hands won, pushed or lost.
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 const DECKS = 6;
 const RESHUFFLE_AT = 52 * DECKS * 0.25;
-const RESULTS = ['bust', 'low', 17, 18, 19, 20, 21];
+const PAYOUT = { win: 2, push: 1, lose: 0, bj: 2.5 };
+const OUTCOME_LABEL = { win: 'Win', push: 'Push', lose: 'Lose', bj: 'Blackjack' };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const $ = (id) => document.getElementById(id);
@@ -51,7 +53,7 @@ export class Blackjack {
     this.seats = [];
     this.dealer = [];
     this.holeHidden = true;
-    this.cur = null;
+    this.dealerBJ = false;
     this.endMsg = '';
     this.shoe = [];
     this.shuffle();
@@ -80,7 +82,7 @@ export class Blackjack {
     if (this.phase === 'settled') return 0;
     const seat = this.seats.find((s) => s.p === p);
     if (!seat) return 0;
-    return seat.hands.reduce((t, h) => t + (h.outcome ? 0 : h.bet), 0) + (seat.insSettled ? 0 : seat.insurance);
+    return seat.hands.reduce((t, h) => t + h.bet, 0) + (seat.insSettled ? 0 : seat.insurance);
   }
 
   busy() {
@@ -93,7 +95,6 @@ export class Blackjack {
     this.last.clear();
     this.seats = [];
     this.dealer = [];
-    this.cur = null;
     this.render();
   }
 
@@ -105,7 +106,9 @@ export class Blackjack {
 
   primary() {
     if (this.phase === 'betting') this.deal();
-    else if (this.phase === 'check') this.resolveCheck();
+    else if (this.phase === 'insurance') this.peek();
+    else if (this.phase === 'play') this.dealerPlay();
+    else if (this.phase === 'results') this.payOut();
     else if (this.phase === 'settled') this.nextHand();
   }
 
@@ -172,8 +175,7 @@ export class Blackjack {
     this.seats = players.map((p) => ({
       p,
       base: this.bets.get(p.id),
-      hands: [this.newHand(this.bets.get(p.id))],
-      natural: false,
+      hands: [{ bet: this.bets.get(p.id), doubled: false, outcome: null }],
       insurance: 0,
       insSettled: false,
       insPaid: 0,
@@ -182,8 +184,9 @@ export class Blackjack {
     this.bets.clear();
     this.dealer = [];
     this.holeHidden = true;
+    this.dealerBJ = false;
     this.phase = 'dealing';
-    this.render();
+    this.ctx.onChange();
     await sleep(300);
     this.dealer.push(this.draw());
     this.render();
@@ -191,23 +194,20 @@ export class Blackjack {
     this.dealer.push(this.draw());
     this.render();
     await sleep(450);
-    this.phase = 'check';
-    this.ctx.onChange();
-  }
-
-  newHand(bet) {
-    return { bet, result: null, doubled: false, acted: false, outcome: null, paid: 0 };
-  }
-
-  toggleNatural(seat) {
-    if (this.phase !== 'check') return;
-    seat.natural = !seat.natural;
-    this.ctx.sfx.chip();
-    this.render();
+    const up = this.dealer[0];
+    if (up.r === 'A') {
+      this.phase = 'insurance';
+      this.ctx.onChange();
+    } else if (isTen(up)) {
+      this.peek();
+    } else {
+      this.phase = 'play';
+      this.ctx.onChange();
+    }
   }
 
   toggleInsurance(seat) {
-    if (this.phase !== 'check') return;
+    if (this.phase !== 'insurance') return;
     const p = seat.p;
     if (seat.insurance) {
       p.balance += seat.insurance;
@@ -225,73 +225,31 @@ export class Blackjack {
     this.ctx.onChange();
   }
 
-  async resolveCheck() {
-    const up = this.dealer[0];
-    const peek = up.r === 'A' || isTen(up);
-    const dealerBJ = handValue(this.dealer).total === 21;
+  async peek() {
     this.phase = 'peek';
-    this.render();
-    if (peek) await sleep(1000);
-
+    this.ctx.onChange();
+    await sleep(1000);
+    this.dealerBJ = handValue(this.dealer).total === 21;
     for (const seat of this.seats) {
       seat.insSettled = true;
-      if (seat.insurance && dealerBJ) {
+      if (seat.insurance && this.dealerBJ) {
         seat.insPaid = seat.insurance * 3;
         seat.p.balance += seat.insPaid;
       }
     }
-
-    if (peek && dealerBJ) {
+    if (this.dealerBJ) {
       this.holeHidden = false;
       this.ctx.sfx.card();
-      for (const seat of this.seats) {
-        const h = seat.hands[0];
-        h.result = seat.natural ? 'bj' : 'lose';
-        h.outcome = seat.natural ? 'push' : 'lose';
-        h.paid = seat.natural ? h.bet : 0;
-        seat.p.balance += h.paid;
-      }
-      this.finish('Dealer has Blackjack');
-      return;
+      this.phase = 'results';
+    } else {
+      this.ctx.toast('Dealer does not have Blackjack');
+      this.phase = 'play';
     }
-
-    for (const seat of this.seats) {
-      if (!seat.natural) continue;
-      const h = seat.hands[0];
-      h.result = 'bj';
-      h.outcome = 'bj';
-      h.paid = h.bet * 2.5;
-      seat.p.balance += h.paid;
-      this.ctx.floatOnTile(seat.p, `Blackjack +${this.ctx.money(h.bet * 1.5)}`, 'pos');
-    }
-    this.phase = 'playing';
-    this.cur = this.nextOpen();
-    if (peek) this.ctx.toast('Dealer does not have Blackjack');
-    if (!this.cur) {
-      this.dealerPlay();
-      return;
-    }
-    this.ctx.select(this.seats[this.cur.si].p.id);
     this.ctx.onChange();
   }
 
-  nextOpen() {
-    for (let si = 0; si < this.seats.length; si++) {
-      const hi = this.seats[si].hands.findIndex((h) => h.result === null);
-      if (hi >= 0) return { si, hi };
-    }
-    return null;
-  }
-
-  currentHand() {
-    if (!this.cur) return null;
-    const seat = this.seats[this.cur.si];
-    return { seat, hand: seat.hands[this.cur.hi] };
-  }
-
-  double() {
-    const { seat, hand } = this.currentHand();
-    if (hand.acted) return;
+  double(seat, hand) {
+    if (this.phase !== 'play' || hand.doubled) return;
     if (seat.p.balance < hand.bet) {
       this.ctx.toast(`${seat.p.name} needs ${this.ctx.money(hand.bet)} to double`);
       return;
@@ -299,90 +257,81 @@ export class Blackjack {
     seat.p.balance -= hand.bet;
     hand.bet *= 2;
     hand.doubled = true;
-    hand.acted = true;
     this.ctx.sfx.chip();
-    this.ctx.toast('Doubled. Take exactly one more card.');
+    this.ctx.toast(`${seat.p.name} doubled. Take exactly one more card.`);
     this.ctx.onChange();
   }
 
-  split() {
-    const { seat, hand } = this.currentHand();
-    if (hand.acted || seat.hands.length >= 4) return;
+  split(seat, hand) {
+    if (this.phase !== 'play' || hand.doubled || seat.hands.length >= 4) return;
     if (seat.p.balance < hand.bet) {
       this.ctx.toast(`${seat.p.name} needs ${this.ctx.money(hand.bet)} to split`);
       return;
     }
     seat.p.balance -= hand.bet;
-    seat.hands.splice(this.cur.hi + 1, 0, this.newHand(hand.bet));
+    seat.hands.splice(seat.hands.indexOf(hand) + 1, 0, { bet: hand.bet, doubled: false, outcome: null });
     this.ctx.sfx.chip();
-    this.ctx.toast('Split. Deal one more card to each hand.');
+    this.ctx.toast(`${seat.p.name} split. Play each hand on its own.`);
     this.ctx.onChange();
-  }
-
-  setResult(r) {
-    const { hand } = this.currentHand();
-    hand.result = r;
-    this.ctx.sfx.chip();
-    this.cur = this.nextOpen();
-    if (this.cur) {
-      this.ctx.select(this.seats[this.cur.si].p.id);
-      this.ctx.onChange();
-    } else {
-      this.dealerPlay();
-    }
   }
 
   async dealerPlay() {
     this.phase = 'dealer';
-    this.cur = null;
     this.ctx.onChange();
-    await sleep(600);
+    await sleep(500);
     this.holeHidden = false;
     this.ctx.sfx.card();
     this.render();
-    const live = this.seats.some((s) => s.hands.some((h) => !h.outcome && h.result !== 'bust'));
-    if (live) {
-      while (handValue(this.dealer).total < 17) {
-        await sleep(850);
-        this.dealer.push(this.draw());
-        this.render();
-      }
+    while (handValue(this.dealer).total < 17) {
+      await sleep(850);
+      this.dealer.push(this.draw());
+      this.render();
     }
-    await sleep(600);
-    this.settle(live);
+    await sleep(400);
+    this.phase = 'results';
+    this.ctx.onChange();
   }
 
-  settle(live) {
-    const d = handValue(this.dealer).total;
-    const dBust = d > 21;
-    for (const seat of this.seats) {
-      for (const h of seat.hands) {
-        if (h.outcome) continue;
-        const v = h.result === 'low' ? 16 : h.result;
-        if (h.result === 'bust') h.outcome = 'lose';
-        else if (dBust || v > d) h.outcome = 'win';
-        else if (v === d) h.outcome = 'push';
-        else h.outcome = 'lose';
-        h.paid = h.outcome === 'win' ? h.bet * 2 : h.outcome === 'push' ? h.bet : 0;
-        seat.p.balance += h.paid;
-      }
-    }
-    const msg = !live ? `Dealer shows ${d}` : dBust ? `Dealer busts with ${d}` : `Dealer stands on ${d}`;
-    this.finish(msg);
+  canBlackjack(seat, hand) {
+    return seat.hands.length === 1 && !hand.doubled;
   }
 
-  finish(msg) {
+  outcomesFor(seat, hand) {
+    if (this.dealerBJ) return ['push', 'lose'];
+    return this.canBlackjack(seat, hand) ? ['bj', 'win', 'push', 'lose'] : ['win', 'push', 'lose'];
+  }
+
+  mark(hand, outcome) {
+    if (this.phase !== 'results') return;
+    hand.outcome = hand.outcome === outcome ? null : outcome;
+    this.ctx.sfx.chip();
+    this.render();
+  }
+
+  allMarked() {
+    return this.seats.every((s) => s.hands.every((h) => h.outcome));
+  }
+
+  payOut() {
+    if (!this.allMarked()) {
+      this.ctx.toast('Every hand needs Win, Push or Lose first');
+      return;
+    }
     const { ctx } = this;
     let anyWin = false;
     for (const seat of this.seats) {
-      const staked = seat.hands.reduce((t, h) => t + h.bet, 0) + seat.insurance;
-      const paid = seat.hands.reduce((t, h) => t + h.paid, 0) + seat.insPaid;
-      seat.net = paid - staked;
+      let paid = seat.insPaid;
+      for (const h of seat.hands) {
+        h.paid = h.bet * PAYOUT[h.outcome];
+        paid += h.paid;
+      }
+      seat.p.balance += paid - seat.insPaid;
+      seat.net = paid - seat.hands.reduce((t, h) => t + h.bet, 0) - seat.insurance;
       if (seat.net > 0) anyWin = true;
       this.last.set(seat.p.id, seat.base);
       ctx.floatOnTile(seat.p, ctx.signed(seat.net), seat.net > 0 ? 'pos' : seat.net < 0 ? 'neg' : 'zero');
     }
-    this.endMsg = msg;
+    this.endMsg = 'Paid. Tap NEXT HAND or a betting circle to go again.';
     this.phase = 'settled';
     if (anyWin) ctx.sfx.win();
     ctx.onChange();
@@ -399,22 +348,22 @@ export class Blackjack {
 
   message() {
     const { money } = this.ctx;
+    const d = handValue(this.dealer).total;
     switch (this.phase) {
       case 'betting': {
         const total = [...this.bets.values()].reduce((a, b) => a + b, 0);
         return total ? `${money(total)} bet · tap DEAL when everyone is in` : 'Pick a chip, then tap your betting circle';
       }
       case 'dealing': return 'Dealing…';
-      case 'check':
-        return this.dealer[0].r === 'A'
-          ? 'Deal 2 cards to each player. Dealer shows an Ace: insurance is open.'
-          : 'Deal 2 cards to each player. Got Blackjack? Tap it on your seat.';
+      case 'insurance': return 'Dealer shows an Ace. Deal 2 cards each, take insurance if you want it, then CONTINUE.';
       case 'peek': return 'Dealer checks for Blackjack…';
-      case 'playing': {
-        const { seat } = this.currentHand();
-        return `${seat.p.name}, play your cards and tap your total`;
-      }
+      case 'play': return 'Deal 2 cards each and play your hands. Double or split on your seat, then tap DEALER PLAYS.';
       case 'dealer': return 'Dealer plays…';
+      case 'results':
+        if (this.dealerBJ) return 'Dealer has Blackjack. Tap Push if you have Blackjack too, otherwise Lose.';
+        return d > 21
+          ? `Dealer busts with ${d}. Tap your result on every hand, then PAY OUT.`
+          : `Dealer has ${d}. Tap your result on every hand, then PAY OUT.`;
       default: return this.endMsg;
     }
   }
@@ -424,13 +373,14 @@ export class Blackjack {
     this.renderDealer();
     $('bjMsg').textContent = this.message();
     $('bjShoe').textContent = `${this.shoe.length} cards`;
-    this.renderPanel();
     this.renderSeats();
 
     const main = $('bjMain');
-    const labels = { betting: 'DEAL', check: 'CONTINUE', settled: 'NEXT HAND' };
-    main.textContent = labels[this.phase] || 'DEAL';
-    main.disabled = !labels[this.phase] || (this.phase === 'betting' && !this.bets.size);
+    const labels = { betting: 'DEAL', insurance: 'CONTINUE', play: 'DEALER PLAYS', results: 'PAY OUT', settled: 'NEXT HAND' };
+    main.textContent = labels[this.phase] || 'DEALING';
+    main.disabled = !labels[this.phase]
+      || (this.phase === 'betting' && !this.bets.size)
+      || (this.phase === 'results' && !this.allMarked());
     const p = this.ctx.active();
     $('bjClear').disabled = this.phase !== 'betting' || !p || !this.bets.get(p.id);
     $('bjRebet').disabled = this.phase !== 'betting' || !this.last.size;
@@ -450,7 +400,6 @@ export class Blackjack {
     });
     const tot = $('bjDealerTotal');
     if (!this.dealer.length) {
-      tot.textContent = '';
       tot.hidden = true;
       return;
     }
@@ -465,45 +414,9 @@ export class Blackjack {
       tot.textContent = `Bust ${v.total}`;
       tot.classList.add('bust');
     } else {
-      tot.textContent = v.soft && v.total < 21 && !(this.phase === 'settled') ? `Soft ${v.total}` : String(v.total);
+      tot.textContent = v.soft && v.total < 21 && this.holeHidden === false && this.phase === 'dealer'
+        ? `Soft ${v.total}` : String(v.total);
     }
-  }
-
-  renderPanel() {
-    const panel = $('bjPanel');
-    panel.textContent = '';
-    panel.hidden = this.phase !== 'playing' || !this.cur;
-    if (panel.hidden) return;
-    const { seat, hand } = this.currentHand();
-    const { money } = this.ctx;
-    panel.style.setProperty('--pc', seat.p.color);
-
-    const head = el('div', 'turn-head');
-    head.append(this.avatar(seat.p));
-    const who = el('div', 'turn-who');
-    who.append(el('b', '', seat.p.name));
-    const n = seat.hands.length;
-    who.append(el('span', '', `${n > 1 ? `Hand ${this.cur.hi + 1} of ${n} · ` : ''}${money(hand.bet)} bet${hand.doubled ? ' (doubled)' : ''}`));
-    head.append(who);
-    const acts = el('div', 'turn-acts');
-    if (!hand.acted) {
-      const dbl = el('button', 'pill', `Double +${money(hand.bet)}`);
-      dbl.addEventListener('click', () => this.double());
-      const spl = el('button', 'pill', 'Split');
-      spl.disabled = n >= 4;
-      spl.addEventListener('click', () => this.split());
-      acts.append(dbl, spl);
-    }
-    head.append(acts);
-
-    const pad = el('div', 'keypad');
-    for (const r of RESULTS) {
-      const label = r === 'bust' ? 'Bust' : r === 'low' ? '16 or less' : String(r);
-      const k = el('button', `key${r === 'bust' ? ' bust' : r === 'low' ? ' low' : ''}`, label);
-      k.addEventListener('click', () => this.setResult(r));
-      pad.append(k);
-    }
-    panel.append(head, pad);
   }
 
   avatar(p) {
@@ -516,15 +429,14 @@ export class Blackjack {
   renderSeats() {
     const box = $('bjSeats');
     box.textContent = '';
-    const { money, signed, state } = this.ctx;
+    const { money, signed, state, luminance } = this.ctx;
     for (const p of state.players) {
       const seat = this.seats.find((s) => s.p === p);
-      const isTurn = this.cur && this.seats[this.cur.si] === seat;
       const s = el('div', 'seat');
       s.style.setProperty('--pc', p.color);
       s.classList.toggle('active', p.id === state.activeId);
-      s.classList.toggle('turn', !!isTurn);
       s.classList.toggle('out', this.phase !== 'betting' && !seat);
+      s.classList.toggle('todo', this.phase === 'results' && !!seat && seat.hands.some((h) => !h.outcome));
 
       const head = el('button', 'seat-head');
       head.append(this.avatar(p));
@@ -538,51 +450,75 @@ export class Blackjack {
         const amt = this.bets.get(p.id) || 0;
         const spot = el('button', `spot${amt ? ' filled' : ''}`);
         spot.setAttribute('aria-label', `Bet for ${p.name}`);
-        spot.append(amt ? chipEl(p.color, money(amt), this.ctx.luminance) : el('span', 'spot-label', 'BET'));
+        spot.append(amt ? chipEl(p.color, money(amt), luminance) : el('span', 'spot-label', 'BET'));
         spot.addEventListener('click', () => this.tapSpot(p));
         s.append(spot);
-      } else if (!seat) {
+        box.append(s);
+        continue;
+      }
+      if (!seat) {
         s.append(el('div', 'seat-note', 'Sitting out'));
-      } else {
-        const hands = el('div', 'hands');
-        seat.hands.forEach((h, i) => {
-          const row = el('div', 'hand');
-          row.classList.toggle('cur', isTurn && this.cur.hi === i);
-          row.append(chipEl(p.color, money(h.bet), this.ctx.luminance, true));
-          row.append(el('span', `hres ${h.outcome || ''}`, handLabel(h, this.phase)));
-          hands.append(row);
-        });
-        s.append(hands);
-        if (this.phase === 'check') {
-          const tags = el('div', 'seat-tags');
-          const bj = el('button', `tag${seat.natural ? ' on' : ''}`, 'Blackjack!');
-          bj.addEventListener('click', () => this.toggleNatural(seat));
-          tags.append(bj);
-          if (this.dealer[0]?.r === 'A') {
-            const ins = el('button', `tag${seat.insurance ? ' on' : ''}`,
-              seat.insurance ? `Insured ${money(seat.insurance)}` : `Insure ${money(Math.floor(seat.hands[0].bet / 2))}`);
-            ins.addEventListener('click', () => this.toggleInsurance(seat));
-            tags.append(ins);
-          }
-          s.append(tags);
-        } else if (seat.insurance && seat.insSettled && this.phase !== 'settled') {
-          s.append(el('div', 'seat-note', seat.insPaid ? 'Insurance paid' : 'Insurance lost'));
-        }
+        box.append(s);
+        continue;
+      }
+
+      const hands = el('div', 'hands');
+      seat.hands.forEach((h, i) => {
+        const wrap = el('div', 'hand-wrap');
+        const row = el('div', 'hand');
+        row.append(chipEl(p.color, money(h.bet), luminance, true));
+        const label = seat.hands.length > 1 ? `Hand ${i + 1}` : '';
+        const note = [label, h.doubled ? 'Doubled' : ''].filter(Boolean).join(' · ');
         if (this.phase === 'settled') {
-          s.append(el('div', `seat-net ${seat.net > 0 ? 'pos' : seat.net < 0 ? 'neg' : 'zero'}`,
-            seat.net === 0 ? 'Push' : signed(seat.net)));
+          row.append(el('span', `hres ${h.outcome}`, [note, OUTCOME_LABEL[h.outcome]].filter(Boolean).join(' · ')));
+        } else if (note) {
+          row.append(el('span', 'hres', note));
         }
+        wrap.append(row);
+
+        if (this.phase === 'play' && !h.doubled) {
+          const acts = el('div', 'seat-tags');
+          const dbl = el('button', 'tag', 'Double');
+          dbl.addEventListener('click', () => this.double(seat, h));
+          acts.append(dbl);
+          if (seat.hands.length < 4) {
+            const spl = el('button', 'tag', 'Split');
+            spl.addEventListener('click', () => this.split(seat, h));
+            acts.append(spl);
+          }
+          wrap.append(acts);
+        }
+
+        if (this.phase === 'results') {
+          const seg = el('div', 'outcomes');
+          for (const o of this.outcomesFor(seat, h)) {
+            const b = el('button', `oc ${o}${h.outcome === o ? ' on' : ''}`, OUTCOME_LABEL[o]);
+            b.addEventListener('click', () => this.mark(h, o));
+            seg.append(b);
+          }
+          wrap.append(seg);
+        }
+        hands.append(wrap);
+      });
+      s.append(hands);
+
+      if (this.phase === 'insurance') {
+        const tags = el('div', 'seat-tags');
+        const ins = el('button', `tag${seat.insurance ? ' on' : ''}`,
+          seat.insurance ? `Insured ${money(seat.insurance)}` : `Insure ${money(Math.floor(seat.hands[0].bet / 2))}`);
+        ins.addEventListener('click', () => this.toggleInsurance(seat));
+        tags.append(ins);
+        s.append(tags);
+      } else if (seat.insurance && seat.insSettled && this.phase !== 'settled') {
+        s.append(el('div', 'seat-note', seat.insPaid ? `Insurance paid ${money(seat.insPaid)}` : 'Insurance lost'));
+      }
+      if (this.phase === 'settled') {
+        s.append(el('div', `seat-net ${seat.net > 0 ? 'pos' : seat.net < 0 ? 'neg' : 'zero'}`,
+          seat.net === 0 ? 'Even' : signed(seat.net)));
       }
       box.append(s);
     }
   }
-}
-
-function handLabel(h, phase) {
-  const r = h.result;
-  const base = r === null ? (phase === 'playing' ? 'Playing…' : 'Your cards') : r === 'bj' ? 'Blackjack' : r === 'bust' ? 'Bust' : r === 'low' ? '16 or less' : r === 'lose' ? '' : String(r);
-  const out = { win: 'Win', push: 'Push', lose: 'Lose', bj: 'Paid 3:2' }[h.outcome];
-  return out ? [base, out].filter(Boolean).join(' · ') : base;
 }
 
 function cardEl(c) {
@@ -594,8 +530,8 @@ function cardEl(c) {
   tl.append(el('b', '', c.r), el('i', '', c.s));
   const br = tl.cloneNode(true);
   br.classList.add('br');
-  const pip = el('div', 'pip', ['J', 'Q', 'K'].includes(c.r) ? c.r : c.s);
-  if (['J', 'Q', 'K'].includes(c.r)) pip.classList.add('court');
+  const court = ['J', 'Q', 'K'].includes(c.r);
+  const pip = el('div', `pip${court ? ' court' : ''}`, court ? c.r : c.s);
   face.append(tl, pip, br);
   inner.append(face, el('div', 'card-back'));
   card.append(inner);
