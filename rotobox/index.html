@@ -484,6 +484,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <symbol id="i-shape" viewBox="0 0 24 24"><rect x="3.5" y="10.5" width="10" height="10" rx="1.5"/><circle cx="15.5" cy="8.5" r="5"/></symbol>
     <symbol id="i-lasso" viewBox="0 0 24 24"><ellipse cx="12.5" cy="10" rx="8.5" ry="5.5" stroke-dasharray="3 2.4"/><path d="M6.5 14.2c-1.6.8-2.3 2.2-1.6 3.4.7 1.2 2.4 1.3 3.4.3M7.6 18l-.9 3"/></symbol>
     <symbol id="i-ink" viewBox="0 0 24 24"><path d="M12 3c2.5 3.2 4 6 4 8.6L12 21l-4-9.4C8 9 9.5 6.2 12 3z"/><path d="M12 12.5V21"/><circle cx="12" cy="10.4" r="1.4"/></symbol>
+    <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M6 21l-2-2 2.5-5L17 3.5a2 2 0 0 1 2.8 0l.7.7a2 2 0 0 1 0 2.8L10 17.5z"/><path d="M8.5 12.5l3 3M12 9l3 3"/></symbol>
     <symbol id="i-marker" viewBox="0 0 24 24"><path d="M15 4l5 5-9 9H6v-5z"/><path d="M6 18l-2 2"/><path d="M12.5 6.5l5 5"/></symbol>
     <symbol id="i-sketch" viewBox="0 0 24 24"><path d="M4 18c3-6 5-11 8-11 2.6 0 1.4 6 4 6 1.6 0 2.6-2 4-4"/><path d="M4 21h16"/><path d="M17.5 3.5l.7 1.6 1.6.7-1.6.7-.7 1.6-.7-1.6-1.6-.7 1.6-.7z" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 7V4.5h14V7M12 4.5v15M9 19.5h6"/></symbol>
@@ -780,7 +781,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   <div class="field" id="brushField">
     <span class="label" id="lblBrushKind">Brush</span>
     <div class="chips" id="brushChips" aria-labelledby="lblBrushKind">
-      <button type="button" data-v="pencil">Pencil</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="marker">Marker</button>
+      <button type="button" data-v="pencil">Pencil</button><button type="button" data-v="ink">Ink</button><button type="button" data-v="marker">Marker</button><button type="button" data-v="crayon">Crayon</button>
     </div>
   </div>
   <div class="field" id="eraseField" hidden>
@@ -1500,10 +1501,52 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     for (let k = 1; k < n; k++) drawSegment(ctx, P, k, size, mul);
     drawStrokeEnd(ctx, P, size, mul);
   }
-  // Brushes: pencil (no code), ink 'i' (ends taper to a point), marker 'm' (see-through, no self-darkening).
+  // Brushes: pencil (no code), ink 'i' (ends taper to a point), marker 'm' (see-through, no
+  // self-darkening), crayon 'c' (wax on paper tooth).
   const MARKER_ALPHA = 0.5;
-  const BRUSH_CODE = { pencil: '', ink: 'i', marker: 'm' };
-  const BRUSH_NAMES = { pencil: 'Pencil', ink: 'Ink', marker: 'Marker' };
+  const BRUSH_CODE = { pencil: '', ink: 'i', marker: 'm', crayon: 'c' };
+  const BRUSH_NAMES = { pencil: 'Pencil', ink: 'Ink', marker: 'Marker', crayon: 'Crayon' };
+  // Crayon grain: one tile of paper tooth, made from a fixed seed so it's the same on every device,
+  // every replay and every export. Wax catches the high points and skips the hollows. The tile is
+  // anchored to the canvas, so overlapping strokes share the same grain.
+  const GRAIN = 128;
+  let grainTile = null, grainURL = '';
+  function grainCanvas() {
+    if (grainTile) return grainTile;
+    let seed = 0x5eed1234;
+    const rnd = () => { seed = (seed + 0x6d2b79f5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // Value noise on grids that divide the tile, so it repeats without seams.
+    const grid = (cells) => { const g = new Float32Array(cells * cells); for (let i = 0; i < g.length; i++) g[i] = rnd(); return { g, cells }; };
+    const sample = ({ g, cells }, x, y) => {
+      const fx = (x * cells) / GRAIN, fy = (y * cells) / GRAIN;
+      const x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+      const at = (i, j) => g[(j % cells) * cells + (i % cells)];
+      const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
+      const a = at(x0, y0) + (at(x0 + 1, y0) - at(x0, y0)) * sx;
+      const b = at(x0, y0 + 1) + (at(x0 + 1, y0 + 1) - at(x0, y0 + 1)) * sx;
+      return a + (b - a) * sy;
+    };
+    const coarse = grid(32), fine = grid(64);
+    const c = makeCanvas(GRAIN, GRAIN);
+    const cx = c.getContext('2d');
+    const img = cx.createImageData(GRAIN, GRAIN);
+    for (let y = 0; y < GRAIN; y++) {
+      for (let x = 0; x < GRAIN; x++) {
+        const n = 0.45 * sample(coarse, x, y) + 0.35 * sample(fine, x, y) + 0.2 * rnd();
+        img.data[(y * GRAIN + x) * 4 + 3] = Math.round(clamp((n - 0.24) / 0.16, 0, 1) * 255);
+      }
+    }
+    cx.putImageData(img, 0, 0);
+    grainTile = c;
+    try { grainURL = c.toDataURL('image/png'); } catch (e) { grainURL = ''; }
+    return c;
+  }
+  const grainPatterns = new WeakMap();
+  function grainPattern(ctx) {
+    let pt = grainPatterns.get(ctx);
+    if (!pt) { pt = ctx.createPattern(grainCanvas(), 'repeat'); grainPatterns.set(ctx, pt); }
+    return pt;
+  }
   const inkTaper = (size) => clamp(size * 2.5, 6, 60);
   function inkWidths(P, size) {
     const n = P.length / 3, T = inkTaper(size);
@@ -1544,6 +1587,31 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = MARKER_ALPHA;
+    ctx.drawImage(markerScratch, b.x, b.y, b.w, b.h, b.x, b.y, b.w, b.h);
+    ctx.restore();
+  }
+  function renderCrayon(ctx, op) {
+    const W = ctx.canvas.width, H = ctx.canvas.height;
+    const b = strokeBounds(op.p, op.w, W, H);
+    if (b.w < 1 || b.h < 1) return;
+    if (!markerScratch || markerScratch.width < W || markerScratch.height < H) {
+      freeCanvas(markerScratch);
+      markerScratch = makeCanvas(Math.max(W, markerScratch ? markerScratch.width : 0), Math.max(H, markerScratch ? markerScratch.height : 0));
+    }
+    const m = markerScratch.getContext('2d');
+    m.setTransform(1, 0, 0, 1, 0, 0);
+    m.globalCompositeOperation = 'source-over';
+    m.clearRect(b.x, b.y, b.w, b.h);
+    strokeStyle(m, 0, op.c);
+    drawStrokePath(m, op.p, op.w, null);
+    m.globalCompositeOperation = 'destination-in';
+    m.fillStyle = grainPattern(m);
+    m.fillRect(b.x, b.y, b.w, b.h);
+    m.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.drawImage(markerScratch, b.x, b.y, b.w, b.h, b.x, b.y, b.w, b.h);
     ctx.restore();
   }
@@ -1610,6 +1678,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       if (op.t === 's') {
         if (!op.p.length) continue;
         if (op.b === 'm' && !op.e) { renderMarker(ctx, op); continue; }
+        if (op.b === 'c' && !op.e) { renderCrayon(ctx, op); continue; }
         strokeStyle(ctx, op.e, op.c);
         drawStrokePath(ctx, op.p, op.w, op.b === 'i' && !op.e ? inkWidths(op.p, op.w) : null);
       } else if (op.t === 'f') {
@@ -2013,6 +2082,16 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     ctxLive.setTransform(1, 0, 0, 1, 0, 0);
     ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
     cvLive.hidden = true;
+    liveGrain(false);
+  }
+  // While a crayon stroke is drawn, the live layer is masked by the grain tile, lined up with the
+  // canvas, so it looks the way the finished stroke will.
+  function liveGrain(on) {
+    if (on) grainCanvas();
+    const v = on && grainURL ? 'url(' + grainURL + ')' : '';
+    cvLive.style.maskImage = cvLive.style.webkitMaskImage = v;
+    cvLive.style.maskSize = cvLive.style.webkitMaskSize = v ? GRAIN + 'px ' + GRAIN + 'px' : '';
+    cvLive.style.maskRepeat = cvLive.style.webkitMaskRepeat = v ? 'repeat' : '';
   }
   const ring = $('#ring');
 
@@ -2931,13 +3010,14 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     gesture = {
       kind: 'draw', id: e.pointerId, type: e.pointerType, eraser, brush, color: prefs.color, layer, trail,
       size, pts: [], sx: pt.x, sy: pt.y, rx: pt.x, ry: pt.y, pr: 1, frame: f,
-      ctx: brush === 'marker' || trail ? ctxLive : ctxDraw,
+      ctx: brush === 'marker' || brush === 'crayon' || trail ? ctxLive : ctxDraw,
       mul: brush === 'ink' ? [] : null, dist: 0, T: inkTaper(size),
     };
-    if (brush === 'marker' || trail) {
+    if (brush === 'marker' || brush === 'crayon' || trail) {
       ctxLive.setTransform(1, 0, 0, 1, 0, 0);
       ctxLive.clearRect(0, 0, cvLive.width, cvLive.height);
-      cvLive.style.opacity = trail ? 0.45 : MARKER_ALPHA;
+      cvLive.style.opacity = trail ? 0.45 : brush === 'marker' ? MARKER_ALPHA : 1;
+      liveGrain(brush === 'crayon' && !trail);
       cvLive.hidden = false;
     }
     strokeStyle(gesture.ctx, eraser && !trail, trail ? '#8e949e' : prefs.color);
@@ -2991,9 +3071,9 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     if (BRUSH_CODE[g.brush]) op.b = BRUSH_CODE[g.brush];
     if (g.layer) op.l = g.layer;
     const f = E.frames[E.cur];
-    if (g.brush === 'marker' || g.brush === 'ink' || g.trail) {
-      // A marker lands under the lines, an ink taper is only known at the end, and a one-layer
-      // erase was only sketched: redraw the frame from its ops.
+    if (g.brush === 'marker' || g.brush === 'ink' || g.brush === 'crayon' || g.trail) {
+      // A marker lands under the lines, an ink taper is only known at the end, a crayon's grain
+      // was only previewed, and a one-layer erase was only sketched: redraw the frame from its ops.
       clearLive();
       setOps(f, f.ops.concat([op]));
       paintDrawing(f);
@@ -4421,7 +4501,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function updatePenIcon() {
     const btn = $('.tool[data-tool="pen"]');
-    btn.querySelector('use').setAttribute('href', prefs.brush === 'ink' ? '#i-ink' : prefs.brush === 'marker' ? '#i-marker' : '#i-pen');
+    btn.querySelector('use').setAttribute('href', prefs.brush === 'ink' ? '#i-ink' : prefs.brush === 'marker' ? '#i-marker' : prefs.brush === 'crayon' ? '#i-crayon' : '#i-pen');
     btn.setAttribute('aria-label', BRUSH_NAMES[prefs.brush]);
   }
   onPick($('#eraseChips'), (v) => { prefs.eraseMode = v; Prefs.set('eraseMode', v); setPressed($('#eraseChips'), v); });
