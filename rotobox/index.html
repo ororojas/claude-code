@@ -762,6 +762,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 <div class="sheet" id="sheetColor" role="dialog" aria-modal="true" aria-labelledby="colorTitle" hidden>
   <h2 id="colorTitle">Color</h2>
   <div class="swatches" id="swatches"></div>
+  <div class="field" id="frameColorsField" style="margin-top:18px" hidden>
+    <span class="label" id="lblFrameColors">From this video frame</span>
+    <div class="swatches" id="frameSw" aria-labelledby="lblFrameColors"></div>
+  </div>
   <div class="field" id="recentField" style="margin-top:18px">
     <span class="label">Recent</span>
     <div class="swatches" id="recentSw"></div>
@@ -4326,8 +4330,54 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     $('#recentField').hidden = !recent.length;
     buildSwatches($('#recentSw'), recent.map((c) => [c, 'Recent ' + c]));
     $('#customColor').value = prefs.color;
+    showFrameColors();
     openSheet('sheetColor');
   });
+  // When there's a video or photo under the paper, its main colors are offered too, for coloring
+  // what you trace so it matches the footage.
+  let frameColorsToken = 0;
+  function showFrameColors() {
+    const token = ++frameColorsToken;
+    $('#frameColorsField').hidden = true;
+    const f = E.project && E.project.hasVideo && E.frames[E.cur];
+    if (!f || !f.ref) return;
+    frameColors(f).then((cols) => {
+      if (token !== frameColorsToken || !cols.length) return;
+      $('#lblFrameColors').textContent = refWords().one === 'photo' ? 'From this photo' : 'From this video frame';
+      buildSwatches($('#frameSw'), cols.map((c) => [c, 'From the ' + refWords().one + ', ' + c]));
+      $('#frameColorsField').hidden = false;
+    }, () => {});
+  }
+  async function frameColors(f) {
+    const bmp = await getRef(f);
+    const n = 96;
+    const c = makeCanvas(n, n);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(bmp, 0, 0, n, n);
+    const data = g.getImageData(0, 0, n, n).data;
+    freeCanvas(c);
+    // The same color boxes the GIF encoder uses, then ranked by how much of the frame each covers.
+    const hist = new Uint32Array(32768), sums = new Float64Array(32768 * 3);
+    addHistogram(hist, sums, data, false);
+    const bins = [];
+    for (let i = 0; i < 32768; i++) if (hist[i]) bins.push(i);
+    const cands = medianCut(bins, hist, sums, 14).map((rgb) => ({ rgb, n: 0 }));
+    for (let q = 0; q < data.length; q += 8) {
+      let best = null, bd = Infinity;
+      for (const k of cands) { const d = (k.rgb[0] - data[q]) ** 2 + (k.rgb[1] - data[q + 1]) ** 2 + (k.rgb[2] - data[q + 2]) ** 2; if (d < bd) { bd = d; best = k; } }
+      best.n++;
+    }
+    cands.sort((a, b) => b.n - a.n);
+    const out = [];
+    for (const { rgb: [r, g2, b] } of cands) {
+      // Close cousins collapse into one swatch.
+      if (out.some(([R, G, B]) => Math.abs(R - r) + Math.abs(G - g2) + Math.abs(B - b) < 80)) continue;
+      out.push([r, g2, b]);
+      if (out.length === 8) break;
+    }
+    const lum = ([r, g2, b]) => 0.299 * r + 0.587 * g2 + 0.114 * b;
+    return out.sort((a, b) => lum(a) - lum(b)).map(([r, g2, b]) => rgbToHex(r, g2, b));
+  }
   $('#btnPickCanvas').addEventListener('click', () => {
     closeSheet('sheetColor');
     setTool('picker');
@@ -4340,6 +4390,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   };
   onPick($('#swatches'), pickSwatch);
   onPick($('#recentSw'), pickSwatch);
+  onPick($('#frameSw'), pickSwatch);
   $('#customColor').addEventListener('input', (e) => setColor(e.target.value, false));
   $('#customColor').addEventListener('change', (e) => { setColor(e.target.value, true); if (prefs.tool === 'eraser') setTool('pen'); });
 
