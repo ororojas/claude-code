@@ -91,7 +91,7 @@ Either create a new project at [supabase.com/dashboard](https://supabase.com/das
 
 Pick one way.
 
-**SQL editor (no tools needed).** Open **SQL Editor → New query**, paste the whole of `supabase/migrations/20261026000000_schema.sql`, and click **Run**. Then do the same with `20261026000100_reference_data.sql`. Order matters.
+**SQL editor (no tools needed).** Open **SQL Editor → New query**, paste the whole of `supabase/setup.sql` (both migrations in one file), and click **Run**.
 
 **Supabase CLI.** From this folder:
 
