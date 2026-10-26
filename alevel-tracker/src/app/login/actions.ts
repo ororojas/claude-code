@@ -44,6 +44,11 @@ export async function signUp(_prev: AuthState, form: FormData): Promise<AuthStat
     options: { emailRedirectTo: `${await siteOrigin()}/auth/confirm` },
   });
   if (error) return { ok: false, message: error.message };
+  // For an email that's already registered, Supabase returns a user with no
+  // identities instead of an error (so emails can't be probed). Say so plainly.
+  if (data.user && data.user.identities?.length === 0) {
+    return { ok: false, message: "You already have an account with this email. Use the Sign in tab with your existing password." };
+  }
   // With "Confirm email" switched off in Supabase, sign-up returns a session straight away.
   if (data.session) redirect("/");
   return { ok: true, message: "Check your inbox for a confirmation link, then come back and sign in." };
