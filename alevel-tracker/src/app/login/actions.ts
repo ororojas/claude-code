@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ownerEmail } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 
 export interface AuthState {
@@ -52,4 +53,15 @@ export async function signUp(_prev: AuthState, form: FormData): Promise<AuthStat
   // With "Confirm email" switched off in Supabase, sign-up returns a session straight away.
   if (data.session) redirect("/");
   return { ok: true, message: "Check your inbox for a confirmation link, then come back and sign in." };
+}
+
+export async function signInWithPasscode(_prev: AuthState, form: FormData): Promise<AuthState> {
+  const email = ownerEmail();
+  const passcode = String(form.get("passcode") ?? "");
+  if (!email) return { ok: false, message: "Passcode sign-in isn't set up. Add OWNER_EMAIL in Vercel." };
+  if (!/^\d{6}$/.test(passcode)) return { ok: false, message: "Enter all 6 digits." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password: passcode });
+  if (error) return { ok: false, message: error.code === "invalid_credentials" ? "Wrong code. Try again." : error.message };
+  redirect("/");
 }

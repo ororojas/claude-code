@@ -141,16 +141,9 @@ Never put the secret or service-role key into this app.
 
 Open the site and sign in (or choose **Create account**). Your timetable, targets and topic list are created the first time you open it. Then, so nobody else can use your deployment, turn off **Allow new users to sign up** in Supabase's authentication settings.
 
-### Optional: no-login mode
+### Optional: keypad sign-in
 
-For a personal deployment you can skip the sign-in screen. In Vercel, add two more environment variables (not `NEXT_PUBLIC_`):
-
-| Name | Value |
-| --- | --- |
-| `OWNER_EMAIL` | the account to sign in as |
-| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys → Secret key (older projects: `service_role`) |
-
-Redeploy. Every visitor is now signed in as that account automatically: the server makes a one-time sign-in token with the secret key and redeems it, and no email is sent. **Anyone who has the site's address gets in as you**, including to anything else that account can reach in the same Supabase project. Remove either variable and redeploy to bring the sign-in screen back.
+Add `OWNER_EMAIL` (your account's email, not `NEXT_PUBLIC_`) to Vercel's environment variables and redeploy. The login page becomes a 6-digit keypad: the email is filled in on the server, and the code you tap is that account's password, so set the password to a 6-digit code. Supabase rate-limits sign-in attempts, but a 6-digit code is weaker than a long password.
 
 ### Optional: the follow-up tutor
 

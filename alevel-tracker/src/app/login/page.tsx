@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { ownerEmail } from "@/lib/supabase/env";
 import { LoginForm } from "./login-form";
+import { PasscodeForm } from "./passcode-form";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -22,7 +24,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="mt-1 text-sm text-slate-600">Economics, Business and Sociology mocks · 12–13 November</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <LoginForm notice={error ? NOTICES[error] : undefined} />
+          {ownerEmail() ? <PasscodeForm /> : <LoginForm notice={error ? NOTICES[error] : undefined} />}
         </div>
       </div>
     </main>
