@@ -16,3 +16,12 @@ export function supabaseEnv() {
   }
   return { url, key };
 }
+
+/**
+ * Passcode sign-in: when OWNER_EMAIL is set (server-only), the login page is a
+ * keypad and the passcode is that account's Supabase password. The email
+ * never has to be typed.
+ */
+export function ownerEmail(): string | null {
+  return process.env.OWNER_EMAIL?.trim() || null;
+}

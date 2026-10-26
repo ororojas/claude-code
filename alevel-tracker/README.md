@@ -141,6 +141,10 @@ Never put the secret or service-role key into this app.
 
 Open the site and sign in (or choose **Create account**). Your timetable, targets and topic list are created the first time you open it. Then, so nobody else can use your deployment, turn off **Allow new users to sign up** in Supabase's authentication settings.
 
+### Optional: keypad sign-in
+
+Add `OWNER_EMAIL` (your account's email, not `NEXT_PUBLIC_`) to Vercel's environment variables and redeploy. The login page becomes a 6-digit keypad: the email is filled in on the server, and the code you tap is that account's password, so set the password to a 6-digit code. Supabase rate-limits sign-in attempts, but a 6-digit code is weaker than a long password.
+
 ### Optional: the follow-up tutor
 
 Teach Me works fully without it. With `ANTHROPIC_API_KEY` set, each Teach Me page gets an "Ask a follow-up" box that streams answers from Claude, grounded in that topic's notes. Calls cost money on your Anthropic account and only work for signed-in users. It uses `claude-opus-5-5` by default; set `TUTOR_MODEL` to use a different model.
