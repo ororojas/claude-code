@@ -16,3 +16,14 @@ export function supabaseEnv() {
   }
   return { url, key };
 }
+
+/**
+ * Single-owner mode: no login screen. When OWNER_EMAIL and a Supabase secret
+ * key are set (server-only env vars, never NEXT_PUBLIC_), every visitor is
+ * signed in as that account. Anyone with the site's address gets in.
+ */
+export function ownerAutoLogin() {
+  const email = process.env.OWNER_EMAIL?.trim();
+  const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return email && secretKey ? { email, secretKey } : null;
+}

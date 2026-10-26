@@ -6,6 +6,7 @@ import { Card, PageTitle, SectionTitle } from "@/components/ui";
 import { loadCore, requireUser } from "@/lib/data";
 import { boundariesFor, GRADES, hasCustomBoundaries } from "@/lib/grades";
 import { palette } from "@/lib/subjects";
+import { ownerAutoLogin } from "@/lib/supabase/env";
 import { tutorEnabled } from "@/lib/tutor";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -56,15 +57,19 @@ export default async function SettingsPage() {
 
         <Card>
           <SectionTitle>Account</SectionTitle>
-          <p className="mb-1 text-sm text-slate-600">Signed in as {email ?? "unknown"}.</p>
+          <p className="mb-1 text-sm text-slate-600">
+            {ownerAutoLogin() ? `No-login mode: everyone who opens this site is signed in as ${email ?? "the owner"}.` : `Signed in as ${email ?? "unknown"}.`}
+          </p>
           <p className="mb-3 text-sm text-slate-600">
             Teach Me follow-up tutor: {tutorEnabled() ? "on" : "off (add ANTHROPIC_API_KEY in Vercel to turn it on)"}.
           </p>
-          <form action={signOut}>
-            <button type="submit" className="btn-secondary">
-              <LogOut className="size-4" aria-hidden /> Sign out
-            </button>
-          </form>
+          {ownerAutoLogin() ? null : (
+            <form action={signOut}>
+              <button type="submit" className="btn-secondary">
+                <LogOut className="size-4" aria-hidden /> Sign out
+              </button>
+            </form>
+          )}
         </Card>
       </div>
     </>

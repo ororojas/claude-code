@@ -141,6 +141,17 @@ Never put the secret or service-role key into this app.
 
 Open the site and sign in (or choose **Create account**). Your timetable, targets and topic list are created the first time you open it. Then, so nobody else can use your deployment, turn off **Allow new users to sign up** in Supabase's authentication settings.
 
+### Optional: no-login mode
+
+For a personal deployment you can skip the sign-in screen. In Vercel, add two more environment variables (not `NEXT_PUBLIC_`):
+
+| Name | Value |
+| --- | --- |
+| `OWNER_EMAIL` | the account to sign in as |
+| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys → Secret key (older projects: `service_role`) |
+
+Redeploy. Every visitor is now signed in as that account automatically: the server makes a one-time sign-in token with the secret key and redeems it, and no email is sent. **Anyone who has the site's address gets in as you**, including to anything else that account can reach in the same Supabase project. Remove either variable and redeploy to bring the sign-in screen back.
+
 ### Optional: the follow-up tutor
 
 Teach Me works fully without it. With `ANTHROPIC_API_KEY` set, each Teach Me page gets an "Ask a follow-up" box that streams answers from Claude, grounded in that topic's notes. Calls cost money on your Anthropic account and only work for signed-in users. It uses `claude-opus-5-5` by default; set `TUTOR_MODEL` to use a different model.
