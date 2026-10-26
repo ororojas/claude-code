@@ -16,6 +16,8 @@ It runs on Next.js (App Router), Tailwind CSS, Supabase (Postgres + Auth) and Lu
 
 ## Database schema
 
+Everything lives in its own Postgres schema called `mocks`, not in `public`. That lets the tracker share a Supabase project with another app (here, the homework tracker) without any table names clashing. It adds no triggers to `auth.users`, so sign-ups to the other app are unaffected.
+
 Two migrations in `supabase/migrations/` build everything:
 
 - `20261026000000_schema.sql`: tables, row level security, and the functions below.
@@ -46,8 +48,7 @@ Two migrations in `supabase/migrations/` build everything:
 
 | Function | Does |
 | --- | --- |
-| `handle_new_user()` | Trigger on sign-up. Calls `seed_user()` to create your profile, targets, red topic list and timetable. |
-| `ensure_seeded()` | Same, for an account created before the migrations ran. The app calls it if your targets are missing. |
+| `ensure_seeded()` | Called the first time you open the app. Runs `seed_user()` to create your profile, targets, red topic list and timetable. Safe to call again. |
 | `set_block_done(item, done)` | Ticks or unticks a block and adds or removes the matching study session. |
 | `reset_my_plan()` | Restores the original timetable. Logged hours stay. |
 
@@ -82,10 +83,9 @@ src/
 
 You need a GitHub account (this repo), a free Supabase account and a free Vercel account. Allow about 15 minutes.
 
-### 1. Create the Supabase project
+### 1. Pick a Supabase project
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and create a new project. Pick the London region if offered. Save the database password somewhere.
-2. Wait for it to finish provisioning.
+Either create a new project at [supabase.com/dashboard](https://supabase.com/dashboard) (London region if offered), or reuse one you already have. The tracker only adds a `mocks` schema, so it sits alongside whatever is already there. The free plan allows two active projects.
 
 ### 2. Create the tables
 
@@ -101,11 +101,15 @@ npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 ```
 
-Check it worked: **Table Editor** should list `subjects` (3 rows), `topics` (33) and `plan_template` (57).
+Then expose the schema to the app: **Project Settings → Data API → Exposed schemas**, add `mocks`, and save. Keep `public` in the list if another app uses it.
+
+Check it worked: in **Table Editor**, switch the schema dropdown to `mocks`. You should see `subjects` (3 rows), `topics` (33) and `plan_template` (57).
 
 ### 3. Configure sign-in
 
-In **Authentication**:
+If you're sharing a project with another app, skip this step and sign in with your existing account. Don't change that project's Site URL.
+
+Otherwise, in **Authentication**:
 
 1. Under the email provider settings, turn **Confirm email** off if you want to sign straight in after creating your account. This is the simplest option for a personal app. If you leave it on, the confirmation link comes back to `/auth/confirm`.
 2. Under **URL Configuration**, set **Site URL** to your Vercel address (you get it in step 5; come back and update it). Add `https://<your-app>.vercel.app/auth/confirm` and `http://localhost:3000/auth/confirm` to **Redirect URLs**.
@@ -135,7 +139,7 @@ Never put the secret or service-role key into this app.
 
 ### 6. Make your account
 
-Open the site, choose **Create account**, and sign up. Your timetable, targets and topic list are created automatically. Then, so nobody else can use your deployment, turn off **Allow new users to sign up** in Supabase's authentication settings.
+Open the site and sign in (or choose **Create account**). Your timetable, targets and topic list are created the first time you open it. Then, so nobody else can use your deployment, turn off **Allow new users to sign up** in Supabase's authentication settings.
 
 ### Optional: the follow-up tutor
 

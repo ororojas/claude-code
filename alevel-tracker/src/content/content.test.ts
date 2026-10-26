@@ -8,7 +8,7 @@ const sql = readFileSync(
   path.resolve(import.meta.dirname, "../../supabase/migrations/20261026000100_reference_data.sql"),
   "utf8",
 );
-const topicBlock = sql.slice(sql.indexOf("insert into public.topics"), sql.indexOf("insert into public.past_papers"));
+const topicBlock = sql.slice(sql.indexOf("insert into mocks.topics"), sql.indexOf("insert into mocks.past_papers"));
 const topicIds = [...topicBlock.matchAll(/\('((?:econ|bus|soc)-[a-z-]+)', '(econ|business|sociology)'/g)].map((m) => m[1]);
 
 describe("teach content", () => {

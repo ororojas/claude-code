@@ -1,3 +1,7 @@
+// All tracker tables live in their own Postgres schema so the app can share a
+// Supabase project with other apps. It must be listed under Exposed schemas.
+export const DB_SCHEMA = "mocks";
+
 // Supabase now issues "publishable" keys; older projects still show an "anon" key.
 // Accept either so the app works with whichever the dashboard gives you.
 export function supabaseEnv() {

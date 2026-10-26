@@ -5,7 +5,7 @@
 -- Subjects
 -- ---------------------------------------------------------------------------
 
-insert into public.subjects
+insert into mocks.subjects
   (id, name, board, spec_code, paper_label, duration_minutes, max_marks,
    default_exam_date, default_exam_session, default_target_grade, default_target_papers, colour, sort_order)
 values
@@ -23,7 +23,7 @@ values
 -- Topics
 -- ---------------------------------------------------------------------------
 
-insert into public.topics (id, subject_id, section, spec_ref, title, exam_focus, est_hours, sort_order) values
+insert into mocks.topics (id, subject_id, section, spec_ref, title, exam_focus, est_hours, sort_order) values
   -- Economics: AQA 7136 Paper 1, Year 12 microeconomics
   ('econ-problem', 'econ', 'Foundations', '4.1.1',
    'The economic problem, opportunity cost & PPFs',
@@ -137,7 +137,7 @@ insert into public.topics (id, subject_id, section, spec_ref, title, exam_focus,
 -- public PDF, the row falls back to the board's own past-paper finder.
 -- ---------------------------------------------------------------------------
 
-insert into public.past_papers
+insert into mocks.past_papers
   (id, subject_id, kind, series, year, component, title, max_marks, duration_minutes,
    qp_url, ms_url, source_url, notes, sort_order)
 values
@@ -300,7 +300,7 @@ values
 -- Settings once they are published.
 -- ---------------------------------------------------------------------------
 
-insert into public.grade_boundaries (subject_id, user_id, grade, min_percent, source) values
+insert into mocks.grade_boundaries (subject_id, user_id, grade, min_percent, source) values
   ('econ', null, 'A*', 73.75, 'AQA June 2024, 7136/1 notional: 59/80'),
   ('econ', null, 'A',  65.00, 'AQA June 2024, 7136/1 notional: 52/80'),
   ('econ', null, 'B',  55.00, 'AQA June 2024, 7136/1 notional: 44/80'),
@@ -325,7 +325,7 @@ insert into public.grade_boundaries (subject_id, user_id, grade, min_percent, so
 -- timed papers every evening (5–11 Nov) → mocks (12–13 Nov)
 -- ---------------------------------------------------------------------------
 
-insert into public.plan_template
+insert into mocks.plan_template
   (day, start_time, end_time, subject_id, kind, title, detail, topic_ids, past_paper_id)
 values
   -- Half-term: 100% content -------------------------------------------------
