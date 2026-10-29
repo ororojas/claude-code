@@ -74,6 +74,7 @@ On a touch screen:
 
 - Pinch to zoom and pan. Twist two fingers to rotate the canvas, like turning paper on a desk. It snaps back to straight when you're close, and the corner chip resets it.
 - Tap with two fingers to undo, three fingers to redo.
+- Hold one finger still on the canvas for a moment to pick up the color under it. Keep holding and slide to choose a different spot (a loupe above your finger shows the color), then lift to keep it. This works in stylus-only mode too.
 - Press and hold a frame in the filmstrip, then drag it to move it. A quick swipe still scrolls the strip.
 - If you draw with a stylus (like an Apple Pencil), Rotobox switches to stylus-only mode so your hand and fingers can rest on the screen and move the canvas without leaving marks.
 

@@ -189,6 +189,7 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: var(--glow); background: #fff; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75); pointer-events: none; }
+.ring.loupe { border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.28); }
 .hud { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
 .hud-left { right: auto; left: 10px; }
 .sel-bar { top: 10px; bottom: auto; left: 50%; right: auto; translate: -50% 0; align-items: center; justify-content: center; flex-wrap: wrap; width: max-content; max-width: calc(100% - 20px); }
@@ -867,7 +868,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
 <div class="sheet" id="sheetTips" role="dialog" aria-modal="true" aria-labelledby="tipsTitle" hidden>
   <h2 id="tipsTitle">A few things worth knowing</h2>
   <ul class="tips">
-    <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-pen"/></svg></span><p><b>One finger draws.</b> Draw with a stylus and your fingers move the canvas instead, so your hand can rest on the screen.</p></li>
+    <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-pen"/></svg></span><p><b>One finger draws.</b> Hold it still for a moment to pick up the color under it. With a stylus, fingers move the canvas instead, so your hand can rest on the screen.</p></li>
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Pinch to zoom,</b> and twist two fingers to turn the paper.</p></li>
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
     <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
@@ -2806,12 +2807,15 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       const touches = touchList();
       trackMultiTap(touches.length);
       if (touches.length >= 2) {
+        cancelHold();
+        hideLoupe();
         cancelActive();
         startPinch(touches[0], touches[1]);
         return;
       }
-      if (prefs.penOnly) { gesture = { kind: 'pan', id: e.pointerId, type: 'touch', lx: e.clientX, ly: e.clientY }; return; }
+      if (prefs.penOnly) { gesture = { kind: 'pan', id: e.pointerId, type: 'touch', lx: e.clientX, ly: e.clientY }; armHold(e); return; }
       startTool(e);
+      if (['pen', 'eraser', 'fill', 'shape'].includes(prefs.tool)) armHold(e);
       return;
     }
     if (e.button === 1 || spaceDown) {
@@ -2821,6 +2825,46 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       return;
     }
     startTool(e);
+  }
+  // Holding one finger still on the canvas for a moment picks up the color under it, whatever it
+  // started to do. Moving it then shows the color under it in a loupe above the finger, and lifting
+  // it keeps that color.
+  let hold = null;
+  function armHold(e) {
+    cancelHold();
+    hold = { id: e.pointerId, x0: e.clientX, y0: e.clientY, timer: setTimeout(fireHold, 550) };
+  }
+  function cancelHold() {
+    if (!hold) return;
+    clearTimeout(hold.timer);
+    hold = null;
+  }
+  function fireHold() {
+    const h = hold;
+    hold = null;
+    const p = h && ptrs.get(h.id);
+    if (!p || touchList().length !== 1 || !E.project || closing) return;
+    cancelActive(); // the dot or shape this finger began was really a long press
+    gesture = { kind: 'pick', id: h.id, type: 'touch', hold: true };
+    try { if (navigator.vibrate) navigator.vibrate(10); } catch (err) { /* not allowed */ }
+    pickAt(p.x, p.y, false);
+    showLoupe(p.x, p.y);
+  }
+  function showLoupe(cx, cy) {
+    const r = vpRect || vp.getBoundingClientRect(), d = 56;
+    let top = cy - r.top - d / 2 - 72;
+    if (top < 4) top = cy - r.top + 44; // no room above the finger: show it below
+    ring.classList.add('loupe');
+    ring.style.background = prefs.color;
+    ring.style.width = ring.style.height = d + 'px';
+    ring.style.transform = 'translate(' + (cx - r.left - d / 2) + 'px,' + top + 'px)';
+    ring.hidden = false;
+  }
+  function hideLoupe() {
+    if (!ring.classList.contains('loupe')) return;
+    ring.classList.remove('loupe');
+    ring.style.background = '';
+    ring.hidden = true;
   }
   function startTool(e) {
     const t = prefs.tool;
@@ -2845,6 +2889,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     p.x = e.clientX;
     p.y = e.clientY;
     if (multiTap && Math.hypot(p.x - p.x0, p.y - p.y0) > 12) multiTap.moved = true;
+    if (hold && e.pointerId === hold.id && Math.hypot(e.clientX - hold.x0, e.clientY - hold.y0) > 10) cancelHold();
     if (!gesture) return;
     if (gesture.kind === 'draw' && e.pointerId === gesture.id) { moveStroke(e); if (e.pointerType !== 'touch') updateRing(e, true); }
     else if (gesture.kind === 'pan' && e.pointerId === gesture.id) {
@@ -2855,7 +2900,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       view.fitted = false;
       applyView();
     } else if (gesture.kind === 'pinch') movePinch();
-    else if (gesture.kind === 'pick' && e.pointerId === gesture.id) pickAt(e.clientX, e.clientY, false);
+    else if (gesture.kind === 'pick' && e.pointerId === gesture.id) { pickAt(e.clientX, e.clientY, false); if (gesture.hold) showLoupe(e.clientX, e.clientY); }
     else if (gesture.kind === 'fill' && e.pointerId === gesture.id) moveFillLoop(e);
     else if (gesture.kind === 'shape' && e.pointerId === gesture.id) moveShape(e);
     else if (gesture.kind === 'lasso' && e.pointerId === gesture.id) moveLasso(e);
@@ -2865,6 +2910,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     const p = ptrs.get(e.pointerId);
     if (!p) return;
     ptrs.delete(e.pointerId);
+    if (hold && e.pointerId === hold.id) cancelHold();
     const g = gesture;
     if (g) {
       if (g.kind === 'draw' && e.pointerId === g.id) {
@@ -2876,7 +2922,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
         else if (!cancelled && Math.hypot(e.clientX - g.x0, e.clientY - g.y0) < 14) fillAt(e.clientX, e.clientY);
       } else if (g.kind === 'pick' && e.pointerId === g.id) {
         gesture = null;
-        if (!cancelled) pickAt(e.clientX, e.clientY, true);
+        hideLoupe();
+        if (!cancelled) pickAt(e.clientX, e.clientY, true, g.hold);
       } else if (g.kind === 'shape' && e.pointerId === g.id) {
         if (cancelled) paintDrawing(g.frame); else endShape(e);
         gesture = null;
@@ -2909,6 +2956,8 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   // Forget it, so the next single finger draws instead of starting a pinch.
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'hidden' || !ptrs.size) return;
+    cancelHold();
+    hideLoupe();
     cancelActive();
     ptrs.clear();
     gesture = null;
@@ -3428,7 +3477,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     }
     if (runs.length) pushOp({ t: 'f', c: prefs.color, m: 'o', r: Uint16Array.from(runs), l: 1 });
   }
-  function pickAt(cx, cy, commit) {
+  function pickAt(cx, cy, commit, held = false) {
     const pt = toCanvas(cx, cy);
     const x = Math.floor(pt.x), y = Math.floor(pt.y);
     if (x < 0 || y < 0 || x >= E.W || y >= E.H) return;
@@ -3438,7 +3487,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     else if (!cvRef.hidden) { const r = ctxRef.getImageData(x, y, 1, 1).data; hex = rgbToHex(r[0], r[1], r[2]); }
     else hex = E.project.paper;
     setColor(hex, commit);
-    if (commit) { setTool(toolBeforePicker || 'pen'); toast('Picked ' + hex.toUpperCase()); }
+    if (!commit) return;
+    // The picker tool goes back to what you had; a long press keeps your tool, unless it was erasing.
+    if (!held) setTool(toolBeforePicker || 'pen');
+    else if (prefs.tool === 'eraser') setTool('pen');
+    toast('Picked ' + hex.toUpperCase());
   }
 
   function setTool(t) {
