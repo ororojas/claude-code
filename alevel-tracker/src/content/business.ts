@@ -1,0 +1,578 @@
+import type { ExamTechnique, TeachCard } from "./types";
+
+export const businessTechnique: ExamTechnique = {
+  subjectId: "business",
+  paper: "Edexcel 9BS0/02 · 2 hours · 100 marks",
+  timing:
+    "About 1.2 minutes per mark. Each section is one case study worth 50 marks: (a) 4, (b) 4, (c) 10, (d) 12, (e) 20. Spend about 55 minutes per section, and read the extracts first.",
+  questionTypes: [
+    { marks: 4, command: "Calculate / Explain", minutes: 5, howToHit: "Calculations: formula, working, answer with units (£, %, years). Explain: one point, defined, applied to the business, with one consequence." },
+    { marks: 10, command: "Assess", minutes: 12, howToHit: "Two analysed points using the case, a counter-argument, and a short judgement that answers the question." },
+    { marks: 12, command: "Assess", minutes: 15, howToHit: "Same shape as the 10-marker with deeper chains and a clearer \"it depends on\" conclusion." },
+    { marks: 20, command: "Evaluate", minutes: 25, howToHit: "Analyse both options with case evidence, weigh them against each other and give a justified recommendation with the key deciding factor." },
+  ],
+};
+
+export const businessCards: TeachCard[] = [
+  {
+    topicId: "bus-raising-finance",
+    summary: [
+      "Internal finance (owner's capital, retained profit, selling assets) has no interest and keeps control, but the amount is limited.",
+      "External sources: family and friends, banks, peer-to-peer lenders, business angels, crowdfunding, other businesses.",
+      "External methods: loans, share capital, venture capital, overdrafts, leasing, trade credit and grants.",
+      "Choose by cost, amount needed, how long it's needed for, risk, and whether the owners will give up control.",
+      "Match the finance to the use: overdrafts and trade credit for working capital, loans or shares for long-term assets.",
+      "Unlimited liability (sole traders, ordinary partnerships) puts personal assets at risk. Limited liability (Ltd, PLC) separates the owners from the business's debts.",
+      "Business plans help raise finance and set direction, but rely on forecasts that can be wrong.",
+      "Cash-flow forecasts show inflows, outflows, net cash flow and closing balance, so shortfalls can be planned for.",
+    ],
+    definitions: [
+      { term: "Retained profit", definition: "Profit kept in the business rather than paid to owners." },
+      { term: "Venture capital", definition: "Finance from specialist investors in return for a share of a high-growth business." },
+      { term: "Crowdfunding", definition: "Raising small amounts from many people, usually online, for a reward or equity." },
+      { term: "Limited liability", definition: "Owners can lose only what they invested if the business fails." },
+      { term: "Cash-flow forecast", definition: "An estimate of future cash inflows and outflows over a period." },
+    ],
+    formulas: [
+      { name: "Net cash flow", formula: "Cash inflows − cash outflows" },
+      { name: "Closing balance", formula: "Opening balance + net cash flow", tip: "Each month's closing balance is the next month's opening balance." },
+    ],
+    essays: [
+      {
+        marks: 10,
+        label: "Assess (10)",
+        question: "Assess whether crowdfunding was the best way for the business to finance its expansion.",
+        structure: [
+          "Point for: no interest, builds a customer base and publicity at the same time. Use the case's numbers.",
+          "Point against: equity crowdfunding dilutes control; failure to hit the target is public and damaging.",
+          "Compare briefly with a bank loan: keeps control but adds interest and needs security.",
+          "Judgement: best if the business has a strong brand story and doesn't need the money quickly.",
+        ],
+        evaluation: [
+          "Depends on the amount needed and how quickly.",
+          "Depends on how much control the founders are willing to lose.",
+          "Depends on existing gearing and the cost of borrowing.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Treating cash and profit as the same thing.",
+      "Recommending an overdraft to buy long-term assets.",
+      "Writing a generic list of sources with no link to the case.",
+    ],
+    practice: [
+      { marks: 4, question: "Opening balance £3,000, inflows £18,500, outflows £22,100. Calculate the closing balance.", answer: "Net cash flow = 18,500 − 22,100 = −£3,600. Closing balance = 3,000 − 3,600 = −£600." },
+      { marks: 4, question: "Explain one advantage to a sole trader of becoming a private limited company." },
+      { marks: 12, question: "Assess the usefulness of a cash-flow forecast to a start-up café." },
+    ],
+  },
+  {
+    topicId: "bus-financial-planning",
+    summary: [
+      "Sales forecasts use past data and market research. Consumer trends, the economy and competitors' actions all affect accuracy.",
+      "Sales volume is units sold; sales revenue is volume × price.",
+      "Contribution per unit = price − variable cost per unit. It pays off fixed costs first, then becomes profit.",
+      "Break-even output = fixed costs ÷ contribution per unit. The margin of safety is actual output minus break-even output.",
+      "Break-even charts show FC, TC and TR lines. They assume every unit is sold at one price with linear costs, which is rarely true.",
+      "Budgets set targets for income and spending. Historical budgets use last year as a base; zero-based budgets start from nothing.",
+      "Variance analysis: favourable (F) when the result is better for profit than budgeted, adverse (A) when worse.",
+      "Budgets help control and coordination, but can be inflexible and demotivating if imposed from the top.",
+    ],
+    definitions: [
+      { term: "Contribution", definition: "Revenue minus variable costs; the amount left to cover fixed costs." },
+      { term: "Break-even", definition: "The output at which total revenue equals total costs, so profit is zero." },
+      { term: "Margin of safety", definition: "The amount by which actual output exceeds break-even output." },
+      { term: "Zero-based budget", definition: "A budget built from zero, where every item must be justified." },
+      { term: "Adverse variance", definition: "A difference from budget that reduces profit." },
+    ],
+    formulas: [
+      { name: "Contribution per unit", formula: "Selling price − variable cost per unit" },
+      { name: "Break-even output", formula: "Fixed costs ÷ contribution per unit", tip: "Answer is in units, not £." },
+      { name: "Margin of safety", formula: "Actual output − break-even output" },
+      { name: "Profit", formula: "Total contribution − fixed costs" },
+      { name: "Variance", formula: "Actual − budgeted, labelled F or A" },
+    ],
+    essays: [
+      {
+        marks: 10,
+        label: "Assess (10)",
+        question: "Assess the usefulness of break-even analysis to the business when launching a new product.",
+        structure: [
+          "Useful: shows the sales needed and the margin of safety, which supports a finance application. Calculate it with the case's figures.",
+          "Useful: lets managers test \"what if\" changes to price or costs quickly.",
+          "Limitation: assumes all output is sold at one price; a new product's sales are uncertain.",
+          "Judgement: a useful starting point, but only as good as the cost and demand estimates behind it.",
+        ],
+        evaluation: [
+          "Depends on how reliable the variable cost estimate is.",
+          "Less useful for multi-product businesses with shared fixed costs.",
+          "More useful in stable markets than fast-changing ones.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Dividing fixed costs by price instead of contribution.",
+      "Calling variances positive or negative instead of favourable or adverse.",
+      "Giving break-even in £ when the question asks for units.",
+    ],
+    practice: [
+      { marks: 4, question: "Price £25, variable cost £15 per unit, fixed costs £40,000. Calculate break-even output.", answer: "Contribution = 25 − 15 = £10. Break-even = 40,000 ÷ 10 = 4,000 units." },
+      { marks: 4, question: "Using the figures above, the business sells 5,500 units. Calculate the margin of safety and profit.", answer: "Margin of safety = 5,500 − 4,000 = 1,500 units. Profit = 5,500 × 10 − 40,000 = £15,000." },
+      { marks: 10, question: "Assess the benefits to a growing retailer of using zero-based budgeting." },
+    ],
+  },
+  {
+    topicId: "bus-managing-finance",
+    summary: [
+      "Gross profit = revenue − cost of sales. Operating profit = gross profit − other operating expenses. Profit for the year comes after interest and tax.",
+      "Profit margins show how well a business turns revenue into profit. Compare with past years and competitors.",
+      "To raise profit: increase price or cut costs. Both have trade-offs (lost demand, lower quality, worse morale).",
+      "Liquidity is the ability to pay short-term debts. The current ratio is often healthy around 1.5–2; the acid test around 1.",
+      "Improve liquidity by chasing receivables, cutting inventory, sale and leaseback, or short-term finance, each with downsides.",
+      "Profitable businesses can still fail from poor cash flow (overtrading).",
+      "Business failure has internal causes (poor management, weak cash control) and external causes (competition, recession, changing tastes).",
+    ],
+    definitions: [
+      { term: "Gross profit", definition: "Revenue minus the cost of sales." },
+      { term: "Operating profit", definition: "Gross profit minus operating expenses such as wages and rent." },
+      { term: "Liquidity", definition: "The ability of a business to meet its short-term debts as they fall due." },
+      { term: "Overtrading", definition: "Expanding too quickly without enough working capital to support the growth." },
+      { term: "Inventory", definition: "Stock of raw materials, work in progress and finished goods." },
+    ],
+    formulas: [
+      { name: "Gross profit margin", formula: "Gross profit ÷ revenue × 100" },
+      { name: "Operating profit margin", formula: "Operating profit ÷ revenue × 100" },
+      { name: "Profit for the year margin", formula: "Profit for the year ÷ revenue × 100" },
+      { name: "Current ratio", formula: "Current assets ÷ current liabilities", tip: "Written as x:1, not as a percentage." },
+      { name: "Acid test ratio", formula: "(Current assets − inventories) ÷ current liabilities" },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess the factors most likely to have caused the business to fail.",
+        structure: [
+          "Internal factor: poor cash management. Show it with the liquidity ratios in the case.",
+          "External factor: falling demand or a new competitor. Link to the timeline in the extract.",
+          "Weigh them: which made the other worse? Internal weaknesses often turn an external shock into failure.",
+          "Judgement: name the main cause and say why it mattered most here.",
+        ],
+        evaluation: [
+          "Did management have time to respond?",
+          "Were competitors hit by the same shock and survived? That points to internal causes.",
+          "Short-term cash problems vs long-term loss of competitiveness.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Giving liquidity ratios as percentages.",
+      "Judging ratios without a benchmark (supermarkets run low current ratios safely).",
+      "Mixing up gross and operating profit.",
+    ],
+    practice: [
+      { marks: 4, question: "Revenue £800,000, cost of sales £480,000, operating expenses £200,000. Calculate the operating profit margin.", answer: "Gross profit = 320,000. Operating profit = 320,000 − 200,000 = £120,000. Margin = 120,000 ÷ 800,000 × 100 = 15%." },
+      { marks: 4, question: "Current assets £90,000 (inventory £50,000), current liabilities £60,000. Calculate the acid test ratio.", answer: "(90,000 − 50,000) ÷ 60,000 = 0.67:1." },
+      { marks: 10, question: "Assess two ways the business could improve its liquidity." },
+    ],
+  },
+  {
+    topicId: "bus-resource-management",
+    summary: [
+      "Production methods: job (one-off), batch, flow (mass) and cell production.",
+      "Productivity is output per worker. Efficiency is about using fewer inputs per unit of output.",
+      "Labour-intensive vs capital-intensive production trades flexibility against unit cost.",
+      "Capacity utilisation = actual output ÷ maximum output × 100. High utilisation spreads fixed costs but leaves no slack and can overwork staff.",
+      "Fix under-utilisation by rationalising (cutting capacity) or by selling more; fix over-utilisation by subcontracting or investing.",
+      "Buffer stock charts show maximum level, reorder level, buffer (minimum) stock and lead time.",
+      "Just-in-time cuts storage costs and waste but needs reliable suppliers; one late delivery can stop production.",
+      "Quality control inspects at the end; quality assurance builds quality into every stage; TQM makes everyone responsible; Kaizen is continuous small improvement.",
+    ],
+    definitions: [
+      { term: "Labour productivity", definition: "Output per worker per period." },
+      { term: "Capacity utilisation", definition: "Actual output as a percentage of maximum possible output." },
+      { term: "Just-in-time", definition: "Stock arrives exactly when needed, so little or no inventory is held." },
+      { term: "Quality assurance", definition: "A system that prevents faults by checking quality at every stage of production." },
+      { term: "Kaizen", definition: "Continuous improvement through small, regular changes suggested by staff." },
+    ],
+    formulas: [
+      { name: "Capacity utilisation", formula: "Current output ÷ maximum possible output × 100" },
+      { name: "Labour productivity", formula: "Output per period ÷ number of employees" },
+      { name: "Unit cost", formula: "Total costs ÷ units of output" },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess the benefits to the business of adopting just-in-time stock control.",
+        structure: [
+          "Benefit: lower holding costs and less waste, freeing cash. Quantify with the case's inventory figures.",
+          "Benefit: frees floor space and fits lean production.",
+          "Risk: reliance on suppliers; disruption halts production. Use any supply problems in the case.",
+          "Judgement: suits stable demand and dependable local suppliers; risky for global supply chains.",
+        ],
+        evaluation: [
+          "Lost bulk-buying discounts may outweigh storage savings.",
+          "Depends on how predictable demand is.",
+          "Requires a culture of quality: faulty parts have no buffer to replace them.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Confusing productivity (rate) with production (total output).",
+      "Saying 100% capacity utilisation is always good.",
+      "Describing QC and TQM as the same thing.",
+    ],
+    practice: [
+      { marks: 4, question: "A factory produces 7,200 units a month with a maximum of 9,000. Calculate capacity utilisation.", answer: "7,200 ÷ 9,000 × 100 = 80%." },
+      { marks: 4, question: "Explain one benefit to a car manufacturer of quality assurance." },
+      { marks: 12, question: "Assess whether the business should subcontract production to cope with rising demand." },
+    ],
+  },
+  {
+    topicId: "bus-external-influences",
+    summary: [
+      "Economic influences: demand, inflation, exchange rates, interest rates, taxation, unemployment.",
+      "Higher interest rates raise borrowing costs, cut spending on credit-bought goods, encourage saving and may strengthen the pound.",
+      "Exchange rates: a strong pound makes imports cheap and exports dear (SPICED). The effect depends on whether the firm imports inputs or exports output.",
+      "Inflation raises costs and cuts real incomes. Firms with inelastic demand can pass rising costs on.",
+      "Rising unemployment hits demand for luxuries but makes recruitment easier and wage pressure lower.",
+      "Taxes (corporation tax, VAT, income tax) change costs and consumers' spending power.",
+      "Legislation (consumer protection, employment law including the National Living Wage, environmental and competition law) adds costs but can create advantage.",
+      "Analyse with a chain: change → costs or demand → profit or strategy, then \"depends on\" (income elasticity, share of costs imported, hedging, time lag).",
+    ],
+    definitions: [
+      { term: "Inflation", definition: "A sustained rise in the general price level." },
+      { term: "Exchange rate", definition: "The price of one currency in terms of another." },
+      { term: "Interest rate", definition: "The cost of borrowing money and the reward for saving." },
+      { term: "Competition law", definition: "Rules that stop firms abusing market power or colluding." },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess the likely impact of a rise in interest rates on the business.",
+        structure: [
+          "Cost side: higher interest on existing loans; use gearing or loan figures from the case.",
+          "Demand side: customers spend less, especially on big-ticket or credit purchases. Link to the product's income elasticity.",
+          "Exchange rate side: a stronger pound helps if the firm imports inputs, hurts if it exports.",
+          "Judgement: impact depends on gearing, the type of product and how long rates stay high.",
+        ],
+        evaluation: [
+          "Fixed-rate loans delay the cost impact.",
+          "Necessities are hit less than luxuries.",
+          "Competitors face the same change; relative position matters.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Getting SPICED the wrong way round.",
+      "Listing effects without the business's context.",
+      "Ignoring time lags.",
+    ],
+    practice: [
+      { marks: 4, question: "Explain one way a fall in the value of the pound could benefit a UK manufacturer." },
+      { marks: 10, question: "Assess the impact of a rise in the National Living Wage on a chain of coffee shops." },
+      { marks: 12, question: "Assess whether rising inflation is a threat or an opportunity for a discount retailer." },
+    ],
+  },
+  {
+    topicId: "bus-objectives-strategy",
+    summary: [
+      "Mission statement → corporate objectives → functional objectives. Strategy is the long-term plan; tactics are short-term actions.",
+      "Ansoff's matrix: market penetration (lowest risk), market development, product development, diversification (highest risk).",
+      "Porter's generic strategies: cost leadership, differentiation, or focus on a niche. Firms that try both can end up \"stuck in the middle\".",
+      "Bowman's strategic clock adds price vs perceived value positions. The Boston Matrix (stars, cash cows, question marks, dogs) analyses a product portfolio.",
+      "Kay's distinctive capabilities: architecture, reputation and innovation.",
+      "SWOT: internal strengths and weaknesses, external opportunities and threats. Useful only when it leads to a decision.",
+      "PESTLE scans the external environment. Porter's five forces: rivalry, threat of entry, buyer power, supplier power, threat of substitutes.",
+      "Good strategy matches the firm's capabilities to its environment, and says how it will win.",
+    ],
+    definitions: [
+      { term: "Corporate strategy", definition: "A long-term plan to achieve the organisation's objectives." },
+      { term: "Market development", definition: "Selling existing products in new markets." },
+      { term: "Diversification", definition: "Selling new products in new markets." },
+      { term: "Cost leadership", definition: "Competing by being the lowest-cost producer in the industry." },
+      { term: "Differentiation", definition: "Competing by offering features customers value and will pay more for." },
+    ],
+    essays: [
+      {
+        marks: 20,
+        label: "Evaluate (20)",
+        question: "Option 1: expand into Europe with the existing range. Option 2: launch a new product range in the UK. Evaluate these two options and recommend which the business should choose.",
+        structure: [
+          "Option 1 (market development): known product, new customers. Analyse the benefit and the risk (unfamiliar market, currency, regulation). Use case evidence.",
+          "Option 2 (product development): known customers, new product. Analyse the benefit and the risk (R&D cost, cannibalisation).",
+          "Use Ansoff to compare risk, then weigh against finance, brand strength and competition from the case.",
+          "Recommendation: pick one, give the deciding factor, and say what would change your mind.",
+        ],
+        evaluation: [
+          "Which option fits the firm's distinctive capabilities?",
+          "Available finance and gearing: can they afford the riskier option?",
+          "Competitor reaction and five-forces pressure in each market.",
+          "Time frame: quick wins vs long-term growth.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Putting a strategy in the wrong Ansoff quadrant.",
+      "Writing a SWOT list with no analysis or decision.",
+      "Recommending without a deciding factor.",
+    ],
+    practice: [
+      { marks: 4, question: "Explain one risk to the business of a diversification strategy." },
+      { marks: 10, question: "Assess the usefulness of Porter's five forces to a new entrant in the budget gym market." },
+      { marks: 20, question: "Evaluate whether the business should pursue a cost leadership or a differentiation strategy." },
+    ],
+  },
+  {
+    topicId: "bus-growth",
+    summary: [
+      "Reasons to grow: economies of scale, market power and share, spreading risk, and survival.",
+      "Organic growth (new stores, products, markets) is slower but lower risk, and keeps culture and control.",
+      "Inorganic growth: mergers and takeovers. Horizontal (same stage), vertical backward (towards suppliers), vertical forward (towards customers), conglomerate (unrelated).",
+      "Other routes: joint ventures and franchising.",
+      "Takeover benefits: speed, synergies, economies of scale and instant market share.",
+      "Takeover problems: culture clash, integration costs, overpaying, diseconomies, and competition authority (CMA) investigations.",
+      "Problems of growth: diseconomies of scale (communication, coordination, motivation) and overtrading.",
+    ],
+    definitions: [
+      { term: "Organic growth", definition: "Growth from within, using the business's own resources." },
+      { term: "Takeover", definition: "One business buying a controlling interest in another." },
+      { term: "Horizontal integration", definition: "Joining with a firm at the same stage of production in the same industry." },
+      { term: "Vertical integration", definition: "Joining with a firm at a different stage of the same supply chain." },
+      { term: "Synergy", definition: "When the combined business is worth more than the two parts separately." },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess whether a takeover is the best way for the business to grow.",
+        structure: [
+          "For: fast access to market share and economies of scale; use the case's numbers.",
+          "Against: culture clash and integration problems; many takeovers fail to deliver promised synergies.",
+          "Compare with organic growth: slower, cheaper, safer.",
+          "Judgement: depends on the speed of competitors, available finance and how similar the cultures are.",
+        ],
+        evaluation: [
+          "Paying a premium can destroy shareholder value.",
+          "Regulators may block a deal that reduces competition.",
+          "Vertical takeovers secure supply but reduce flexibility.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Assuming bigger is always better.",
+      "Not naming the type of integration.",
+      "Forgetting diseconomies of scale.",
+    ],
+    practice: [
+      { marks: 4, question: "Explain one benefit to a brewery of backward vertical integration." },
+      { marks: 10, question: "Assess the risks to the business of growing through a merger." },
+      { marks: 12, question: "Assess whether franchising is a better way to grow than opening company-owned outlets." },
+    ],
+  },
+  {
+    topicId: "bus-decision-techniques",
+    summary: [
+      "Quantitative sales forecasting: time-series analysis, moving averages, extrapolation and correlation. Correlation is not causation.",
+      "Payback: how long it takes to get the investment back. Simple and good for liquidity, but ignores later cash and the time value of money.",
+      "ARR: average annual profit as a percentage of the investment. Uses all profits and compares with interest rates, but ignores timing.",
+      "NPV: discounts future cash flows to today's value and subtracts the cost. Positive NPV supports investing, but the discount rate is a judgement.",
+      "Always add non-financial factors: strategy fit, ethics, staff morale, risk and reliability of the forecasts.",
+      "Decision trees: squares are decisions, circles are chance nodes, probabilities at a node add to 1. EV = Σ(probability × outcome) − cost.",
+      "Critical path analysis: nodes show earliest start time and latest finish time. Activities with zero float are critical; delay them and the project is late.",
+    ],
+    definitions: [
+      { term: "Payback period", definition: "The time taken for an investment's net cash inflows to repay the initial cost." },
+      { term: "Average rate of return", definition: "Average annual profit from an investment as a percentage of its cost." },
+      { term: "Net present value", definition: "The total discounted value of future net cash flows minus the initial investment." },
+      { term: "Expected value", definition: "The weighted average outcome of a decision, using probabilities." },
+      { term: "Critical path", definition: "The sequence of activities with zero float that sets the minimum project time." },
+    ],
+    formulas: [
+      { name: "Payback", formula: "Full years + (amount still owed ÷ net cash flow in next year × 12 months)" },
+      { name: "ARR", formula: "(Total net return − investment) ÷ years ÷ investment × 100" },
+      { name: "NPV", formula: "Σ (net cash flow × discount factor) − initial investment" },
+      { name: "Expected value", formula: "Σ (probability × financial outcome) − cost of the option" },
+      { name: "Total float", formula: "LFT − duration − EST" },
+    ],
+    essays: [
+      {
+        marks: 10,
+        label: "Assess (10)",
+        question: "Assess whether the business should go ahead with the investment, using the NPV and payback results.",
+        structure: [
+          "Interpret the figures: positive NPV and payback period relative to the asset's life.",
+          "Reliability: cash flows years ahead are estimates; small changes can flip the NPV.",
+          "Non-financial factors from the case: brand, staff, ethics or strategy.",
+          "Judgement: invest if the NPV holds under a cautious forecast and the strategy fits.",
+        ],
+        evaluation: [
+          "What discount rate was used, and is it realistic given interest rates?",
+          "Opportunity cost: is there a better use of the money?",
+          "Liquidity: a long payback may be risky for a cash-tight firm.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Forgetting to subtract the investment in ARR or EV.",
+      "Reading payback as \"profit\".",
+      "Concluding on numbers alone with no non-financial factor.",
+    ],
+    practice: [
+      { marks: 4, question: "An investment costs £60,000 and returns £20,000 a year for 5 years. Calculate the ARR.", answer: "Total return 100,000 − 60,000 = 40,000 over 5 years = £8,000 a year. ARR = 8,000 ÷ 60,000 × 100 = 13.3%." },
+      { marks: 4, question: "A machine costs £50,000. Net cash flows are £15,000, £20,000 and £24,000 in years 1–3. Calculate the payback period.", answer: "After 2 years £35,000 is repaid; £15,000 is left. 15,000 ÷ 24,000 × 12 = 7.5 months. Payback = 2 years 7.5 months." },
+      { marks: 4, question: "A launch costs £100,000: 0.6 chance of £300,000 and 0.4 chance of £50,000. Calculate the expected value.", answer: "(0.6 × 300,000) + (0.4 × 50,000) = 200,000. EV = 200,000 − 100,000 = £100,000." },
+      { marks: 10, question: "Assess the usefulness of decision trees for the business's choice of new location." },
+    ],
+  },
+  {
+    topicId: "bus-influences-decisions",
+    summary: [
+      "Short-termism: pressure from shareholders and quarterly results can push firms to cut training, R&D or maintenance.",
+      "Evidence-based decisions use data; intuition uses experience. Good managers use both.",
+      "Corporate culture is \"the way we do things around here\". Handy's types: power, role, task, person.",
+      "A strong culture aids motivation and consistency but makes change harder.",
+      "Shareholder model: maximise returns to owners. Stakeholder model: balance employees, customers, suppliers, community and owners.",
+      "Stakeholder mapping (power vs interest) tells managers who to manage closely and who to keep informed.",
+      "Ethics: pay and rewards, sourcing, environmental impact. Ethical behaviour can cost money but build trust and attract staff.",
+      "Watch for \"greenwashing\": CSR claims that aren't backed by real change.",
+    ],
+    definitions: [
+      { term: "Corporate culture", definition: "The shared values, attitudes and beliefs that shape how people behave in an organisation." },
+      { term: "Task culture", definition: "Culture built around teams working on projects, valuing expertise over status." },
+      { term: "Stakeholder", definition: "Any individual or group with an interest in a business's activities." },
+      { term: "Business ethics", definition: "Moral principles that guide business decisions beyond the legal minimum." },
+      { term: "Corporate social responsibility", definition: "Taking account of the wider impact of business decisions on society and the environment." },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess the importance of corporate culture to the business's success.",
+        structure: [
+          "Identify the culture type from the case (e.g. task culture in a tech firm) and its effect on innovation and motivation.",
+          "Link culture to performance evidence in the case (staff turnover, product launches).",
+          "Counterpoint: other factors such as finance, market conditions and leadership may matter more.",
+          "Judgement: culture matters most where the strategy depends on people and innovation.",
+        ],
+        evaluation: [
+          "A strong culture can resist necessary change.",
+          "Culture is hard to measure and slow to change.",
+          "Culture may differ across departments or countries.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Mixing up stakeholders and shareholders.",
+      "Naming Handy's types without applying one to the case.",
+      "Assuming ethics always costs profit.",
+    ],
+    practice: [
+      { marks: 4, question: "Explain one reason why a business might suffer from short-termism." },
+      { marks: 10, question: "Assess whether the business's directors should focus only on shareholder returns." },
+      { marks: 12, question: "Assess the extent to which ethical sourcing could improve the business's competitiveness." },
+    ],
+  },
+  {
+    topicId: "bus-competitiveness",
+    summary: [
+      "Statement of financial position: non-current assets, current assets, current liabilities, non-current liabilities and equity.",
+      "Income statement: revenue, cost of sales, gross profit, operating profit, profit for the year.",
+      "ROCE shows how well capital earns profit. Compare it with interest rates and competitors.",
+      "Gearing above about 50% is high: cheaper growth while rates are low, risky when they rise or profits fall.",
+      "Ratios are limited: they use historical data, can be window-dressed and mean little without comparisons. Qualitative factors matter.",
+      "HR measures: labour productivity, labour turnover, labour retention and absenteeism.",
+      "High turnover raises recruitment and training costs but brings fresh ideas. Look for the cause (pay, management, flexibility).",
+    ],
+    definitions: [
+      { term: "Capital employed", definition: "Total equity plus non-current liabilities." },
+      { term: "ROCE", definition: "Operating profit as a percentage of capital employed." },
+      { term: "Gearing", definition: "The proportion of capital employed financed by long-term debt." },
+      { term: "Labour turnover", definition: "The percentage of staff leaving over a period." },
+      { term: "Window dressing", definition: "Presenting accounts to look better than the underlying position." },
+    ],
+    formulas: [
+      { name: "ROCE", formula: "Operating profit ÷ capital employed × 100" },
+      { name: "Capital employed", formula: "Total equity + non-current liabilities" },
+      { name: "Gearing", formula: "Non-current liabilities ÷ capital employed × 100" },
+      { name: "Labour turnover", formula: "Staff leaving ÷ average number employed × 100" },
+      { name: "Labour retention", formula: "Staff with 1+ year's service ÷ staff employed at the start of the period × 100" },
+      { name: "Absenteeism", formula: "Staff days lost ÷ total possible staff days × 100" },
+    ],
+    essays: [
+      {
+        marks: 12,
+        label: "Assess (12)",
+        question: "Assess the usefulness of ratio analysis in judging the business's competitiveness.",
+        structure: [
+          "Useful: calculate ROCE and gearing from the case and compare with a competitor or last year.",
+          "Useful: liquidity and profitability ratios flag problems early.",
+          "Limitation: historical data, window dressing, ignores brand, staff and market trends.",
+          "Judgement: useful for comparison, but competitiveness also depends on non-financial factors.",
+        ],
+        evaluation: [
+          "Ratios only mean something against a benchmark.",
+          "Different accounting policies make comparisons unreliable.",
+          "One year's figures can be distorted by one-off events.",
+        ],
+      },
+    ],
+    mistakes: [
+      "Using total liabilities instead of non-current liabilities for capital employed.",
+      "\"High gearing is bad\" with no context about interest rates or growth plans.",
+      "Calculating a ratio and not interpreting it.",
+    ],
+    practice: [
+      { marks: 4, question: "Operating profit £1.2m, total equity £6m, non-current liabilities £4m. Calculate ROCE.", answer: "Capital employed = 6 + 4 = £10m. ROCE = 1.2 ÷ 10 × 100 = 12%." },
+      { marks: 4, question: "Using the figures above, calculate gearing.", answer: "4 ÷ 10 × 100 = 40% (not highly geared)." },
+      { marks: 4, question: "28 staff left during the year. Average employment was 350. Calculate labour turnover.", answer: "28 ÷ 350 × 100 = 8%." },
+      { marks: 12, question: "Assess how the business could reduce its high labour turnover." },
+    ],
+  },
+  {
+    topicId: "bus-managing-change",
+    summary: [
+      "Internal causes of change: new leadership, growth, new products, poor performance.",
+      "External causes: technology, competitors, the economy, legislation, social trends.",
+      "Key factors in managing change: organisational culture, the size of the organisation, time and risk.",
+      "Staff resist change through fear of the unknown, job insecurity, loss of status or control.",
+      "Reduce resistance with communication, consultation, training, support and incentives. Lewin's force field and Kotter & Schlesinger are handy frameworks if you were taught them.",
+      "Scenario planning identifies possible futures and plans for them: risk assessment, risk mitigation, business continuity and succession planning.",
+    ],
+    definitions: [
+      { term: "Resistance to change", definition: "Opposition from staff or stakeholders to new ways of working." },
+      { term: "Scenario planning", definition: "Planning for a range of possible future events and their effects." },
+      { term: "Business continuity", definition: "Plans that keep critical operations running during a disruption." },
+      { term: "Succession planning", definition: "Preparing people to take over key roles when leaders leave." },
+      { term: "Risk mitigation", definition: "Actions taken to reduce the likelihood or impact of a risk." },
+    ],
+    essays: [
+      {
+        marks: 20,
+        label: "Evaluate (20)",
+        question: "Option 1: restructure the business now. Option 2: delay until market conditions are clearer. Evaluate these two options and recommend which the business should choose.",
+        structure: [
+          "Option 1: acting now cuts costs sooner and gets ahead of competitors, but risks resistance and mistakes. Use the case's evidence.",
+          "Option 2: waiting reduces risk and allows consultation, but costs may keep rising and rivals may move first.",
+          "Weigh culture, size and time pressure from the case.",
+          "Recommendation with a deciding factor (e.g. cash runway) and a condition that would change it.",
+        ],
+        evaluation: [
+          "How urgent is the problem? Look at liquidity and market share trends.",
+          "How strong is the culture's resistance to change?",
+          "Does the business have a succession or continuity plan?",
+        ],
+      },
+    ],
+    mistakes: [
+      "Generic \"communicate better\" advice with no link to the case.",
+      "Forgetting that change has costs as well as benefits.",
+    ],
+    practice: [
+      { marks: 4, question: "Explain one reason why staff may resist a change in working practices." },
+      { marks: 10, question: "Assess the importance of succession planning for a family business." },
+      { marks: 12, question: "Assess the value of scenario planning to an airline." },
+    ],
+  },
+];
