@@ -254,6 +254,30 @@ button:disabled { opacity: 0.4; pointer-events: none; }
 .bj-rules { margin-top: -4px; font-size: 13px; color: rgba(243,231,196,0.7); letter-spacing: 0.06em; text-align: center; }
 .bj-msg { padding: 8px 16px; border-radius: 999px; background: rgba(0,0,0,0.42); font-weight: 650; font-size: 15px; text-align: center; border: 1px solid rgba(232,199,120,0.3); max-width: 100%; }
 
+.bj-mode { justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--muted); }
+.seg2 { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); }
+.seg2 button { padding: 8px 12px; border-radius: 9px; font-size: 13px; font-weight: 750; letter-spacing: 0; color: var(--muted); }
+.seg2 button.sel { background: rgba(232,199,120,0.22); color: var(--gold); }
+.seg2.locked { opacity: 0.5; }
+
+.bj-panel { --pc: #fff; width: min(100%, 640px); padding: 12px 14px; border-radius: 20px; background: rgba(0,0,0,0.5); border: 2px solid var(--pc);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pc) 22%, transparent); display: grid; gap: 10px; }
+.turn-head { display: flex; align-items: center; gap: 10px; }
+.turn-who { display: flex; flex-direction: column; min-width: 0; }
+.turn-who b { font-size: 17px; }
+.turn-who span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.turn-total { margin-left: auto; font-size: 26px; font-weight: 850; font-variant-numeric: tabular-nums; padding: 2px 14px; border-radius: 12px; background: rgba(255,255,255,0.1); }
+.turn-acts { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+.big { height: 56px; border-radius: 14px; font-size: 18px; font-weight: 850; letter-spacing: 0.02em; box-shadow: 0 4px 0 rgba(0,0,0,0.35), 0 8px 14px rgba(0,0,0,0.3); }
+.big:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+.big.hit { background: linear-gradient(180deg, #ffe39a, #d9a640); color: #2a1a00; }
+.big.stand { background: linear-gradient(180deg, #e2414c, #a8141e); color: #fff; }
+.big.dbl, .big.spl { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); font-size: 15px; }
+.hcards { display: flex; justify-content: center; --cw: 42px; min-height: calc(var(--cw) * 1.4); }
+.hcards .card + .card { margin-left: -24px; }
+.hcards .card.deal { animation-duration: .35s; }
+.hand-wrap.cur { background: rgba(255,255,255,0.08); border-radius: 12px; padding: 4px; }
+
 .bj-seats { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: auto; }
 .seat { --pc: #fff; width: 178px; padding: 8px; border-radius: 18px; background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .2s, border-color .2s; }
 .seat.active { border-color: color-mix(in srgb, var(--pc) 70%, transparent); }
@@ -290,6 +314,10 @@ button:disabled { opacity: 0.4; pointer-events: none; }
 .tag.on { background: linear-gradient(180deg, #ffe39a, #d9a640); color: #2a1a00; border-color: transparent; }
 .seat-note { font-size: 12.5px; color: var(--muted); font-weight: 650; }
 .seat-net { font-size: 17px; font-weight: 850; font-variant-numeric: tabular-nums; }
+
+@media (orientation: landscape) {
+  #bjStage.dealt .bj-print { display: none; }
+}
 
 /* Portrait */
 @media (orientation: portrait) {
@@ -369,7 +397,12 @@ button:disabled { opacity: 0.4; pointer-events: none; }
           <div class="bj-label">DEALER <span id="bjDealerTotal" class="bj-total" hidden></span></div>
           <div class="bj-cards" id="bjDealerCards"></div>
         </div>
-        <div class="bj-shoe ghost" aria-hidden="true"></div>
+        <div class="bj-mode">
+          <span>CARDS</span>
+          <div class="seg2" id="bjCards" role="group" aria-label="Card mode">
+            <button data-v="real">Real</button><button data-v="virtual">Virtual</button>
+          </div>
+        </div>
       </div>
       <div class="bj-print">
       <svg class="bj-arc" viewBox="0 0 1000 90" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
@@ -379,6 +412,7 @@ button:disabled { opacity: 0.4; pointer-events: none; }
       <div class="bj-rules">Dealer stands on all 17s · Insurance pays 2 to 1 · 6 decks</div>
       </div>
       <div class="bj-msg" id="bjMsg"></div>
+      <div class="bj-panel" id="bjPanel" hidden></div>
       <div class="bj-seats" id="bjSeats"></div>
     </div>
   </main>
@@ -422,7 +456,8 @@ button:disabled { opacity: 0.4; pointer-events: none; }
 <div class="overlay" id="menuSheet">
   <div class="sheet">
     <h2>Menu</h2>
-    <p>Blackjack: the iPad is the dealer. Bet on your seat and tap DEAL, then deal two real cards to each player and play your hands. Tap Double or Split on your seat if you use them. Tap DEALER PLAYS, and once the dealer finishes, everyone taps Win, Push, Lose or Blackjack on their own seat, then PAY OUT.</p>
+    <p>Blackjack with virtual cards: switch CARDS to Virtual on the table. The iPad deals everyone face up; on your turn tap Hit, Stand, Double or Split, and it pays every hand itself.</p>
+    <p>Blackjack with real cards: the iPad is the dealer. Bet on your seat and tap DEAL, then deal two real cards to each player and play your hands. Tap Double or Split on your seat if you use them. Tap DEALER PLAYS, and once the dealer finishes, everyone taps Win, Push, Lose or Blackjack on their own seat, then PAY OUT.</p>
     <p>Tap a spot on the table to bet with the selected player's chips. Tap near a line to split, on a corner for four numbers, and on the outer edge for a street. Swipe across the wheel to launch the ball yourself.</p>
     <p>Tip: in Safari, use Share → Add to Home Screen to play full screen.</p>
     <div class="row"><button class="dangerbtn" id="newGameBtn">New game</button><button class="goldbtn" id="menuClose" style="flex:1">Back to table</button></div>
