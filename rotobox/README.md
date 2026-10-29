@@ -50,7 +50,7 @@ Rotobox keeps only the part that plays, plus up to a minute more so it still cov
 
 | Tool | What it does |
 | --- | --- |
-| Pencil | Draws. With a stylus, pressing harder makes thicker lines. In the brush menu (the size button) you can switch to **Ink**, whose strokes taper to a point at both ends, **Marker**, which is see-through and colors under your lines, or **Crayon**, which leaves a waxy stroke with flecks of paper showing through. |
+| Pencil | Draws. Slide the bar on the left of the canvas to make lines thicker (up) or thinner (down). A circle in the middle shows the exact width while you slide. The same bar sets the eraser's size when the eraser is on. With a stylus, pressing harder makes thicker lines. In the brush menu (the size button) you can switch to **Ink**, whose strokes taper to a point at both ends, **Marker**, which is see-through and colors under your lines, or **Crayon**, which leaves a waxy stroke with flecks of paper showing through. |
 | Eraser | Erases your drawing, never the video underneath. In the brush menu, choose **Everything**, **Lines only** (keeps the color) or **Color only** (keeps the lines). |
 | Fill | Tap an empty area to fill it with color under your lines, tap a filled area to recolor it, or tap a line to recolor the line. Fill steps over small breaks in a line so the color stays inside. Tap **Fill** again to close bigger gaps or turn that off. Drag a loop with Fill to color everything inside the loop, even where there are no lines. |
 | Shapes | Drag to draw a line, rectangle or ellipse. Tap the button again to switch shapes. Lines snap level or upright when you're close. |

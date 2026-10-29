@@ -189,6 +189,17 @@ input { font: inherit; color: inherit; -webkit-user-select: text; user-select: t
 .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; box-shadow: var(--glow); background: #fff; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .ring { position: absolute; left: 0; top: 0; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.6); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75); pointer-events: none; }
+.size-rail {
+  left: 10px; right: auto; bottom: auto; top: 50%; translate: 0 -50%; display: block;
+  width: 36px; height: min(240px, 46%); padding: 16px 0; border-radius: 99px;
+  background: var(--tray); border: 1px solid var(--rule); box-shadow: var(--lift);
+  touch-action: none; cursor: ns-resize;
+}
+.rail-track { position: relative; width: 4px; height: 100%; margin: 0 auto; border-radius: 4px; background: var(--rule); }
+.rail-thumb { position: absolute; left: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: var(--ink); border: 3px solid var(--tray); box-shadow: 0 0 0 1px var(--rule); }
+.size-preview { position: absolute; left: 50%; top: 50%; translate: -50% -50%; z-index: 3; display: grid; justify-items: center; gap: 10px; pointer-events: none; }
+.sp-dot { border-radius: 50%; box-shadow: 0 0 0 2px var(--tray), 0 6px 20px rgba(0, 0, 0, 0.22); }
+.sp-num { padding: 4px 10px; border-radius: 99px; background: var(--tray); box-shadow: var(--lift); font: 600 13px var(--font-mono); color: var(--ink); }
 .ring.loupe { border: 3px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 6px 18px rgba(0, 0, 0, 0.28); }
 .hud { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 6px; }
 .hud-left { right: auto; left: 10px; }
@@ -593,6 +604,10 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
       <span class="sel-hint" role="status"><span class="rec-dot"></span><span id="recLabel">Get ready</span></span>
       <button type="button" class="chip chip-accent" id="recStop">Stop</button>
     </div>
+    <div class="hud size-rail" id="sizeRail" role="slider" aria-label="Pen size" aria-orientation="vertical" aria-valuemin="1" aria-valuemax="120" aria-valuenow="6" hidden>
+      <div class="rail-track" id="railTrack"><span class="rail-thumb" id="railThumb"></span></div>
+    </div>
+    <div class="size-preview" id="sizePreview" hidden><span class="sp-dot" id="spDot"></span><span class="sp-num" id="spNum">6 px</span></div>
     <div class="hud hud-left">
       <button type="button" class="chip" id="btnSound" hidden aria-pressed="true"><svg class="i sm"><use id="soundUse" href="#i-sound"/></svg><span id="soundLabel">Sound on</span></button>
     </div>
@@ -872,6 +887,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Pinch to zoom,</b> and twist two fingers to turn the paper.</p></li>
     <li data-for="touch"><span class="ti"><svg class="i"><use href="#i-undo"/></svg></span><p><b>Tap with two fingers to undo.</b> Three fingers redo.</p></li>
     <li data-for="mouse"><span class="ti"><svg class="i"><use href="#i-fit"/></svg></span><p><b>Scroll to move the canvas.</b> Pinch the trackpad or hold Ctrl while you scroll to zoom.</p></li>
+    <li><span class="ti"><svg class="i"><use href="#i-pen"/></svg></span><p><b>Thicker or thinner:</b> slide the bar on the left of the canvas. Up makes the pencil or eraser thicker.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-marker"/></svg></span><p><b>Marker and fill color under your lines.</b> The eraser can take everything, just the lines, or just the color.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-fill"/></svg></span><p><b>Fill steps over small breaks</b> in your lines, so the color stays inside. Drag with Fill to color inside a loop you draw instead.</p></li>
     <li><span class="ti"><svg class="i"><use href="#i-onion"/></svg></span><p><b>Onion skin</b> shows the drawing before this one in red and the one after in blue, so you can line things up.</p></li>
@@ -2885,7 +2901,11 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
   }
   function onMove(e) {
     const p = ptrs.get(e.pointerId);
-    if (!p) { if (e.pointerType !== 'touch') updateRing(e); return; }
+    if (!p) {
+      // Over the size bar and the other floating controls, the brush outline would only get in the way.
+      if (e.pointerType !== 'touch') { if (e.target.closest && e.target.closest('.hud')) ring.hidden = true; else updateRing(e); }
+      return;
+    }
     p.x = e.clientX;
     p.y = e.clientY;
     if (multiTap && Math.hypot(p.x - p.x0, p.y - p.y0) > 12) multiTap.moved = true;
@@ -3524,7 +3544,58 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     dot.style.background = prefs.tool === 'eraser' ? 'transparent' : 'var(--ink)';
     dot.style.boxShadow = prefs.tool === 'eraser' ? 'inset 0 0 0 1.5px var(--ink)' : 'none';
     $('#sizeNum').textContent = s;
+    updateRail();
   }
+  // A slim bar on the left of the canvas sets the size of the pencil (and shapes) or the eraser:
+  // up is thicker. While it moves, a circle in the middle shows the real width at this zoom.
+  const sizeIndex = (v) => { const i = SIZES.findIndex((z) => z >= v); return i < 0 ? SIZES.length - 1 : i; };
+  function updateRail() {
+    const rail = $('#sizeRail');
+    const show = !!E.project && ['pen', 'eraser', 'shape'].includes(prefs.tool);
+    rail.hidden = !show;
+    if (!show) return;
+    const key = activeSizeKey(), v = prefs.sizes[key];
+    $('#railThumb').style.top = (1 - sizeIndex(v) / (SIZES.length - 1)) * 100 + '%';
+    rail.setAttribute('aria-valuenow', String(v));
+    rail.setAttribute('aria-label', key === 'eraser' ? 'Eraser size' : 'Pen size');
+  }
+  let previewTimer = 0;
+  function showSizePreview(hideAfter) {
+    const key = activeSizeKey(), v = prefs.sizes[key];
+    const d = Math.max(2, Math.min(v * view.s, 0.8 * Math.min(vp.clientWidth, vp.clientHeight)));
+    const dot = $('#spDot');
+    dot.style.width = dot.style.height = d + 'px';
+    dot.style.background = key === 'eraser' ? 'transparent' : prefs.color;
+    dot.style.border = key === 'eraser' ? '2px solid var(--ink)' : 'none';
+    $('#spNum').textContent = v + ' px';
+    $('#sizePreview').hidden = false;
+    clearTimeout(previewTimer);
+    if (hideAfter) previewTimer = setTimeout(() => { $('#sizePreview').hidden = true; }, hideAfter);
+  }
+  let railDrag = null;
+  function railSet(clientY) {
+    const r = $('#railTrack').getBoundingClientRect();
+    const p = clamp(1 - (clientY - r.top) / Math.max(1, r.height), 0, 1);
+    const key = activeSizeKey(), v = SIZES[Math.round(p * (SIZES.length - 1))];
+    if (v !== prefs.sizes[key]) { prefs.sizes[key] = v; updateSizeUI(); }
+    showSizePreview(0);
+  }
+  $('#sizeRail').addEventListener('pointerdown', (e) => {
+    if (!E.project || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    try { $('#sizeRail').setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    railDrag = e.pointerId;
+    railSet(e.clientY);
+  });
+  $('#sizeRail').addEventListener('pointermove', (e) => { if (railDrag === e.pointerId) railSet(e.clientY); });
+  const railEnd = (e) => {
+    if (railDrag !== e.pointerId) return;
+    railDrag = null;
+    Prefs.set('sizes', prefs.sizes);
+    showSizePreview(500);
+  };
+  for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) $('#sizeRail').addEventListener(t, railEnd);
   function changeSize(dir) {
     const key = activeSizeKey();
     const cur = prefs.sizes[key];
@@ -3534,6 +3605,7 @@ body[data-screen="home"] .toast { bottom: calc(env(safe-area-inset-bottom, 0px) 
     prefs.sizes[key] = SIZES[i];
     Prefs.set('sizes', prefs.sizes);
     updateSizeUI();
+    showSizePreview(700);
     toast((key === 'eraser' ? 'Eraser ' : 'Pencil ') + SIZES[i] + ' px', 1200);
   }
 
