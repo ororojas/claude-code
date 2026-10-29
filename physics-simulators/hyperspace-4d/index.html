@@ -1,0 +1,1882 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- artifact:begin -->
+<title>Ana &amp; Kata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: the 3D slice fills the screen; level card top left, the w gauge on the right edge, touch pad along the bottom. */
+:root {
+  --bg: #ece8e1;
+  --sky-top: #d9dee6;
+  --sky-low: #f3efe8;
+  --panel: rgba(250, 248, 244, 0.92);
+  --panel-solid: #f8f6f2;
+  --ink: #1c1e24;
+  --muted: #61656f;
+  --line: rgba(28, 30, 36, 0.14);
+  --chip: rgba(28, 30, 36, 0.06);
+  --chip-hover: rgba(28, 30, 36, 0.11);
+  --ana: #e3612b;
+  --kata: #2f6bd4;
+  --stone: #d3cbbd;
+  --gem: #f0b429;
+  --gate: #2a9d78;
+  --button: #1c1e24;
+  --button-ink: #f6f4ef;
+  --shadow: 0 10px 30px rgba(20, 22, 28, 0.14);
+  --scene: day;
+  --font-display: "Major Mono Display", "IBM Plex Mono", ui-monospace, monospace;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131a;
+    --sky-top: #0b0e15;
+    --sky-low: #1c2230;
+    --panel: rgba(22, 26, 35, 0.92);
+    --panel-solid: #171b24;
+    --ink: #e9ebf0;
+    --muted: #9aa1ae;
+    --line: rgba(233, 235, 240, 0.14);
+    --chip: rgba(233, 235, 240, 0.07);
+    --chip-hover: rgba(233, 235, 240, 0.13);
+    --ana: #ff7a45;
+    --kata: #5b92ff;
+    --stone: #8f8a80;
+    --gem: #ffc93d;
+    --gate: #3cc69a;
+    --button: #e9ebf0;
+    --button-ink: #14171e;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    --scene: night;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131a;
+  --sky-top: #0b0e15;
+  --sky-low: #1c2230;
+  --panel: rgba(22, 26, 35, 0.92);
+  --panel-solid: #171b24;
+  --ink: #e9ebf0;
+  --muted: #9aa1ae;
+  --line: rgba(233, 235, 240, 0.14);
+  --chip: rgba(233, 235, 240, 0.07);
+  --chip-hover: rgba(233, 235, 240, 0.13);
+  --ana: #ff7a45;
+  --kata: #5b92ff;
+  --stone: #8f8a80;
+  --gem: #ffc93d;
+  --gate: #3cc69a;
+  --button: #e9ebf0;
+  --button-ink: #14171e;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --scene: night;
+  color-scheme: dark;
+}
+
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+#view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--kata); outline-offset: 2px; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.label { font: 600 11px/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.btn {
+  border: 1px solid var(--line); background: var(--chip); border-radius: 8px;
+  padding: 8px 14px; font-weight: 700; font-size: 14px;
+}
+.btn:hover { background: var(--chip-hover); }
+.btn.primary { background: var(--button); color: var(--button-ink); border-color: transparent; }
+.btn.primary:hover { filter: brightness(1.08); }
+.ana { color: var(--ana); }
+.kata { color: var(--kata); }
+
+/* ----- level card ----- */
+.levelcard {
+  position: fixed; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px));
+  width: min(360px, calc(100vw - 32px)); padding: 13px 15px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.lc-head { display: flex; align-items: baseline; gap: 10px; }
+.lc-num { font: 600 12px/1 var(--font-mono); color: var(--muted); }
+.lc-title { margin: 0; font: 400 21px/1.15 var(--font-display); letter-spacing: 0.02em; text-transform: lowercase; }
+.lc-menu { margin-left: auto; padding: 4px 9px; font-size: 13px; }
+.lc-hint { margin: 0; font-size: 14.5px; line-height: 1.5; max-width: 60ch; text-wrap: pretty; }
+.lc-stats { display: flex; gap: 16px; font: 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.gems { display: inline-flex; gap: 4px; align-items: center; }
+.gem-dot { width: 11px; height: 11px; transform: rotate(45deg); border: 2px solid var(--gem); border-radius: 2px; }
+.gem-dot.got { background: var(--gem); }
+.lc-toggle { display: none; }
+
+/* ----- w gauge ----- */
+.gauge {
+  position: fixed; right: 16px; top: 50%; transform: translateY(-50%);
+  width: 92px; padding: 10px 8px 9px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.gauge canvas { width: 46px; height: 250px; display: block; }
+.gauge .axis { font: 600 11px/1 var(--font-mono); letter-spacing: .06em; }
+.gauge .readout { font: 12px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; text-align: center; }
+.view-dial { width: 54px; height: 54px; display: block; }
+
+/* ----- controls help and touch pad ----- */
+.keys {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  padding: 7px 14px; font: 12.5px/1.4 var(--font-mono); display: flex; gap: 14px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 32px);
+}
+.keys kbd { font: 600 11.5px/1 var(--font-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--chip); }
+.touchpad { position: fixed; left: 0; right: 0; bottom: 0; height: 0; display: none; }
+.stick {
+  position: fixed; left: 22px; bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  width: 132px; height: 132px; border-radius: 50%;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow); touch-action: none;
+}
+.stick-knob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: var(--button); opacity: .85; }
+.pad-buttons {
+  position: fixed; right: 18px; bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: 64px 64px; grid-template-rows: 64px 64px; gap: 10px;
+}
+.pad-buttons button {
+  border-radius: 50%; border: 1px solid var(--line); background: var(--panel); box-shadow: var(--shadow);
+  font: 700 12px/1.1 var(--font-mono); text-transform: uppercase; letter-spacing: .04em; touch-action: none;
+}
+.pad-buttons .jump { background: var(--button); color: var(--button-ink); }
+.pad-buttons .b-ana { color: var(--ana); }
+.pad-buttons .b-kata { color: var(--kata); }
+
+/* ----- overlays ----- */
+.overlay {
+  position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+  overflow-y: auto;
+}
+.menu { box-sizing: border-box; width: min(812px, 100%); padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 18px; }
+/* Play stays reachable while the menu scrolls on short screens */
+@media (max-width: 760px), (max-height: 800px) {
+  .menu > .menu-actions { position: sticky; bottom: 0; margin: -6px -26px -22px; padding: 12px 26px 22px; background: var(--panel-solid); border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
+}
+@media (min-width: 1180px) {
+  #menu { justify-items: start; padding-left: 5vw; background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .menu { width: 692px; }
+}
+.wordmark { margin: 0; font: 400 clamp(38px, 8vw, 64px)/1 var(--font-display); letter-spacing: 0.01em; }
+.wordmark .amp { color: var(--ana); }
+.wordmark .kk { color: var(--kata); }
+.tagline { margin: 6px 0 0; font-size: 16px; color: var(--muted); max-width: 52ch; }
+.levels { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 8px; }
+.level {
+  text-align: left; border: 1px solid var(--line); background: var(--chip); border-radius: 8px;
+  padding: 9px 10px 8px; display: flex; flex-direction: column; gap: 3px; min-height: 66px;
+}
+.level:hover:not(:disabled) { background: var(--chip-hover); }
+.level .n { font: 600 11px/1 var(--font-mono); color: var(--muted); }
+.level .t { font: 700 15px/1.2 var(--font-body); overflow-wrap: anywhere; }
+.level .b { font: 11.5px/1 var(--font-mono); color: var(--muted); margin-top: auto; }
+.level:disabled { opacity: .45; cursor: not-allowed; }
+.level.done .b { color: var(--gate); }
+.menu-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.explain { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+.explain p { margin: 0; font-size: 14.5px; line-height: 1.5; color: var(--ink); max-width: 46ch; }
+.explain b { font-weight: 700; }
+.done-card { box-sizing: border-box; width: min(466px, 100%); padding: 22px; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.done-card h2 { margin: 0; font: 400 28px/1.1 var(--font-display); }
+.done-card .big { font: 600 30px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.toast {
+  position: fixed; left: 50%; top: calc(16px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  padding: 9px 15px; border-radius: 8px; background: var(--button); color: var(--button-ink);
+  font: 700 14px/1.35 var(--font-body); pointer-events: none; max-width: calc(100vw - 32px); text-align: center;
+}
+.fade { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity .25s; }
+.fade.on { opacity: 1; }
+
+/* ----- lab panel ----- */
+.labpanel {
+  position: fixed; right: 16px; top: calc(16px + env(safe-area-inset-top, 0px));
+  width: 300px; max-height: calc(100% - 32px); overflow-y: auto; padding: 14px 15px 15px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.labpanel h2 { margin: 0; font: 400 20px/1.1 var(--font-display); text-transform: lowercase; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip { border: 1px solid var(--line); background: var(--chip); border-radius: 7px; padding: 6px 9px; font-size: 13.5px; }
+.chip:hover { background: var(--chip-hover); }
+.chip[aria-pressed="true"] { background: var(--button); color: var(--button-ink); border-color: transparent; }
+.field { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
+.field label { font-size: 13.5px; }
+.field output { font: 12px/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.field input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--ana); margin: 2px 0 0; }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.toggle input { accent-color: var(--ana); width: 16px; height: 16px; margin: 0; }
+.fact { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.labinfo { position: fixed; left: 16px; top: calc(16px + env(safe-area-inset-top, 0px)); width: min(330px, calc(100vw - 350px)); padding: 13px 15px; display: flex; flex-direction: column; gap: 7px; }
+.labinfo h2 { margin: 0; font: 400 21px/1.1 var(--font-display); text-transform: lowercase; }
+.labinfo p { margin: 0; font-size: 14px; }
+
+@media (max-width: 760px) {
+  .card { box-sizing: border-box; }
+  .gauge { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: none; right: 10px; width: 76px; padding: 7px 4px; }
+  .gauge canvas { height: 150px; width: 36px; }
+  .view-dial { width: 40px; height: 40px; }
+  .levelcard { left: 10px; top: calc(10px + env(safe-area-inset-top, 0px)); width: calc(100vw - 20px); padding: 10px 12px; gap: 6px; }
+  .lc-title { font-size: 18px; }
+  .lc-hint { font-size: 13.5px; }
+  .levelcard:not(.open) .lc-hint { display: none; }
+  .lc-toggle { display: inline-block; padding: 4px 9px; font-size: 13px; }
+  .keys { display: none; }
+  .labpanel { left: 10px; right: 10px; width: auto; top: auto; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); max-height: 46%; }
+  .labinfo { left: 10px; width: calc(100vw - 20px); top: calc(10px + env(safe-area-inset-top, 0px)); }
+  .labinfo p { display: none; }
+  .menu { padding: 20px 18px 18px; }
+  .menu > .menu-actions { margin: -6px -18px -18px; padding: 12px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
+body.touch .touchpad { display: block; }
+body.touch .keys { display: none; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="view" tabindex="0" aria-label="The 3D slice of a 4D world"></canvas>
+
+<section class="levelcard card" id="levelcard" hidden aria-live="polite">
+  <div class="lc-head">
+    <span class="lc-num" id="lc-num"></span>
+    <h2 class="lc-title" id="lc-title"></h2>
+    <button class="btn lc-toggle" id="lc-toggle" aria-expanded="false">Hint</button>
+    <button class="btn lc-menu" id="lc-menu">Levels</button>
+  </div>
+  <p class="lc-hint" id="lc-hint"></p>
+  <div class="lc-stats">
+    <span class="gems" id="lc-gems" aria-label="Crystals"></span>
+    <span id="lc-time">0:00.0</span>
+    <span id="lc-best" style="color:var(--muted)"></span>
+  </div>
+</section>
+
+<aside class="gauge card" id="gauge" hidden aria-label="Position along the hidden direction">
+  <span class="axis ana">ana</span>
+  <canvas id="gauge-canvas" width="92" height="500"></canvas>
+  <span class="axis kata">kata</span>
+  <span class="readout" id="gauge-read"></span>
+  <svg class="view-dial" id="dial" viewBox="-30 -30 60 60" aria-label="Which way is forward"></svg>
+</aside>
+
+<div class="keys card" id="keys" hidden>
+  <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> roll</span>
+  <span><kbd>Space</kbd> jump</span>
+  <span><kbd>Q</kbd> <span class="kata">kata</span> · <kbd>E</kbd> <span class="ana">ana</span></span>
+  <span><kbd>Tab</kbd> turn into w</span>
+  <span>drag to look</span>
+  <span><kbd>R</kbd> restart</span>
+</div>
+
+<div class="touchpad" id="touchpad" hidden>
+  <div class="stick" id="stick" aria-label="Move"><div class="stick-knob" id="knob"></div></div>
+  <div class="pad-buttons">
+    <button class="b-ana" id="t-ana" aria-label="Move ana">ana ▲</button>
+    <button id="t-turn" aria-label="Turn the view into w">turn ↻</button>
+    <button class="b-kata" id="t-kata" aria-label="Move kata">kata ▼</button>
+    <button class="jump" id="t-jump" aria-label="Jump">jump</button>
+  </div>
+</div>
+
+<div class="overlay" id="menu">
+  <section class="menu card" aria-labelledby="wordmark">
+    <div>
+      <h1 class="wordmark" id="wordmark">ana <span class="amp">&amp;</span> <span class="kk">kata</span></h1>
+      <p class="tagline">A puzzle game in four dimensions. You are a hypersphere, and you see the 3D slice of the world that passes through you.</p>
+    </div>
+    <div class="explain">
+      <p><b>One more direction.</b> A 4D world has a fourth direction at right angles to the three you know. Its two ways are called <span class="ana">ana</span> and <span class="kata">kata</span>.</p>
+      <p><b>You see a slice.</b> Move ana or kata and the slice changes. A wall that only spans a short stretch of w fades out, and something else fades in.</p>
+      <p><b>Ghosts.</b> Things just <span class="ana">ana</span> of you glow orange, things just <span class="kata">kata</span> of you glow blue. The gauge on the right shows where everything sits in w.</p>
+    </div>
+    <div>
+      <p class="label" style="margin-bottom:8px">Levels</p>
+      <div class="levels" id="levels"></div>
+    </div>
+    <div class="menu-actions">
+      <button class="btn primary" id="m-play">Play</button>
+      <button class="btn" id="m-lab">4D lab</button>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="done" hidden>
+  <section class="done-card card" aria-live="polite">
+    <p class="label" id="d-num"></p>
+    <h2 id="d-title"></h2>
+    <div class="big" id="d-time"></div>
+    <p id="d-note" style="margin:0;color:var(--muted)"></p>
+    <div class="menu-actions">
+      <button class="btn primary" id="d-next">Next level</button>
+      <button class="btn" id="d-replay">Play again</button>
+      <button class="btn" id="d-menu">Levels</button>
+    </div>
+  </section>
+</div>
+
+<section class="labinfo card" id="labinfo" hidden>
+  <h2>4d lab</h2>
+  <p id="lab-what">Drop 4D shapes onto a 4D floor and watch their 3D cross-sections. Click a shape to kick it through all four directions. Turn the slice with the sliders to cut the same shapes at a new angle.</p>
+  <p class="mono" id="lab-read" style="font-size:12.5px;color:var(--muted)"></p>
+</section>
+<aside class="labpanel card" id="labpanel" hidden aria-label="Lab controls">
+  <h2>shapes</h2>
+  <div class="chips" id="lab-shapes"></div>
+  <div class="chips">
+    <button class="chip" id="lab-rain">Drop ten</button>
+    <button class="chip" id="lab-clear">Clear</button>
+    <button class="chip" id="lab-kick">Kick all</button>
+  </div>
+  <div class="field"><label for="lab-w">Slice position in w</label><output id="lab-w-out"></output><input type="range" id="lab-w" min="-2" max="2" step="0.01" value="0"></div>
+  <div class="field"><label for="lab-xw">Turn slice in the xw plane</label><output id="lab-xw-out"></output><input type="range" id="lab-xw" min="-90" max="90" step="1" value="0"></div>
+  <div class="field"><label for="lab-zw">Turn slice in the zw plane</label><output id="lab-zw-out"></output><input type="range" id="lab-zw" min="-90" max="90" step="1" value="0"></div>
+  <label class="toggle"><input type="checkbox" id="lab-spin"> Keep turning the slice</label>
+  <label class="toggle"><input type="checkbox" id="lab-shadow"> Show 4D wireframe shadows</label>
+  <label class="toggle"><input type="checkbox" id="lab-grav" checked> Gravity</label>
+  <p class="fact">A tesseract's slice can be a cube, a stretched box, a triangular prism or a hexagonal solid, depending on how it is turned. Every one is a true cross-section of the same 4D object.</p>
+  <div class="menu-actions"><button class="btn" id="lab-back">Back to levels</button></div>
+</aside>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="fade" id="fade"></div>
+
+<script src="engine4d.js"></script>
+<script type="module">
+import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.170.0/three.module.min.js';
+
+const E = window.Engine4D;
+const { World4, Polytope } = E;
+const STEP = 1 / 60;
+const $ = (id) => document.getElementById(id);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const TAU = Math.PI * 2;
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('ana-kata:' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('ana-kata:' + k, JSON.stringify(v)); } catch { /* storage unavailable */ } },
+};
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmtTime = (t) => `${Math.floor(t / 60)}:${(t % 60).toFixed(1).padStart(4, '0')}`;
+
+// ---------------------------------------------------------------------------
+// Renderer and scene
+// ---------------------------------------------------------------------------
+const canvas = $('view');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (err) {
+  document.body.insertAdjacentHTML('beforeend', '<div class="overlay"><div class="card" style="padding:20px;max-width:420px">This game needs WebGL, which this browser has turned off. Try another browser or enable hardware acceleration.</div></div>');
+  throw err;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, 1, 0.05, 600);
+scene.fog = new THREE.Fog(0xffffff, 30, 90);
+
+const skyU = { top: { value: new THREE.Color() }, low: { value: new THREE.Color() } };
+const sky = new THREE.Mesh(new THREE.SphereGeometry(400, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false, uniforms: skyU,
+  vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform vec3 top, low; varying vec3 vD;
+    void main(){ float h = clamp(vD.y * 0.5 + 0.5, 0.0, 1.0); gl_FragColor = vec4(mix(low, top, smoothstep(0.35, 1.0, h)), 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+    }`,
+}));
+scene.add(sky);
+const hemi = new THREE.HemisphereLight(0xffffff, 0x888888, 1.4);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -18, right: 18, top: 18, bottom: -18, near: 1, far: 80 });
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.03;
+scene.add(sun, sun.target);
+const SUN_DIR = new THREE.Vector3(0.45, 1, 0.3).normalize();
+
+const palette = {};
+function readPalette() {
+  for (const k of ['ana', 'kata', 'stone', 'gem', 'gate', 'ink', 'bg', 'sky-top', 'sky-low']) palette[k] = new THREE.Color(cssVar('--' + k));
+  palette.night = cssVar('--scene') === 'night';
+  skyU.top.value.copy(palette['sky-top']);
+  skyU.low.value.copy(palette['sky-low']);
+  scene.fog.color.copy(palette['sky-low']);
+  hemi.color.set(palette.night ? '#5d6883' : '#f4f1ea');
+  hemi.groundColor.set(palette.night ? '#2b2f3b' : '#9d968a');
+  hemi.intensity = palette.night ? 1.5 : 1.35;
+  sun.intensity = palette.night ? 1.7 : 2.3;
+  sun.color.set(palette.night ? '#c8d4f2' : '#fff6ea');
+  for (const o of sliceObjects) o.recolor();
+  if (player) player.recolor();
+}
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readPalette);
+new MutationObserver(readPalette).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+
+// ---------------------------------------------------------------------------
+// The view: which 3D slice of 4D space is on screen
+// ---------------------------------------------------------------------------
+// View rotation V: its first three columns span the slice (screen x, y, z),
+// the fourth is the slice normal, the hidden direction.
+const view = { theta: 0, target: 0, from: 0, t: 1, labV: E.identity(), origin: [0, 0, 0, 0] };
+function viewMatrix() {
+  if (mode === 'lab') return view.labV;
+  return E.planeRotation(2, 3, view.theta);
+}
+let vb = E.viewBasis(E.identity(), [0, 0, 0, 0]);
+const toThree = (p3, out) => out.set(p3[0], p3[1], p3[2]);
+
+// ---------------------------------------------------------------------------
+// Slice drawing: every 4D object gets a solid mesh for its current
+// cross-section and a ghost for "what you would see at its w"
+// ---------------------------------------------------------------------------
+const sliceObjects = [];
+const solidGroup = new THREE.Group();
+const ghostGroup = new THREE.Group();
+scene.add(solidGroup, ghostGroup);
+const VISION = 3.2;
+
+function makeSliceGeometry(maxTris) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxTris * 9), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(maxTris * 9), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(maxTris * 9), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setDrawRange(0, 0);
+  return g;
+}
+function makeLineGeometry(maxSegs) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(maxSegs * 6), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setDrawRange(0, 0);
+  return g;
+}
+const outlineMat = new THREE.LineBasicMaterial({ color: 0x1c1e24, transparent: true, opacity: 0.55 });
+const sphereGeo = new THREE.SphereGeometry(1, 48, 32);
+const _c = new THREE.Color();
+
+class SliceObject {
+  // target has shape 'poly' | 'sphere', plus pos (and poly, R, wv for polytopes)
+  constructor(target, opts = {}) {
+    this.t = target;
+    this.kind = opts.kind || 'stone';
+    this.baseColor = opts.color || null;
+    this.emissive = opts.emissive || 0;
+    this.ghost = opts.ghost !== false;
+    this.alwaysGhost = !!opts.alwaysGhost;
+    this.cellTint = opts.cellTint || 0;
+    this.visible = true;
+    if (target.shape === 'poly') {
+      const P = target.poly;
+      let maxTris = 0;
+      P.cellEdges.forEach((e) => { maxTris += Math.max(1, e.length - 2); });
+      this.maxTris = maxTris;
+      this.mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: opts.roughness ?? 0.82, metalness: 0, flatShading: true, emissive: 0x000000 });
+      this.mesh = new THREE.Mesh(makeSliceGeometry(maxTris), this.mat);
+      this.lines = new THREE.LineSegments(makeLineGeometry(P.edges.length * 2), outlineMat);
+      this.gmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false, side: THREE.DoubleSide });
+      this.gmesh = new THREE.Mesh(makeSliceGeometry(maxTris), this.gmat);
+      this.glmat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false });
+      this.glines = new THREE.LineSegments(makeLineGeometry(P.edges.length * 2), this.glmat);
+      for (const m of [this.mesh, this.lines, this.gmesh, this.glines]) m.frustumCulled = false;
+      this.cellColors = P.cells.map((c, i) => i);
+    } else {
+      this.mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: opts.roughness ?? 0.6, metalness: 0 });
+      this.mesh = new THREE.Mesh(sphereGeo, this.mat);
+      this.gmat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false });
+      this.gmesh = new THREE.Mesh(sphereGeo, this.gmat);
+    }
+    this.mesh.castShadow = opts.castShadow !== false;
+    this.mesh.receiveShadow = true;
+    this.mesh.userData.sliceObject = this;
+    solidGroup.add(this.mesh);
+    if (this.lines) solidGroup.add(this.lines);
+    ghostGroup.add(this.gmesh);
+    if (this.glines) ghostGroup.add(this.glines);
+    this.lastKey = '';
+    this.cut = 0;
+    sliceObjects.push(this);
+    this.recolor();
+  }
+  recolor() {
+    const c = this.baseColor ? new THREE.Color(this.baseColor) : this.tintColor();
+    this.color = c;
+    if (this.t.shape === 'sphere') this.mat.color.copy(c);
+    this.mat.emissive.copy(c).multiplyScalar(this.emissive);
+    this.lastKey = '';
+  }
+  // Solid geometry stays neutral (orange and blue are kept for ghosts);
+  // tall pieces are a shade darker than floors so walls read as walls.
+  tintColor() {
+    if (this.kind === 'gem') return palette.gem.clone();
+    if (this.kind === 'gate') return this.t.open ? palette.gate.clone() : palette.stone.clone().lerp(palette.ink, 0.35);
+    const stone = palette.stone.clone();
+    if (this.t.shape === 'poly' && this.t.poly.box) {
+      const h = this.t.poly.box;
+      const tall = h[1] > Math.min(h[0], h[2]) && h[1] > 0.4;
+      if (tall) stone.lerp(palette.ink, palette.night ? 0.12 : 0.2);
+    }
+    return stone;
+  }
+  dispose() {
+    for (const m of [this.mesh, this.lines, this.gmesh, this.glines]) {
+      if (!m) continue;
+      m.parent && m.parent.remove(m);
+      if (m.geometry !== sphereGeo) m.geometry.dispose();
+    }
+    this.mat.dispose();
+    this.gmat.dispose();
+    if (this.glmat) this.glmat.dispose();
+    if (this.clmat) this.clmat.dispose();
+    const i = sliceObjects.indexOf(this);
+    if (i >= 0) sliceObjects.splice(i, 1);
+  }
+  // fade toward see-through (on = true) when this piece hides the ball
+  fadeCut(on, dt) {
+    const k = 1 - Math.exp(-dt * 12);
+    this.cut += ((on ? 1 : 0) - this.cut) * k;
+    if (!on && this.cut < 0.01) this.cut = 0;
+    const see = this.cut > 0;
+    if (see !== this.mat.transparent) {
+      this.mat.transparent = see;
+      this.mat.depthWrite = !see;
+      this.mat.needsUpdate = true;
+      if (this.lines) {
+        if (see && !this.clmat) this.clmat = new THREE.LineBasicMaterial({ color: outlineMat.color, transparent: true, depthWrite: false });
+        this.lines.material = see ? this.clmat : outlineMat;
+      }
+    }
+    this.mat.opacity = 1 - 0.7 * this.cut;
+    if (see && this.clmat) this.clmat.opacity = outlineMat.opacity * (1 - 0.6 * this.cut);
+  }
+  _fill(geo, lineGeo, res, colorFn) {
+    const pos = geo.attributes.position, nor = geo.attributes.normal, col = geo.attributes.color;
+    const n = Math.min(res.positions.length / 3, this.maxTris * 3);
+    pos.array.set(res.positions.slice(0, n * 3));
+    nor.array.set(res.normals.slice(0, n * 3));
+    for (let i = 0; i < n; i++) {
+      colorFn(res.cells[i], _c);
+      col.array[i * 3] = _c.r; col.array[i * 3 + 1] = _c.g; col.array[i * 3 + 2] = _c.b;
+    }
+    pos.needsUpdate = nor.needsUpdate = col.needsUpdate = true;
+    geo.setDrawRange(0, n);
+    geo.computeBoundingSphere();
+    if (lineGeo) {
+      const L = lineGeo.attributes.position;
+      const m = Math.min(res.outline.length, L.array.length);
+      L.array.set(res.outline.slice(0, m));
+      L.needsUpdate = true;
+      lineGeo.setDrawRange(0, m / 3);
+    }
+  }
+  update() {
+    const t = this.t;
+    if (!this.visible) {
+      this.mesh.visible = false;
+      if (this.lines) this.lines.visible = false;
+      this.gmesh.visible = false;
+      if (this.glines) this.glines.visible = false;
+      return;
+    }
+    const [lo, hi] = E.depthRange(t, vb);
+    const centreDepth = E.dot(E.sub(t.pos, vb.o), vb.n);
+    const inSlice = lo < 0 && hi > 0;
+    const gap = inSlice ? 0 : lo >= 0 ? lo : -hi;
+    const showGhost = this.ghost && (!inSlice || this.alwaysGhost) && gap < VISION;
+    if (t.shape === 'sphere') {
+      const s = E.sliceSphere(t, vb, 0);
+      this.mesh.visible = !!s;
+      if (s) {
+        this.mesh.position.set(s.center[0], s.center[1], s.center[2]);
+        this.mesh.scale.setScalar(s.radius);
+      }
+      this.gmesh.visible = showGhost;
+      if (showGhost) {
+        const p = E.project(t.pos, vb);
+        this.gmesh.position.set(p[0], p[1], p[2]);
+        this.gmesh.scale.setScalar(t.radius);
+        this.gmat.color.copy(centreDepth > 0 ? palette.ana : palette.kata);
+        this.gmat.opacity = 0.3 * (1 - gap / VISION);
+      }
+      return;
+    }
+    // polytopes: rebuild only when the body or the view moved
+    const key = vbKey + '|' + t.pos.join(',') + '|' + t.R.join(',');
+    if (key === this.lastKey) return;
+    this.lastKey = key;
+    const res = inSlice ? E.slicePolytope(t, vb, 0) : null;
+    const tints = this.cellTint;
+    if (res && res.positions.length) {
+      this._fill(this.mesh.geometry, this.lines.geometry, res, (ci, out) => {
+        out.copy(this.color);
+        if (tints) out.offsetHSL(((ci * 0.137) % 1) * tints - tints / 2, 0, ((ci % 3) - 1) * 0.04);
+      });
+      this.mesh.visible = this.lines.visible = true;
+    } else {
+      this.mesh.visible = this.lines.visible = false;
+    }
+    if (showGhost) {
+      const g = E.slicePolytope(t, vb, centreDepth);
+      if (g.positions.length) {
+        const gc = centreDepth > 0 ? palette.ana : palette.kata;
+        this._fill(this.gmesh.geometry, this.glines.geometry, g, (ci, out) => out.copy(gc));
+        const c3 = E.project(t.pos, vb), k = 0.994;
+        this.gmesh.scale.setScalar(k);
+        this.gmesh.position.set(c3[0] * (1 - k), c3[1] * (1 - k), c3[2] * (1 - k));
+        this.glines.scale.copy(this.gmesh.scale);
+        this.glines.position.copy(this.gmesh.position);
+        this.gmat.color.set(0xffffff);
+        this.gmat.opacity = 0.2 * (1 - gap / VISION);
+        this.glmat.color.copy(gc);
+        this.glmat.opacity = 0.75 * (1 - gap / VISION);
+        this.gmesh.visible = this.glines.visible = true;
+      } else this.gmesh.visible = this.glines.visible = false;
+    } else {
+      this.gmesh.visible = this.glines.visible = false;
+    }
+  }
+}
+let vbKey = '';
+function setView(origin) {
+  vb = E.viewBasis(viewMatrix(), origin);
+  vbKey = vb.n.map((x) => x.toFixed(5)).join(',') + ':' + vb.e3.map((x) => x.toFixed(5)).join(',') + ':' + vb.e1.map((x) => x.toFixed(5)).join(',') + ':' + E.dot(origin, vb.n).toFixed(4);
+}
+
+// a light-weight 4D thing that only gets drawn (gems, the gate)
+class Visual4 {
+  constructor(shape, opts) {
+    this.shape = shape;
+    this.pos = opts.pos.slice();
+    this.R = E.identity();
+    if (shape === 'poly') {
+      this.poly = opts.poly;
+      this.updateWorld();
+    } else this.radius = opts.radius;
+  }
+  updateWorld() {
+    this.wv = this.poly.vertices.map((v) => E.add(this.pos, E.mulMV(this.R, v)));
+  }
+  turn(i, j, a) {
+    this.R = E.orthonormalize(E.mulMM(E.planeRotation(i, j, a), this.R));
+    if (this.shape === 'poly') this.updateWorld();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// The player: a hypersphere whose surface is coloured by the 4D direction each
+// point faces, so rolling ana or kata visibly turns gold "w" regions into view
+// ---------------------------------------------------------------------------
+const PLAYER_R = 0.45;
+class Player {
+  constructor() {
+    this.uniforms = {
+      uE1: { value: new THREE.Vector4() }, uE2: { value: new THREE.Vector4() }, uE3: { value: new THREE.Vector4() },
+      uRT: { value: new THREE.Matrix4() },
+      cX: { value: new THREE.Color() }, cY: { value: new THREE.Color() }, cZ: { value: new THREE.Color() }, cW: { value: new THREE.Color() },
+    };
+    const mat = new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0 });
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, this.uniforms);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vObj;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvObj = position;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+        varying vec3 vObj;
+        uniform vec4 uE1, uE2, uE3;
+        uniform mat4 uRT;
+        uniform vec3 cX, cY, cZ, cW;`).replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          vec4 l = uRT * (uE1 * vObj.x + uE2 * vObj.y + uE3 * vObj.z);
+          vec4 a = abs(l);
+          float m = max(max(a.x, a.y), max(a.z, a.w));
+          vec3 col = a.x == m ? cX : a.y == m ? cY : a.z == m ? cZ : cW;
+          float second = a.x == m ? max(max(a.y, a.z), a.w) : a.y == m ? max(max(a.x, a.z), a.w) : a.z == m ? max(max(a.x, a.y), a.w) : max(max(a.x, a.y), a.z);
+          float seam = smoothstep(0.0, 0.06, m - second);
+          float sgn = (a.x == m ? l.x : a.y == m ? l.y : a.z == m ? l.z : l.w) > 0.0 ? 1.0 : 0.82;
+          diffuseColor.rgb = mix(vec3(0.12), col * sgn, seam);
+        }`);
+    };
+    this.mesh = new THREE.Mesh(sphereGeo, mat);
+    this.mesh.scale.setScalar(PLAYER_R);
+    this.mesh.castShadow = true;
+    scene.add(this.mesh);
+    this.R = E.identity();
+    this.body = null;
+    this.recolor();
+  }
+  recolor() {
+    const u = this.uniforms;
+    u.cX.value.set('#f4f1ea');
+    u.cY.value.set('#9fb8d8');
+    u.cZ.value.set('#f4f1ea');
+    u.cW.value.copy(palette.gem || new THREE.Color('#f0b429'));
+    u.cY.value.set(palette.night ? '#6f8fc4' : '#a9bfdc');
+  }
+  roll(dt, grounded) {
+    const v = this.body.vel;
+    // rolling without slipping on a floor turns the ball in the plane of
+    // "up" and its velocity: B = (up ^ v) / r
+    const flat = [v[0], 0, v[2], v[3]];
+    if (!grounded) return;
+    const B = E.wedge([0, 1, 0, 0], flat).map((x) => x / PLAYER_R);
+    const W = E.omegaMatrix(B);
+    const WR = E.mulMM(W, this.R);
+    this.R = E.orthonormalize(this.R.map((x, i) => x + dt * WR[i]));
+  }
+  draw(p3) {
+    this.mesh.position.set(p3[0], p3[1], p3[2]);
+    const u = this.uniforms;
+    u.uE1.value.set(...vb.e1);
+    u.uE2.value.set(...vb.e2);
+    u.uE3.value.set(...vb.e3);
+    const RT = E.transpose(this.R);
+    u.uRT.value.set(...RT);
+  }
+}
+let player = null;
+
+// ---------------------------------------------------------------------------
+// Levels. Boxes are given as 4D corners [x, y, z, w]; floors have their top
+// at y = 0. The player is a hypersphere of radius 0.45.
+// ---------------------------------------------------------------------------
+const box = (min, max, o = {}) => ({ type: 'box', min, max, ...o });
+const hsphere = (c, r, o = {}) => ({ type: 'sphere', c, r, ...o });
+const LEVELS = [
+  {
+    id: 'roll', name: 'Roll', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'Roll with WASD or the arrow keys and jump with Space. Pick up every crystal, then roll into the gate.',
+    geo: [
+      box([-3, -1, -2, -1.5], [3, 0, 30, 1.5]),
+      box([-3, 0, 11, -1.5], [3, 0.55, 15, 1.5]),
+      box([-3.4, 0, -2, -1.5], [-3, 0.9, 30, 1.5]),
+      box([3, 0, -2, -1.5], [3.4, 0.9, 30, 1.5]),
+    ],
+    gems: [[0, 0.7, 5, 0], [0, 1.3, 13, 0], [1.8, 0.7, 21, 0]],
+    exit: [0, 1.2, 27, 0],
+  },
+  {
+    id: 'ana', name: 'Ana', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'A wall, but it is only 3 m thick in the fourth direction. Hold E to move ana (+w) until the wall becomes an orange ghost, roll past it, then hold Q to come back.',
+    geo: [
+      box([-3, -1, -2, -1.5], [3, 0, 24, 4.5]),
+      box([-3.4, 0, -2, -1.5], [-3, 3.2, 24, 4.5]),
+      box([3, 0, -2, -1.5], [3.4, 3.2, 24, 4.5]),
+      box([-3, 0, 9, -1.5], [3, 3.2, 10, 1.5]),
+    ],
+    gems: [[0, 0.7, 5, 0], [0, 0.7, 12.5, 3], [0, 0.7, 17, 0]],
+    exit: [0, 1.2, 21, 0],
+  },
+  {
+    id: 'kata', name: 'Kata', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'The floor stops here, but only at this w. Hold Q to move kata (−w) and the blue ghost of a bridge turns solid.',
+    geo: [
+      box([-3, -1, -2, -1.5], [3, 0, 8, 1.5]),
+      box([-3, -1, 6, -4.5], [3, 0, 15, -1.5]),
+      box([-3, -1, 13, -1.5], [3, 0, 25, 1.5]),
+    ],
+    gems: [[0, 0.7, 3, 0], [0, 0.7, 10.5, -3], [1.5, 0.7, 19, 0]],
+    exit: [0, 1.2, 22, 0],
+  },
+  {
+    id: 'room', name: 'The room', spawn: [0, 0.6, -1.2, 0], yaw: Math.PI,
+    hint: 'Walls on every side and a ceiling. In four dimensions that still leaves two ways out: ana and kata.',
+    geo: [
+      box([-7, -1, -7, -1.6], [7, 0, 20, 4]),
+      box([-2.6, 0, -2.6, -1.6], [-2.2, 3, 2.6, 1.6]),
+      box([2.2, 0, -2.6, -1.6], [2.6, 3, 2.6, 1.6]),
+      box([-2.6, 0, -2.6, -1.6], [2.6, 3, -2.2, 1.6]),
+      box([-2.6, 0, 2.2, -1.6], [2.6, 3, 2.6, 1.6]),
+      box([-2.6, 3, -2.6, -1.6], [2.6, 3.4, 2.6, 1.6], { roof: true }),
+    ],
+    gems: [[1.2, 0.7, 1.2, 0], [0, 0.7, 9, 0], [4, 0.7, 13, 2.8]],
+    exit: [0, 1.2, 16, 0],
+  },
+  {
+    id: 'turn', name: 'Turn', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'This path runs straight into the fourth dimension. Press Tab (or turn ↻) to rotate your view a quarter turn: ana becomes forward and the path stretches out in front of you.',
+    geo: [
+      box([-3, -1, -3, -1.5], [3, 0, 3, 1.5]),
+      box([-1.4, -1, -1.4, 1.5], [1.4, 0, 1.4, 27]),
+      box([-1.4, 0, -1.4, 9], [1.4, 0.6, 1.4, 9.6]),
+      box([-1.4, 0, -1.4, 17], [1.4, 0.6, 1.4, 17.6]),
+      box([-3, -1, -3, 27], [3, 0, 3, 32]),
+    ],
+    gems: [[0, 0.7, 0, 5], [0.8, 0.7, 0, 13], [-0.8, 0.7, 0, 21]],
+    exit: [0, 1.2, 0, 29.5],
+  },
+  {
+    id: 'rising', name: 'Rising', spawn: [0, 0.6, 2, 0], yaw: Math.PI,
+    hint: 'This slope climbs through w, not z. Stand on it and move ana: the floor lifts you. Turn your view (Tab) and it looks like an ordinary ramp.',
+    geo: [
+      box([-4, -1, -2, -1.5], [4, 0, 12, 1.5]),
+      // a hyperbox tilted in the yw plane: its top rises 0.45 m per metre of w
+      { type: 'box', min: [-2.5, -0.25, 6, -3.2], max: [2.5, 0.25, 10, 3.2], at: [0, 1.02, 8, 4.4], tilt: [3, 1, 0.42] },
+      box([-4, 1.9, 6, 6.6], [4, 2.5, 22, 9.5]),
+    ],
+    gems: [[0, 1.75, 8, 4.4], [0, 3.2, 15, 8], [2.4, 3.2, 19, 8]],
+    exit: [0, 3.7, 20, 8],
+  },
+  {
+    id: 'spheres', name: 'Hyperspheres', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'Each slice of a hypersphere is a sphere, and it is biggest at the hypersphere’s own w. Find the right w to climb to each crystal. The loose balls can be pushed.',
+    geo: [
+      box([-8, -1, -3, -4], [8, 0, 28, 4]),
+      hsphere([-3, -1.0, 7, -1.5], 2.6),
+      hsphere([3, -0.8, 13, 1.6], 2.6),
+      hsphere([0, -1.0, 19.5, -2.4], 2.8),
+    ],
+    balls: [[2, 0.8, 3.5, 0.5], [-3, 0.8, 16, -0.6], [3, 0.8, 22, 1.2]],
+    gems: [[-3, 2.15, 7, -1.5], [3, 2.35, 13, 1.6], [0, 2.35, 19.5, -2.4]],
+    exit: [0, 1.2, 25.5, 0],
+  },
+  {
+    id: 'drift', name: 'Drift', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'These tesseracts drift back and forth through w, so they fade in and out of your slice. Ride one, and hop across when the next one turns solid beside you.',
+    geo: [
+      box([-3, -1, -2, -2], [3, 0, 6, 2]),
+      box([-3, -1, 18.6, -2], [3, 0, 27, 2]),
+    ],
+    movers: [
+      { size: 2.4, at: [0, -1.2, 7.4, 0], amp: 2.6, rate: 0.45, phase: 0 },
+      { size: 2.4, at: [0, -1.2, 10.6, 0], amp: 2.6, rate: 0.45, phase: 1.9 },
+      { size: 2.4, at: [0, -1.2, 13.8, 0], amp: 2.6, rate: 0.45, phase: 3.8 },
+      { size: 2.4, at: [0, -1.2, 17.0, 0], amp: 2.6, rate: 0.45, phase: 0.8 },
+    ],
+    gems: [[0, 0.7, 10.6, 2.2], [0, 0.7, 17.0, -2.2], [0, 0.7, 22, 0]],
+    exit: [0, 1.2, 25, 0],
+  },
+  {
+    id: 'vaults', name: 'Vaults', spawn: [0, 0.6, -2, 0], yaw: Math.PI,
+    hint: 'Each vault is sealed in 3D. Slip in from a w where its walls do not reach. The vault on the right also has a lid in w; find its open side.',
+    geo: [
+      box([-10, -1, -4, -5], [10, 0, 24, 5]),
+      ...vault([-5, 6], [-1.2, 1.2]),
+      ...vault([5, 10], [-3, 3]),
+      box([3.5, 0, 8.5, 3], [6.5, 2.6, 11.5, 3.6]),
+      ...vault([0, 16], [1, 4]),
+    ],
+    gems: [[-5, 0.7, 6, 0], [5, 0.7, 10, 0], [0, 0.7, 16, 2.5]],
+    exit: [0, 1.2, 21, 0],
+  },
+  {
+    id: 'hypercube', name: 'Hypercube', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
+    hint: 'You are inside a hollow tesseract: eight cubic walls, and two of them lie out in w. One of those has a doorway. Collect the crystals, then find the way out.',
+    geo: hollowTesseract(),
+    gems: [[3.2, 0.7, 3.2, -2.5], [-3.2, 0.7, -3.2, 2.5], [3.2, 0.7, -3.2, 0]],
+    exit: [2.5, 1.2, 2.5, 7.4],
+  },
+];
+// a 3x3 m room with walls and a ceiling around (x, z), existing for w in [w0, w1]
+function vault([x, z], [w0, w1]) {
+  return [
+    box([x - 1.6, 0, z - 1.6, w0], [x - 1.2, 2.6, z + 1.6, w1]),
+    box([x + 1.2, 0, z - 1.6, w0], [x + 1.6, 2.6, z + 1.6, w1]),
+    box([x - 1.6, 0, z - 1.6, w0], [x + 1.6, 2.6, z - 1.2, w1]),
+    box([x - 1.6, 0, z + 1.2, w0], [x + 1.6, 2.6, z + 1.6, w1]),
+    box([x - 1.6, 2.6, z - 1.6, w0], [x + 1.6, 3, z + 1.6, w1], { roof: true }),
+  ];
+}
+// the boundary of a 10 m tesseract, with a doorway in its +w cell
+function hollowTesseract() {
+  const H = 5, T = 0.5;
+  const g = [
+    box([-H, -1, -H, -H], [H, 0, H, H + T]), // floor (the -y cell), reaching under the doorway
+    box([-H, 5, -H, -H], [H, 5.5, H, H], { roof: true }), // ceiling (+y)
+    box([-H - T, 0, -H, -H], [-H, 5, H, H]), box([H, 0, -H, -H], [H + T, 5, H, H]), // -x, +x
+    box([-H, 0, -H - T, -H], [H, 5, -H, H]), box([-H, 0, H, -H], [H, 5, H + T, H]), // -z, +z
+    box([-H, 0, -H, -H - T], [H, 5, H, -H]), // -w cell
+  ];
+  // +w cell with a 2 m doorway at x, z in [1.5, 3.5]
+  const w0 = H, w1 = H + T;
+  g.push(box([-H, 0, -H, w0], [1.5, 5, H, w1]));
+  g.push(box([3.5, 0, -H, w0], [H, 5, H, w1]));
+  g.push(box([1.5, 0, -H, w0], [3.5, 5, 1.5, w1]));
+  g.push(box([1.5, 0, 3.5, w0], [3.5, 5, H, w1]));
+  g.push(box([1.5, 2.5, 1.5, w0], [3.5, 5, 3.5, w1]));
+  // the landing outside, beyond the doorway
+  g.push(box([-H, -1, -H, w1], [H, 0, H, 9]));
+  return g;
+}
+
+const once = (make) => { let v = null; return () => v || (v = make()); };
+const GEM_POLY = once(() => Polytope.icositetrachoron(0.36));
+const GATE_POLY = once(() => Polytope.duoprism(6, 6, 0.95, 0.95));
+
+// ---------------------------------------------------------------------------
+// Game state
+// ---------------------------------------------------------------------------
+let mode = 'menu'; // 'menu' | 'play' | 'lab'
+let world = null;
+let level = null, levelIndex = 0;
+let gems = [], gate = null, movers = [];
+let levelTime = 0, finished = false;
+let grounded = false, coyote = 0, jumpBuffer = 0, groundBody = null;
+let progress = store.get('progress', { unlocked: 1, best: {} });
+const settings = { invertY: false };
+
+function clearWorld() {
+  for (const o of [...sliceObjects]) o.dispose();
+  world = null;
+  menuWorld = null;
+  gems = [];
+  gate = null;
+  movers = [];
+}
+
+function buildLevel(i) {
+  clearWorld();
+  levelIndex = i;
+  level = LEVELS[i];
+  mode = 'play';
+  world = new World4({ gravity: [0, -14, 0, 0] });
+  for (const g of level.geo) {
+    if (g.type === 'box') {
+      const half = g.max.map((x, k) => (x - g.min[k]) / 2);
+      const centre = g.at || g.min.map((x, k) => (x + g.max[k]) / 2);
+      const rot = g.tilt ? E.planeRotation(g.tilt[0], g.tilt[1], g.tilt[2]) : undefined;
+      const body = world.create({ type: 'static', poly: Polytope.box(half), position: centre, rotation: rot, material: { friction: 0.7, restitution: 0 } });
+      // roofs cast no shadow, so sealed rooms stay readable inside
+      new SliceObject(body, { kind: 'stone', castShadow: !g.roof });
+    } else if (g.type === 'sphere') {
+      const body = world.create({ type: 'static', radius: g.r, position: g.c, material: { friction: 0.7, restitution: 0 } });
+      new SliceObject(body, { kind: 'stone', color: null });
+    }
+  }
+  for (const m of level.movers || []) {
+    const body = world.create({ type: 'kinematic', poly: Polytope.tesseract(m.size), position: m.at.slice(), material: { friction: 0.8, restitution: 0 } });
+    movers.push({ body, ...m });
+    new SliceObject(body, { kind: 'stone', color: null, cellTint: 0.08 });
+  }
+  for (const b of level.balls || []) {
+    const body = world.create({ radius: 0.7, position: b, material: { friction: 0.6, restitution: 0.3, density: 120 }, linearDamping: 0.3, angularDamping: 0.3 });
+    new SliceObject(body, { kind: 'ball', color: '#7f8a99' });
+  }
+  const gemPoly = GEM_POLY();
+  gems = level.gems.map((p) => {
+    const v = new Visual4('poly', { pos: p, poly: gemPoly });
+    v.turn(0, 3, Math.random() * TAU);
+    const so = new SliceObject(v, { kind: 'gem', emissive: 0.55, roughness: 0.35, castShadow: false, cellTint: 0.05 });
+    return { v, so, got: false };
+  });
+  gate = new Visual4('poly', { pos: level.exit, poly: GATE_POLY() });
+  gate.open = false;
+  gate.so = new SliceObject(gate, { kind: 'gate', emissive: 0.35, roughness: 0.4, castShadow: false });
+  player.body = world.create({ radius: PLAYER_R, position: level.spawn, material: { friction: 0, restitution: 0 }, linearDamping: 0, angularDamping: 0, canSleep: false });
+  player.R = E.identity();
+  view.theta = view.target = 0;
+  view.t = 1;
+  cam.yaw = level.yaw ?? Math.PI;
+  cam.pitch = 0.42;
+  cam.dist = 7.5;
+  levelTime = 0;
+  finished = false;
+  for (const o of sliceObjects) o.recolor();
+  showPlayUI();
+  renderLevelCard();
+  syncGauge(true);
+}
+
+function respawn() {
+  const b = player.body;
+  b.setPose(level.spawn);
+  b.vel = [0, 0, 0, 0];
+  fadeFlash();
+}
+
+// ---------------------------------------------------------------------------
+// Input
+// ---------------------------------------------------------------------------
+const keys = new Set();
+const touch = { x: 0, y: 0, ana: false, kata: false, jump: false };
+window.addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input, select, textarea')) return;
+  const k = e.key.toLowerCase();
+  if (k === 'escape' && (mode === 'play-menu' || mode === 'lab-menu')) { closeMenu(); return; }
+  if (k === 'escape' && mode === 'lab') { openMenu(); return; }
+  if (mode === 'play') {
+    if (k === 'tab') { e.preventDefault(); turnView(); return; }
+    if (k === 'r') { buildLevel(levelIndex); return; }
+    if (k === 'escape') { openMenu(); return; }
+    if (k === ' ') { e.preventDefault(); jumpBuffer = 0.12; }
+  }
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys.add(k);
+  ensureAudio();
+});
+window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => keys.clear());
+
+const cam = { yaw: Math.PI, pitch: 0.42, dist: 7.5, target: new THREE.Vector3(), labTarget: new THREE.Vector3(0, 1.2, 0) };
+let drag = null;
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+canvas.addEventListener('pointerdown', (e) => {
+  canvas.focus({ preventScroll: true });
+  ensureAudio();
+  canvas.setPointerCapture(e.pointerId);
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, moved: false };
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag || drag.id !== e.pointerId) return;
+  const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  drag.x = e.clientX; drag.y = e.clientY;
+  if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 5) drag.moved = true;
+  cam.yaw -= dx * 0.006;
+  cam.pitch = clamp(cam.pitch + dy * 0.005 * (settings.invertY ? -1 : 1), 0.05, 1.35);
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (drag && !drag.moved && mode === 'lab') labClick(e);
+  drag = null;
+});
+canvas.addEventListener('pointercancel', () => { drag = null; });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.001), 3, mode === 'lab' ? 30 : 16);
+}, { passive: false });
+
+// touch stick and buttons
+function setupTouch() {
+  // phones and tablets start with the on-screen controls
+  if (window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
+  const stick = $('stick'), knob = $('knob');
+  let sid = null, cx = 0, cy = 0;
+  stick.addEventListener('pointerdown', (e) => {
+    sid = e.pointerId;
+    stick.setPointerCapture(sid);
+    const r = stick.getBoundingClientRect();
+    cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    move(e);
+  });
+  const move = (e) => {
+    if (e.pointerId !== sid) return;
+    let dx = (e.clientX - cx) / 50, dy = (e.clientY - cy) / 50;
+    const l = Math.hypot(dx, dy);
+    if (l > 1) { dx /= l; dy /= l; }
+    touch.x = dx; touch.y = dy;
+    knob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
+  };
+  stick.addEventListener('pointermove', move);
+  const end = (e) => { if (e.pointerId !== sid) return; sid = null; touch.x = touch.y = 0; knob.style.transform = ''; };
+  stick.addEventListener('pointerup', end);
+  stick.addEventListener('pointercancel', end);
+  const hold = (id, key) => {
+    const b = $(id);
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); touch[key] = true; if (key === 'jump') jumpBuffer = 0.12; ensureAudio(); });
+    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, () => { touch[key] = false; });
+  };
+  hold('t-ana', 'ana');
+  hold('t-kata', 'kata');
+  hold('t-jump', 'jump');
+  $('t-turn').addEventListener('pointerdown', (e) => { e.preventDefault(); turnView(); });
+}
+window.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'touch' && !document.body.classList.contains('touch')) {
+    document.body.classList.add('touch');
+    if (mode === 'play') $('touchpad').hidden = false;
+  }
+}, { capture: true, passive: true });
+
+function turnView() {
+  if (mode !== 'play') return;
+  view.from = view.theta;
+  view.target = view.target + Math.PI / 2;
+  view.t = 0;
+  playSweep();
+  const facing = Math.round(view.target / (Math.PI / 2)) % 4;
+  toast(facing % 2 ? 'Forward now points along w. The hidden direction is z.' : 'Back to the usual view: the hidden direction is w.');
+}
+
+// ---------------------------------------------------------------------------
+// Audio
+// ---------------------------------------------------------------------------
+const audio = { ctx: null, master: null, noise: null, whoosh: null };
+function ensureAudio() {
+  try {
+    if (!audio.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audio.ctx = new AC();
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = 0.5;
+      audio.master.connect(audio.ctx.destination);
+      const n = audio.ctx.sampleRate;
+      audio.noise = audio.ctx.createBuffer(1, n * 2, n);
+      const ch = audio.noise.getChannelData(0);
+      for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+      // continuous whoosh for moving through w
+      const src = audio.ctx.createBufferSource();
+      src.buffer = audio.noise;
+      src.loop = true;
+      const f = audio.ctx.createBiquadFilter();
+      f.type = 'bandpass';
+      f.frequency.value = 600;
+      f.Q.value = 1.4;
+      const g = audio.ctx.createGain();
+      g.gain.value = 0;
+      src.connect(f).connect(g).connect(audio.master);
+      src.start();
+      audio.whoosh = { f, g };
+    }
+    if (audio.ctx.state === 'suspended') audio.ctx.resume();
+  } catch { return null; }
+  return audio.ctx;
+}
+function tone(freq, t0, dur, gain, type = 'sine') {
+  const ctx = audio.ctx;
+  if (!ctx || ctx.state !== 'running') return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  const t = ctx.currentTime + t0;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(audio.master);
+  o.start(t);
+  o.stop(t + dur + 0.05);
+}
+const playGem = () => { tone(1318.5, 0, 0.35, 0.25); tone(1975.5, 0.07, 0.5, 0.2); };
+const playGate = () => [523.3, 659.3, 784, 1046.5].forEach((f, i) => tone(f, i * 0.09, 0.7, 0.2, 'triangle'));
+const playJump = () => tone(320, 0, 0.12, 0.12, 'triangle');
+const playSweep = () => {
+  const ctx = audio.ctx;
+  if (!ctx || ctx.state !== 'running') return;
+  const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+  o.frequency.setValueAtTime(220, t);
+  o.frequency.exponentialRampToValueAtTime(880, t + 0.45);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.12, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  o.connect(g).connect(audio.master);
+  o.start(t);
+  o.stop(t + 0.55);
+};
+
+// ---------------------------------------------------------------------------
+// Player control and level logic
+// ---------------------------------------------------------------------------
+const MOVE_SPEED = 5.2, W_SPEED = 3.6, JUMP = 6.4;
+function controlPlayer(dt) {
+  const b = player.body;
+  let ix = 0, iz = 0, iw = 0;
+  if (keys.has('w') || keys.has('arrowup')) iz += 1;
+  if (keys.has('s') || keys.has('arrowdown')) iz -= 1;
+  if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
+  if (keys.has('d') || keys.has('arrowright')) ix += 1;
+  if (keys.has('e')) iw += 1;
+  if (keys.has('q')) iw -= 1;
+  ix += touch.x;
+  iz -= touch.y;
+  if (touch.ana) iw += 1;
+  if (touch.kata) iw -= 1;
+  const il = Math.hypot(ix, iz);
+  if (il > 1) { ix /= il; iz /= il; }
+  iw = clamp(iw, -1, 1);
+  // camera-relative directions inside the slice
+  const fwd3 = [-Math.sin(cam.yaw), -Math.cos(cam.yaw)];
+  const right3 = [Math.cos(cam.yaw), -Math.sin(cam.yaw)];
+  const d3x = fwd3[0] * iz + right3[0] * ix, d3z = fwd3[1] * iz + right3[1] * ix;
+  let want = E.add(E.scale(vb.e1, d3x * MOVE_SPEED), E.scale(vb.e3, d3z * MOVE_SPEED));
+  want = E.mad(want, vb.n, iw * W_SPEED);
+  // standing on something that moves carries you along with it
+  if (grounded && groundBody && groundBody.type === 'kinematic') want = E.add(want, [groundBody.vel[0], 0, groundBody.vel[2], groundBody.vel[3]]);
+  // steer the horizontal velocity toward the wanted one
+  const v = b.vel;
+  const accel = grounded ? 32 : 13;
+  const dv = [want[0] - v[0], 0, want[2] - v[2], want[3] - v[3]];
+  const dl = E.len(dv), maxDv = accel * dt;
+  const k = dl > maxDv ? maxDv / dl : 1;
+  b.vel = [v[0] + dv[0] * k, v[1], v[2] + dv[2] * k, v[3] + dv[3] * k];
+  if (jumpBuffer > 0 && (grounded || coyote > 0)) {
+    b.vel[1] = JUMP;
+    jumpBuffer = 0;
+    coyote = 0;
+    grounded = false;
+    playJump();
+  }
+  jumpBuffer = Math.max(0, jumpBuffer - dt);
+  if (audio.whoosh) {
+    const ws = Math.abs(E.dot(b.vel, vb.n));
+    audio.whoosh.g.gain.setTargetAtTime(Math.min(0.12, ws * 0.035), audio.ctx.currentTime, 0.08);
+    audio.whoosh.f.frequency.setTargetAtTime(E.dot(b.vel, vb.n) > 0 ? 900 : 450, audio.ctx.currentTime, 0.1);
+  }
+}
+function checkGround() {
+  grounded = false;
+  groundBody = null;
+  const b = player.body;
+  for (const c of world.contacts) {
+    let up, other;
+    if (c.B === b) { up = c.n[1]; other = c.A; }
+    else if (c.A === b) { up = -c.n[1]; other = c.B; }
+    else continue;
+    if (up > 0.55 && c.s < 0.03) { grounded = true; groundBody = other; break; }
+  }
+  if (grounded) coyote = 0.1;
+}
+function stepMovers(t) {
+  for (const m of movers) {
+    const w = m.at[3] + m.amp * Math.sin(m.rate * t + m.phase);
+    const vw = m.amp * m.rate * Math.cos(m.rate * t + m.phase);
+    m.body.pos = [m.at[0], m.at[1], m.at[2], w];
+    m.body.vel = [0, 0, 0, vw];
+    m.body.updateWorld();
+  }
+}
+function levelLogic(dt) {
+  const p = player.body.pos;
+  for (const g of gems) {
+    if (g.got) continue;
+    if (E.len(E.sub(g.v.pos, p)) < PLAYER_R + 0.42) {
+      g.got = true;
+      g.so.visible = false;
+      playGem();
+      const left = gems.filter((x) => !x.got).length;
+      toast(left ? `${left} crystal${left > 1 ? 's' : ''} to go` : 'All crystals found. The gate is open.');
+      if (!left) { gate.open = true; gate.so.recolor(); }
+      renderLevelCard();
+      syncGauge(true);
+    }
+  }
+  const open = gems.every((g) => g.got);
+  if (E.len(E.sub(gate.pos, p)) < PLAYER_R + 0.85) {
+    if (open && !finished) finishLevel();
+    else if (!open && !levelLogic.warned) {
+      levelLogic.warned = true;
+      const left = gems.filter((x) => !x.got).length;
+      toast(`The gate opens once every crystal is found (${left} left).`);
+      setTimeout(() => { levelLogic.warned = false; }, 2500);
+    }
+  }
+  if (p[1] < -12) respawn();
+}
+function finishLevel() {
+  finished = true;
+  playGate();
+  const id = level.id;
+  const best = progress.best[id];
+  const isBest = best == null || levelTime < best;
+  if (isBest) progress.best[id] = levelTime;
+  progress.unlocked = Math.max(progress.unlocked, Math.min(LEVELS.length, levelIndex + 2));
+  store.set('progress', progress);
+  $('d-num').textContent = `Level ${levelIndex + 1} of ${LEVELS.length}`;
+  $('d-title').textContent = level.name.toLowerCase();
+  $('d-time').textContent = fmtTime(levelTime);
+  $('d-note').textContent = isBest ? (best == null ? 'First clear.' : `New best, ${(best - levelTime).toFixed(1)} s faster.`) : `Best ${fmtTime(best)}.`;
+  $('d-next').hidden = levelIndex >= LEVELS.length - 1;
+  if (levelIndex >= LEVELS.length - 1) $('d-note').textContent += ' That was the last level. Try the 4D lab next.';
+  setTimeout(() => { $('done').hidden = false; $('d-next').focus(); }, 450);
+}
+
+// ---------------------------------------------------------------------------
+// UI
+// ---------------------------------------------------------------------------
+function toast(msg, ms = 2600) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.hidden = false;
+  el.style.top = '';
+  const t = el.getBoundingClientRect();
+  let below = 0;
+  for (const id of ['levelcard', 'labinfo', 'labpanel']) {
+    const c = $(id);
+    if (c.hidden) continue;
+    const r = c.getBoundingClientRect();
+    if (r.right > t.left && r.left < t.right && r.bottom > t.top && r.top < t.bottom) below = Math.max(below, r.bottom + 8);
+  }
+  if (below) el.style.top = below + 'px';
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => { el.hidden = true; }, ms);
+}
+function fadeFlash() {
+  const f = $('fade');
+  f.classList.add('on');
+  setTimeout(() => f.classList.remove('on'), 180);
+}
+function renderLevelCard() {
+  $('lc-num').textContent = String(levelIndex + 1).padStart(2, '0');
+  $('lc-title').textContent = level.name;
+  $('lc-hint').textContent = level.hint;
+  $('lc-gems').innerHTML = gems.map((g) => `<span class="gem-dot${g.got ? ' got' : ''}"></span>`).join('');
+  $('lc-gems').setAttribute('aria-label', `${gems.filter((g) => g.got).length} of ${gems.length} crystals`);
+  const best = progress.best[level.id];
+  $('lc-best').textContent = best != null ? `best ${fmtTime(best)}` : '';
+}
+function renderLevels() {
+  const box = $('levels');
+  box.innerHTML = '';
+  LEVELS.forEach((L, i) => {
+    const b = document.createElement('button');
+    b.className = 'level' + (progress.best[L.id] != null ? ' done' : '');
+    b.disabled = i >= progress.unlocked;
+    const best = progress.best[L.id];
+    b.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="t">${L.name}</span><span class="b">${best != null ? 'cleared · ' + fmtTime(best) : i >= progress.unlocked ? 'locked' : 'new'}</span>`;
+    b.addEventListener('click', () => startLevel(i));
+    box.appendChild(b);
+  });
+}
+function showPlayUI() {
+  $('menu').hidden = true;
+  $('done').hidden = true;
+  $('levelcard').hidden = false;
+  $('gauge').hidden = false;
+  $('keys').hidden = false;
+  $('touchpad').hidden = !document.body.classList.contains('touch');
+  $('labpanel').hidden = true;
+  $('labinfo').hidden = true;
+}
+function openMenu() {
+  if (mode === 'lab') mode = 'lab-menu';
+  else if (mode === 'play') mode = 'play-menu';
+  else if (mode !== 'lab-menu' && mode !== 'play-menu') mode = 'menu';
+  renderLevels();
+  $('menu').hidden = false;
+  $('done').hidden = true;
+  $('touchpad').hidden = true;
+  $('m-play').textContent = progress.unlocked > 1 ? `Continue: level ${Math.min(progress.unlocked, LEVELS.length)}` : 'Play';
+}
+function startLevel(i) {
+  fadeFlash();
+  buildLevel(i);
+  canvas.focus({ preventScroll: true });
+}
+
+// The gauge shows positions along the hidden direction
+const gauge = { lo: -5, hi: 5 };
+function syncGauge(force) {
+  if (!world || !level) return;
+  if (force) {
+    const zero = E.viewBasis(viewMatrix(), [0, 0, 0, 0]);
+    let lo = Infinity, hi = -Infinity;
+    for (const b of world.bodies) {
+      const [a, c] = E.depthRange(b, zero);
+      if (Number.isFinite(a)) { lo = Math.min(lo, a); hi = Math.max(hi, c); }
+    }
+    const pad = 0.5;
+    gauge.lo = Math.max(-12, lo - pad);
+    gauge.hi = Math.min(40, hi + pad);
+    if (gauge.hi - gauge.lo < 4) { const m = (gauge.hi + gauge.lo) / 2; gauge.lo = m - 2; gauge.hi = m + 2; }
+  }
+}
+function drawGauge() {
+  const cv = $('gauge-canvas');
+  const g = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  g.clearRect(0, 0, W, H);
+  const y = (d) => H - 12 - ((d - gauge.lo) / (gauge.hi - gauge.lo)) * (H - 24);
+  const n = vb.n;
+  const along = (p) => E.dot(p, n);
+  // track
+  const grd = g.createLinearGradient(0, H, 0, 0);
+  grd.addColorStop(0, '#' + palette.kata.getHexString());
+  grd.addColorStop(0.5, '#' + palette.stone.getHexString());
+  grd.addColorStop(1, '#' + palette.ana.getHexString());
+  g.fillStyle = grd;
+  g.globalAlpha = 0.85;
+  g.fillRect(W / 2 - 5, 12, 10, H - 24);
+  g.globalAlpha = 1;
+  // extents of the static geometry the player could stand on
+  g.fillStyle = 'rgba(128,128,128,0.18)';
+  const zero = E.viewBasis(viewMatrix(), [0, 0, 0, 0]);
+  for (const b of world.bodies) {
+    if (b.type === 'dynamic') continue;
+    const [lo, hi] = E.depthRange(b, zero);
+    if (!Number.isFinite(lo) || hi - lo > 30) continue;
+    g.fillRect(W / 2 + 10, y(hi), 6, Math.max(2, y(lo) - y(hi)));
+  }
+  const ink = '#' + palette.ink.getHexString();
+  // gate
+  const gy = y(along(gate.pos));
+  g.strokeStyle = '#' + palette.gate.getHexString();
+  g.lineWidth = 4;
+  g.beginPath();
+  g.arc(W / 2, gy, 10, 0, TAU);
+  g.stroke();
+  // gems
+  for (const gm of gems) {
+    if (gm.got) continue;
+    const yy = y(along(gm.v.pos));
+    g.save();
+    g.translate(W / 2 - 16, yy);
+    g.rotate(Math.PI / 4);
+    g.fillStyle = '#' + palette.gem.getHexString();
+    g.strokeStyle = ink;
+    g.lineWidth = 2;
+    g.fillRect(-7, -7, 14, 14);
+    g.strokeRect(-7, -7, 14, 14);
+    g.restore();
+  }
+  // player
+  const py = y(along(player.body.pos));
+  g.fillStyle = ink;
+  g.beginPath();
+  g.moveTo(W / 2 + 26, py);
+  g.lineTo(W / 2 + 40, py - 9);
+  g.lineTo(W / 2 + 40, py + 9);
+  g.closePath();
+  g.fill();
+  g.fillStyle = '#ffffff';
+  g.strokeStyle = ink;
+  g.lineWidth = 3;
+  g.beginPath();
+  g.arc(W / 2, py, 9, 0, TAU);
+  g.fill();
+  g.stroke();
+  const axis = Math.abs(n[3]) > 0.7 ? 'w' : Math.abs(n[2]) > 0.7 ? 'z' : '·';
+  $('gauge-read').textContent = `${axis} ${along(player.body.pos) >= 0 ? '+' : '−'}${Math.abs(along(player.body.pos)).toFixed(2)}`;
+}
+function drawDial() {
+  // a little picture of the z-w plane: which way is forward, which is hidden
+  const th = view.theta;
+  if (drawDial.last === th) return;
+  drawDial.last = th;
+  const fz = Math.cos(th), fw = Math.sin(th);
+  const svg = $('dial');
+  const ink = 'var(--ink)';
+  svg.innerHTML = `
+    <line x1="-24" y1="0" x2="24" y2="0" stroke="${ink}" stroke-opacity=".25" stroke-width="1.5"/>
+    <line x1="0" y1="24" x2="0" y2="-24" stroke="${ink}" stroke-opacity=".25" stroke-width="1.5"/>
+    <text x="26" y="4" font-size="9" fill="${ink}" font-family="IBM Plex Mono, monospace">z</text>
+    <text x="-3" y="-26" font-size="9" fill="var(--ana)" font-family="IBM Plex Mono, monospace">w</text>
+    <line x1="0" y1="0" x2="${fz * 20}" y2="${-fw * 20}" stroke="${ink}" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${fz * 20}" cy="${-fw * 20}" r="3.5" fill="${ink}"/>
+    <line x1="0" y1="0" x2="${-fw * 16}" y2="${-fz * 16}" stroke="var(--ana)" stroke-width="2" stroke-dasharray="3 3"/>`;
+  svg.setAttribute('aria-label', Math.abs(fw) > 0.7 ? 'Forward points along w' : 'Forward points along z');
+}
+
+// ---------------------------------------------------------------------------
+// 4D lab
+// ---------------------------------------------------------------------------
+const LAB_SHAPES = {
+  tesseract: { label: 'Tesseract', make: () => Polytope.tesseract(1.1) },
+  orthoplex: { label: '16-cell', make: () => Polytope.orthoplex(0.85) },
+  simplex: { label: '5-cell', make: () => Polytope.simplex(0.9) },
+  icosi: { label: '24-cell', make: () => Polytope.icositetrachoron(0.8) },
+  duo: { label: '3-4 duoprism', make: () => Polytope.duoprism(3, 4, 0.7, 0.6) },
+  sphere: { label: 'Hypersphere', make: null },
+};
+const polyCache = {};
+const LAB_COLORS = ['#e3612b', '#2f6bd4', '#f0b429', '#2a9d78', '#c2478f', '#7a6ad8', '#d8d1c4'];
+const lab = { spin: false, shadows: false, wSlice: 0, xw: 0, zw: 0, count: 0, shadowLines: [] };
+let labFloor = null;
+function startLab() {
+  clearWorld();
+  mode = 'lab';
+  level = null;
+  world = new World4({ gravity: [0, $('lab-grav').checked ? -9.81 : 0, 0, 0] });
+  world.create({ type: 'static', plane: { normal: [0, 1, 0, 0], offset: 0 }, material: { friction: 0.6, restitution: 0.3 } });
+  $('menu').hidden = true;
+  $('done').hidden = true;
+  $('levelcard').hidden = true;
+  $('gauge').hidden = true;
+  $('keys').hidden = true;
+  $('touchpad').hidden = true;
+  $('labpanel').hidden = false;
+  $('labinfo').hidden = false;
+  cam.yaw = 0.6;
+  cam.pitch = 0.45;
+  cam.dist = 11;
+  cam.labTarget.set(0, 1.2, 0);
+  lab.count = 0;
+  ['tesseract', 'icosi', 'orthoplex', 'simplex'].forEach((k, i) => labSpawn(k, [(i - 1.5) * 2.4, 1.6 + i * 0.4, 0, 0]));
+}
+function labSpawn(kind, at) {
+  const p = at || [(Math.random() - 0.5) * 5, 3 + Math.random() * 2, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 1.2];
+  let R = E.identity();
+  for (const [i, j] of E.PAIRS) R = E.mulMM(E.planeRotation(i, j, (Math.random() - 0.5) * 1.6), R);
+  const spin = E.PAIRS.map(() => (Math.random() - 0.5) * 2.4);
+  const color = LAB_COLORS[lab.count++ % LAB_COLORS.length];
+  let body;
+  if (kind === 'sphere') {
+    body = world.create({ radius: 0.7, position: p, angularVelocity: spin, material: { friction: 0.6, restitution: 0.35, density: 300 } });
+    new SliceObject(body, { kind: 'lab', color, roughness: 0.5 });
+  } else {
+    const poly = polyCache[kind] || (polyCache[kind] = LAB_SHAPES[kind].make());
+    body = world.create({ poly, position: p, rotation: R, angularVelocity: spin, material: { friction: 0.6, restitution: 0.3, density: 300 } });
+    new SliceObject(body, { kind: 'lab', color, roughness: 0.55, cellTint: 0.18 });
+  }
+  body.userData.kind = kind;
+  return body;
+}
+function labClick(e) {
+  const r = canvas.getBoundingClientRect();
+  const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  const rc = new THREE.Raycaster();
+  rc.setFromCamera(ndc, camera);
+  const hits = rc.intersectObjects(solidGroup.children.filter((m) => m.isMesh && m.visible), false);
+  const hit = hits.find((h) => h.object.userData.sliceObject && h.object.userData.sliceObject.t.invMass);
+  if (!hit) return;
+  kick(hit.object.userData.sliceObject.t);
+}
+function kick(b) {
+  const dir = E.norm([(Math.random() - 0.5), 1.4, (Math.random() - 0.5), (Math.random() - 0.5) * 1.6]);
+  const at = E.add(b.pos, [(Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4, (Math.random() - 0.5) * 0.4]);
+  b.applyImpulse(E.scale(dir, b.mass * 5.5), at);
+  tone(180 + Math.random() * 60, 0, 0.15, 0.12, 'triangle');
+}
+function labView(dt) {
+  if (lab.spin) {
+    lab.xw = ((lab.xw + dt * 18 + 90) % 180) - 90;
+    $('lab-xw').value = lab.xw;
+    $('lab-xw-out').textContent = `${lab.xw.toFixed(0)}°`;
+  }
+  view.labV = E.mulMM(E.planeRotation(0, 3, (lab.xw * Math.PI) / 180), E.planeRotation(2, 3, (lab.zw * Math.PI) / 180));
+  const n = E.column(view.labV, 3);
+  return E.scale(n, lab.wSlice);
+}
+const shadowGroup = new THREE.Group();
+scene.add(shadowGroup);
+// the 4D floor y = 0 slices into the plane y = 0 for every lab view
+function gridTexture() {
+  const S = 512, c = document.createElement('canvas');
+  c.width = c.height = S;
+  const g = c.getContext('2d');
+  g.fillStyle = '#d7d1c6';
+  g.fillRect(0, 0, S, S);
+  g.strokeStyle = 'rgba(28,30,36,0.18)';
+  g.lineWidth = 2;
+  for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(i * S / 4, 0); g.lineTo(i * S / 4, S); g.moveTo(0, i * S / 4); g.lineTo(S, i * S / 4); g.stroke(); }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(30, 30);
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+}
+const labGround = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.MeshStandardMaterial({ map: gridTexture(), roughness: 0.95 }));
+labGround.rotation.x = -Math.PI / 2;
+labGround.receiveShadow = true;
+labGround.visible = false;
+scene.add(labGround);
+function drawShadows() {
+  for (const l of shadowGroup.children) { l.geometry.dispose(); l.material.dispose(); }
+  shadowGroup.clear();
+  if (!lab.shadows || mode !== 'lab') return;
+  for (const b of world.bodies) {
+    if (b.shape !== 'poly') continue;
+    // perspective projection along the hidden direction: far things shrink
+    const pts = [];
+    for (const [a, c] of b.poly.edges) {
+      for (const v of [b.wv[a], b.wv[c]]) {
+        const d = E.dot(E.sub(v, vb.o), vb.n);
+        const k = 3 / (3 + clamp(d, -2.4, 6));
+        const p = E.project(v, vb), q = E.project(b.pos, vb);
+        pts.push(q[0] + (p[0] - q[0]) * k, q[1] + (p[1] - q[1]) * k, q[2] + (p[2] - q[2]) * k);
+      }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    const so = sliceObjects.find((o) => o.t === b);
+    const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: so ? so.color : 0x888888, transparent: true, opacity: 0.55 }));
+    shadowGroup.add(l);
+  }
+}
+function setupLab() {
+  const shapes = $('lab-shapes');
+  for (const [k, s] of Object.entries(LAB_SHAPES)) {
+    const b = document.createElement('button');
+    b.className = 'chip';
+    b.textContent = s.label;
+    b.addEventListener('click', () => { if (mode === 'lab') labSpawn(k); });
+    shapes.appendChild(b);
+  }
+  $('lab-rain').addEventListener('click', () => { const ks = Object.keys(LAB_SHAPES); for (let i = 0; i < 10; i++) labSpawn(ks[i % ks.length]); });
+  $('lab-clear').addEventListener('click', () => {
+    for (const o of [...sliceObjects]) { if (o.t.invMass) { world.remove(o.t); o.dispose(); } }
+  });
+  $('lab-kick').addEventListener('click', () => { for (const b of world.bodies) if (b.invMass) kick(b); });
+  const bind = (id, key, fmt) => {
+    const el = $(id), out = $(id + '-out');
+    const sync = () => { lab[key] = Number(el.value); out.textContent = fmt(lab[key]); };
+    el.addEventListener('input', sync);
+    sync();
+  };
+  bind('lab-w', 'wSlice', (v) => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} m`);
+  bind('lab-xw', 'xw', (v) => `${v.toFixed(0)}°`);
+  bind('lab-zw', 'zw', (v) => `${v.toFixed(0)}°`);
+  $('lab-spin').addEventListener('change', (e) => { lab.spin = e.target.checked; });
+  $('lab-shadow').addEventListener('change', (e) => { lab.shadows = e.target.checked; });
+  $('lab-grav').addEventListener('change', (e) => {
+    if (!world) return;
+    world.gravity = [0, e.target.checked ? -9.81 : 0, 0, 0];
+    for (const b of world.bodies) b.wake();
+  });
+  $('lab-back').addEventListener('click', openMenu);
+}
+
+// ---------------------------------------------------------------------------
+// Main loop
+// ---------------------------------------------------------------------------
+const _v = new THREE.Vector3(), _t = new THREE.Vector3();
+// On phones the lab panel covers the lower half of the screen, so the camera
+// is shifted to centre the shapes in the strip that is still visible.
+let viewShift = 0;
+function updateViewShift() {
+  let shift = 0;
+  const panel = $('labpanel'), info = $('labinfo');
+  if ((mode === 'lab' || mode === 'lab-menu') && window.innerWidth <= 760 && !panel.hidden) {
+    const top = info.hidden ? 0 : info.getBoundingClientRect().bottom;
+    const bottom = panel.getBoundingClientRect().top;
+    shift = Math.max(0, Math.round(window.innerHeight / 2 - (top + bottom) / 2));
+  }
+  if (shift === viewShift) return;
+  viewShift = shift;
+  const w = window.innerWidth, h = window.innerHeight;
+  if (shift) camera.setViewOffset(w, h, 0, shift, w, h);
+  else camera.clearViewOffset();
+}
+// Walls, roofs and floors that stand between the camera and the ball fade
+// out, so the ball never disappears inside a sealed room.
+const occRay = new THREE.Raycaster();
+const _occP = new THREE.Vector3(), _occR = new THREE.Vector3(), _occU = new THREE.Vector3(), _occD = new THREE.Vector3();
+// no ray to the bottom of the ball: on a slope it would clip the floor it rolls on
+const OCC_OFFSETS = [[0, 0], [1, 0], [-1, 0], [0, 1]];
+function cutaway(dt, active) {
+  const hiding = new Set();
+  if (active) {
+    camera.updateMatrixWorld();
+    solidGroup.updateMatrixWorld();
+    const targets = sliceObjects.filter((o) => o.kind === 'stone' && o.mesh.visible).map((o) => o.mesh);
+    _occR.setFromMatrixColumn(camera.matrixWorld, 0);
+    _occU.setFromMatrixColumn(camera.matrixWorld, 1);
+    for (const [a, b] of OCC_OFFSETS) {
+      _occP.copy(player.mesh.position).addScaledVector(_occR, a * PLAYER_R * 0.8).addScaledVector(_occU, b * PLAYER_R * 0.8);
+      _occD.subVectors(_occP, camera.position);
+      const far = _occD.length() - 0.05;
+      if (far <= 0) continue;
+      occRay.set(camera.position, _occD.normalize());
+      occRay.far = far;
+      for (const h of occRay.intersectObjects(targets, false)) hiding.add(h.object.userData.sliceObject);
+    }
+  }
+  for (const o of sliceObjects) if (o.kind === 'stone' && (o.cut > 0 || hiding.has(o))) o.fadeCut(hiding.has(o), dt);
+}
+let acc = 0, last = performance.now(), simTime = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000);
+  last = now;
+  if (world && (mode === 'play' || mode === 'lab')) {
+    acc += dt;
+    let steps = 0;
+    while (acc >= STEP && steps < 4) {
+      if (mode === 'play' && !finished) {
+        stepMovers(simTime + STEP);
+        controlPlayer(STEP);
+      }
+      world.step(STEP);
+      simTime += STEP;
+      if (mode === 'play') {
+        checkGround();
+        if (!grounded) coyote = Math.max(0, coyote - STEP);
+        player.roll(STEP, grounded);
+        if (!finished) { levelTime += STEP; levelLogic(STEP); }
+      }
+      acc -= STEP;
+      steps++;
+    }
+    if (steps === 4) acc = 0;
+  }
+  // view rotation animation
+  if (view.t < 1) {
+    view.t = Math.min(1, view.t + dt / 0.55);
+    const s = view.t * view.t * (3 - 2 * view.t);
+    view.theta = view.from + (view.target - view.from) * s;
+    if (view.t >= 1) { view.theta = view.target % TAU; view.target = view.theta; for (const o of sliceObjects) o.recolor(); syncGauge(true); }
+  }
+  // gems and the gate turn slowly through 4D
+  for (const g of gems) { if (!g.got) { g.v.turn(0, 3, dt * 0.9); g.v.turn(1, 2, dt * 0.5); } }
+  if (gate) { gate.turn(0, 3, dt * 0.35); gate.turn(1, 2, dt * 0.2); }
+
+  let origin = [0, 0, 0, 0];
+  labGround.visible = mode === 'lab' || mode === 'lab-menu';
+  if ((mode === 'play' || mode === 'play-menu') && player.body) origin = player.body.pos;
+  else if (mode === 'lab' || mode === 'lab-menu') origin = labView(dt);
+  else if (mode === 'menu') origin = menuView(dt);
+  setView(origin);
+  for (const o of sliceObjects) o.update();
+  if (mode === 'lab' || mode === 'lab-menu') drawShadows();
+
+  // camera
+  let target;
+  if ((mode === 'play' || mode === 'play-menu') && player.body) {
+    const p3 = E.project(player.body.pos, vb);
+    player.mesh.visible = true;
+    player.draw(p3);
+    target = _t.set(p3[0], p3[1] + 0.5, p3[2]);
+    cam.target.lerp(target, cam.target.distanceTo(target) > 6 ? 1 : 1 - Math.exp(-dt * 10));
+    drawGauge();
+    drawDial();
+    $('lc-time').textContent = fmtTime(levelTime);
+  } else {
+    player.mesh.visible = false;
+    cam.target.lerp(cam.labTarget, 1 - Math.exp(-dt * 4));
+  }
+  const t = cam.target;
+  const cp = Math.cos(cam.pitch);
+  camera.position.set(t.x + cam.dist * cp * Math.sin(cam.yaw), t.y + cam.dist * Math.sin(cam.pitch), t.z + cam.dist * cp * Math.cos(cam.yaw));
+  camera.lookAt(t);
+  sky.position.copy(camera.position);
+  sun.target.position.copy(t);
+  sun.position.copy(t).addScaledVector(SUN_DIR, 40);
+  cutaway(dt, (mode === 'play' || mode === 'play-menu') && !!player.body);
+  updateViewShift();
+  if (mode === 'lab' || mode === 'lab-menu') {
+    const n = world ? world.bodies.filter((b) => b.invMass).length : 0;
+    const cut = sliceObjects.filter((o) => o.mesh.visible && o.t.invMass).length;
+    $('lab-read').textContent = `${n} shapes · ${cut} cut by the slice · normal (${vb.n.map((x) => x.toFixed(2)).join(', ')})`;
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+// the title screen shows a slowly turning tesseract and 24-cell
+let menuWorld = null;
+function menuView(dt) {
+  if (!menuWorld) {
+    clearWorld();
+    world = null;
+    menuWorld = [
+      new Visual4('poly', { pos: [-1.7, 1.5, 0, 0], poly: Polytope.tesseract(2) }),
+      new Visual4('poly', { pos: [1.9, 1.5, 0, 0], poly: Polytope.icositetrachoron(1.25) }),
+    ];
+    menuWorld.forEach((v, i) => new SliceObject(v, { kind: 'lab', color: i ? '#2f6bd4' : '#e3612b', cellTint: 0.2, ghost: false }));
+    cam.dist = 9;
+    cam.pitch = 0.3;
+    cam.yaw = 0;
+  }
+  // on wide screens the menu card sits left, so look a little left of the shapes
+  const wide = window.innerWidth >= 1180;
+  cam.labTarget.set(wide ? -4.6 : 0, wide ? 1.2 : 1.5, 0);
+  menuWorld[0].turn(0, 3, dt * 0.4);
+  menuWorld[0].turn(1, 2, dt * 0.15);
+  menuWorld[1].turn(2, 3, dt * 0.35);
+  menuWorld[1].turn(0, 1, dt * 0.12);
+  return [0, 0, 0, 0];
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.fov = w < h ? 68 : 55;
+  viewShift = -1;
+  camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+// buttons
+$('m-play').addEventListener('click', () => { menuWorld = null; startLevel(Math.min(progress.unlocked, LEVELS.length) - 1); });
+$('m-lab').addEventListener('click', () => { menuWorld = null; startLab(); });
+$('lc-menu').addEventListener('click', openMenu);
+$('lc-toggle').addEventListener('click', () => {
+  const open = !$('levelcard').classList.contains('open');
+  $('levelcard').classList.toggle('open', open);
+  $('lc-toggle').setAttribute('aria-expanded', String(open));
+});
+$('d-next').addEventListener('click', () => startLevel(levelIndex + 1));
+$('d-replay').addEventListener('click', () => startLevel(levelIndex));
+$('d-menu').addEventListener('click', openMenu);
+function closeMenu() {
+  if (mode !== 'play-menu' && mode !== 'lab-menu') return;
+  $('menu').hidden = true;
+  mode = mode === 'lab-menu' ? 'lab' : 'play';
+  if (mode === 'play') $('touchpad').hidden = !document.body.classList.contains('touch');
+  canvas.focus({ preventScroll: true });
+}
+document.getElementById('menu').addEventListener('click', (e) => { if (e.target.id === 'menu') closeMenu(); });
+
+// boot
+player = new Player();
+readPalette();
+setupTouch();
+setupLab();
+resize();
+renderLevels();
+openMenu();
+requestAnimationFrame((t) => { last = t; frame(t); });
+
+// a handle for automated checks
+window.anaKata = {
+  LEVELS, startLevel, startLab, turnView, keys, touch, get world() { return world; }, get player() { return player; },
+  get gems() { return gems; }, get mode() { return mode; }, get view() { return view; }, get finished() { return finished; },
+  get grounded() { return grounded; }, get movers() { return movers; }, cam,
+  advance(seconds, input = {}) {
+    // run the game forward with held keys, without waiting for frames
+    const held = Object.keys(input).filter((k) => input[k]);
+    held.forEach((k) => keys.add(k));
+    const n = Math.round(seconds / STEP);
+    for (let i = 0; i < n; i++) {
+      if (mode !== 'play' || finished) break;
+      stepMovers(simTime + STEP);
+      controlPlayer(STEP);
+      world.step(STEP);
+      simTime += STEP;
+      checkGround();
+      if (!grounded) coyote = Math.max(0, coyote - STEP);
+      player.roll(STEP, grounded);
+      levelTime += STEP;
+      levelLogic(STEP);
+      if (view.t < 1) { view.t = 1; view.theta = view.target % TAU; view.target = view.theta; syncGauge(true); }
+      if (mode === 'play') setView(player.body.pos);
+    }
+    held.forEach((k) => keys.delete(k));
+  },
+  jump() { jumpBuffer = 0.12; },
+  get lab() { return lab; },
+  // where a body's centre lands on screen, in CSS pixels
+  screenOf(b) {
+    const p = E.project(b.pos, vb);
+    const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera);
+    return { x: ((v.x + 1) / 2) * window.innerWidth, y: ((1 - v.y) / 2) * window.innerHeight };
+  },
+  // steer toward a 4D direction each step: fn(pos) -> { dir: [x, y, z, w], jump }
+  drive(seconds, fn) {
+    const n = Math.round(seconds / STEP);
+    for (let i = 0; i < n; i++) {
+      if (mode !== 'play' || finished) break;
+      const cmd = fn(player.body.pos, grounded) || {};
+      const d = cmd.dir || [0, 0, 0, 0];
+      const x3 = E.dot(d, vb.e1), z3 = E.dot(d, vb.e3), wn = E.dot(d, vb.n);
+      const fwd3 = [-Math.sin(cam.yaw), -Math.cos(cam.yaw)], right3 = [Math.cos(cam.yaw), -Math.sin(cam.yaw)];
+      touch.x = x3 * right3[0] + z3 * right3[1];
+      touch.y = -(x3 * fwd3[0] + z3 * fwd3[1]);
+      touch.ana = wn > 0.15;
+      touch.kata = wn < -0.15;
+      if (cmd.jump) jumpBuffer = 0.12;
+      this.advance(STEP);
+      setView(player.body.pos);
+    }
+    touch.x = touch.y = 0;
+    touch.ana = touch.kata = false;
+  },
+};
+</script>
+<!-- artifact:end -->
+</body>
+</html>

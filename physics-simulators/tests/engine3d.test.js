@@ -1,5 +1,5 @@
 // Physics checks for the Proving Ground engine against textbook results.
-// Run with: node --test physics-simulators/tests/
+// Run with: node --test physics-simulators/tests/*.test.js
 'use strict';
 
 const test = require('node:test');

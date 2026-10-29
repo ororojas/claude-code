@@ -1,6 +1,6 @@
 // Checks for the Ana & Kata 4D engine: hulls, exact volumes, slicing,
 // closest points and contact physics.
-// Run with: node --test physics-simulators/tests/
+// Run with: node --test physics-simulators/tests/*.test.js
 'use strict';
 
 const test = require('node:test');
