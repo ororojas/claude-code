@@ -17,7 +17,9 @@ const MAX_PLAYERS = 8;
 const STORE = 'roulette-night-v1';
 
 const $ = (id) => document.getElementById(id);
-const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
+const money = (n) => '$' + (Number.isInteger(n)
+  ? n.toLocaleString('en-US')
+  : n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 const signed = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + money(Math.abs(n));
 const betTotal = (p) => [...p.bets.values()].reduce((s, b) => s + b.amount, 0);
 
@@ -27,6 +29,7 @@ const state = {
   chip: 25,
   lastChip: 25,
   mode: 'roulette',
+  bjVirtual: false,
   phase: 'betting',
   history: [],
   lastBets: new Map(),
@@ -76,6 +79,7 @@ function save() {
       active: state.players.findIndex((p) => p.id === state.activeId),
       chip: state.lastChip,
       mode: state.mode,
+      bjVirtual: state.bjVirtual,
       history: state.history.slice(0, 40),
       sound: state.sound,
       topView: state.topView,
@@ -766,6 +770,7 @@ if (saved) {
   state.chip = CHIPS.some((c) => c.v === saved.chip && c.v !== 'all') ? saved.chip : 25;
   state.lastChip = state.chip;
   state.mode = saved.mode === 'blackjack' ? 'blackjack' : 'roulette';
+  state.bjVirtual = !!saved.bjVirtual;
   state.buyin = saved.buyin || 1000;
   $('resumeBtn').style.display = 'block';
   saved.players.forEach((p) => addNameRow(p.name));
