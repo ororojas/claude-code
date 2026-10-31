@@ -82,6 +82,8 @@ export interface ScheduleItem {
   topic_ids: string[];
   past_paper_id: string | null;
   completed_at: string | null;
+  /** The day a missed block was first planned for, once it has been carried forward. */
+  moved_from: string | null;
 }
 
 export interface StudySession {

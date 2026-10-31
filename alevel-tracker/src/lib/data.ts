@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { londonMinutes, todayISO } from "./dates";
+import { planRollover } from "./rollover";
 import { createClient, type Db } from "./supabase/server";
 import type {
   GradeBoundaryRow,
@@ -67,11 +69,34 @@ export const loadCore = cache(async () => {
   return { supabase, subjects, topics, boundaries, targets, progress };
 });
 
-export async function loadSchedule(supabase: Db, range?: { from: string; to: string }) {
+export async function loadSchedule(supabase: Db, signal?: AbortSignal) {
   let q = supabase.from("schedule_items").select("*").order("day").order("start_time");
-  if (range) q = q.gte("day", range.from).lte("day", range.to);
+  if (signal) q = q.abortSignal(signal);
   return must<ScheduleItem[]>(await q, "schedule");
 }
+
+/**
+ * The timetable, after carrying any missed blocks forward. Runs once per
+ * request. `stuck` is what couldn't be fitted in before its exam.
+ */
+export const loadPlan = cache(async () => {
+  const { supabase, targets } = await loadCore();
+  const today = todayISO();
+  const items = await loadSchedule(supabase);
+  const examDates = Object.fromEntries(targets.map((t) => [t.subject_id, t.exam_date]));
+  const { rows, freed, stuck } = planRollover({ items, today, nowMinutes: londonMinutes(), examDates });
+  // Once an exam has been sat there's nothing left to fit in for it.
+  const stillDue = stuck.filter((s) => s.subject_id && (examDates[s.subject_id] ?? "") > today);
+  if (!rows.length && !freed.length) return { items, stuck: stillDue };
+
+  const { error } = await supabase.rpc("apply_rollover", { p_rows: rows, p_freed: freed });
+  if (error) {
+    // Don't take the page down over it; the plan just stays as it was.
+    console.error(`Couldn't carry missed blocks forward: ${error.message}`);
+    return { items, stuck: stillDue };
+  }
+  return { items: await loadSchedule(supabase, new AbortController().signal), stuck: stillDue };
+});
 
 export async function loadSessions(supabase: Db) {
   return must<StudySession[]>(

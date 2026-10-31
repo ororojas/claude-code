@@ -4,8 +4,9 @@ import { deleteSession } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { BlockCheck } from "@/components/block-check";
 import { LogSessionForm } from "@/components/log-session-form";
+import { MovedTag, StuckNotice } from "@/components/rollover-notice";
 import { Card, Empty, KIND_LABEL, PageTitle, ProgressBar, RagBadge, SectionTitle, Stat, SubjectTag } from "@/components/ui";
-import { loadAttempts, loadCore, loadPapers, loadSchedule, loadSessions } from "@/lib/data";
+import { loadAttempts, loadCore, loadPapers, loadPlan, loadSessions } from "@/lib/data";
 import { addDays, daysBetween, durationMinutes, formatDay, formatHours, hhmm, londonMinutes, toMinutes, todayISO, weekStart } from "@/lib/dates";
 import { phaseFor, PLAN_END } from "@/lib/plan";
 import { palette } from "@/lib/subjects";
@@ -15,8 +16,8 @@ export default async function TodayPage() {
   const today = todayISO();
   const nowMinutes = londonMinutes();
   const { supabase, subjects, topics, targets, progress } = await loadCore();
-  const [schedule, sessions, attempts, papers] = await Promise.all([
-    loadSchedule(supabase),
+  const [{ items: schedule, stuck }, sessions, attempts, papers] = await Promise.all([
+    loadPlan(),
     loadSessions(supabase),
     loadAttempts(supabase),
     loadPapers(supabase),
@@ -52,6 +53,7 @@ export default async function TodayPage() {
   return (
     <>
       <PageTitle title={formatDay(today, "long")} subtitle={<><span className="font-medium text-slate-900">{phase.label}:</span> {phase.focus}</>} />
+      <StuckNotice stuck={stuck} linkToSchedule />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         {subjects.map((s) => {
@@ -200,6 +202,7 @@ function ChecklistItem({
           </span>
           {item.subject_id ? <SubjectTag subjectId={item.subject_id}>{KIND_LABEL[item.kind]}</SubjectTag> : <span className="rounded-full bg-slate-100 px-2 py-0.5">{KIND_LABEL[item.kind]}</span>}
           {isNow ? <span className="rounded-full bg-slate-900 px-2 py-0.5 font-semibold text-white">Now</span> : null}
+          <MovedTag from={item.moved_from} />
         </div>
         <p className={`mt-1 font-medium ${done ? "text-slate-500 line-through" : ""}`}>{item.title}</p>
         {item.detail ? <p className="mt-1 text-sm text-slate-600">{item.detail}</p> : null}
