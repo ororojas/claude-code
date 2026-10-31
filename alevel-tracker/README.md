@@ -11,6 +11,7 @@ It runs on Next.js (App Router), Tailwind CSS, Supabase (Postgres + Auth) and Lu
 | Target & syllabus tracker | `/tracker` | 33 topics across the three subjects. Each has a red/amber/green light and a % complete. Per subject you see hours logged vs target, topics mastered, average completion, papers done vs target, and latest/average grade vs target. |
 | Daily schedule | `/` and `/schedule` | The half-term → mop-up → timed-papers → mocks timetable is seeded for you (57 blocks). Today's page shows the current phase, exam countdowns and a checklist of today's blocks. Ticking a block logs its time against the subject, so "hours logged" fills itself in. Anything still unticked when its day ends moves forward on its own (see below). |
 | Past paper bank & score logger | `/papers` | Filter by AQA Econ, Edexcel Business or AQA Sociology. 37 papers (specimens plus the 2017–2025 series, including AS papers for Y12-only practice) with direct links where the board publishes them. Log a score and the grade is worked out from the boundaries. A Dropped Marks Analysis splits lost marks into knowledge gap, timing, structure and other, and tags weak topics. |
+| Graphs | `/graphs` | Every diagram worth knowing: 27 for AQA Economics Paper 1 (PPF, demand and supply, elasticity, taxes and subsidies, costs and revenue, monopoly, all four externalities, price controls, permits, government failure) and 17 for Edexcel Business Themes 2 and 3 (break-even, stock control, economies of scale, Ansoff, Porter, Bowman, five forces, SWOT, moving averages, decision trees, critical path, the business cycle, stakeholder mapping, Carroll, Lewin). Each one is drawn out with the order to draw it in, what it's for and the usual slip. Practice mode hides the labels or the whole graph so you can test yourself. |
 | Teach Me mini-tutor | `/teach/[topic]` | Every topic has a high-yield summary, key definitions, diagram checklists (Economics), formulas with worked answers (Business), key studies (Sociology), essay plans with model evaluation points, common mistakes and practice questions. An optional "Ask a follow-up" box uses Claude if you add an API key. |
 | Settings | `/settings` | Target grade, hours and papers per subject, exam date and session, and your own grade boundaries once the school publishes them. |
 
@@ -71,9 +72,12 @@ src/
     (app)/schedule/page.tsx    Full timetable by phase, with edit/add/delete/reset
     (app)/papers/page.tsx      Score log, Dropped Marks Analysis, paper bank, topic question sets
     (app)/teach/[topicId]/     Teach Me page
+    (app)/graphs/page.tsx      Every Economics and Business diagram, with practice mode
     (app)/settings/page.tsx    Targets, exam details, grade boundaries, sign out
   components/                  RagPicker, PercentPicker, BlockCheck, AttemptForm, TutorBox, …
+    graphs/                    The diagrams as SVG, plotted from real equations so curves cross where they should
   content/                     Teach Me notes and exam technique for every topic (econ.ts, business.ts, sociology.ts)
+                               and the drawing steps for every graph (graphs.ts)
   lib/
     grades.ts                  Grade from %, user overrides, marks needed for a target
     metrics.ts                 Per-subject metrics and dropped-marks totals
@@ -191,6 +195,7 @@ It only reads your ticks, so tick what you've done. **Reset plan** puts the orig
 - **Grade boundaries.** Settings → enter raw marks out of the paper total. Grades everywhere recalculate.
 - **Exam session times.** Business and Sociology sessions on 13 November weren't known, so their blocks say "session not confirmed". Fix the times in Schedule and the session in Settings.
 - **Teach Me notes.** Edit `src/content/*.ts`. `npm test` fails if a topic is missing notes.
+- **Graphs.** Notes live in `src/content/graphs.ts` and drawings in `src/components/graphs/`, matched by id. `npm test` checks every graph has both and draws without broken numbers.
 
 ## Sources and assumptions
 
