@@ -4,8 +4,9 @@ import { deleteBlock, resetPlan } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { BlockCheck } from "@/components/block-check";
 import { BlockForm } from "@/components/block-form";
+import { MovedTag, StuckNotice } from "@/components/rollover-notice";
 import { Card, KIND_LABEL, PageTitle, ProgressBar, SectionTitle } from "@/components/ui";
-import { loadCore, loadSchedule } from "@/lib/data";
+import { loadCore, loadPlan } from "@/lib/data";
 import { durationMinutes, formatDay, formatHours, hhmm, todayISO } from "@/lib/dates";
 import { PHASES, phaseFor } from "@/lib/plan";
 import { palette } from "@/lib/subjects";
@@ -15,8 +16,7 @@ export const metadata: Metadata = { title: "Schedule" };
 
 export default async function SchedulePage() {
   const today = todayISO();
-  const { supabase, subjects } = await loadCore();
-  const items = await loadSchedule(supabase);
+  const [{ subjects }, { items, stuck }] = await Promise.all([loadCore(), loadPlan()]);
 
   const byDay = new Map<string, ScheduleItem[]>();
   for (const item of items) byDay.set(item.day, [...(byDay.get(item.day) ?? []), item]);
@@ -31,7 +31,10 @@ export default async function SchedulePage() {
 
   return (
     <>
-      <PageTitle title="Schedule" subtitle={`${done} of ${items.length} blocks done. Ticking a block logs its time against the subject.`}>
+      <PageTitle
+        title="Schedule"
+        subtitle={`${done} of ${items.length} blocks done. Ticking a block logs its time against the subject. Anything left unticked when its day ends moves to your next free slot before the exam.`}
+      >
         <ActionButton
           action={resetPlan}
           confirm="Restore the original timetable? Your edits and ticks will be lost (logged hours stay)."
@@ -40,6 +43,7 @@ export default async function SchedulePage() {
           <RotateCcw className="size-4" aria-hidden /> Reset plan
         </ActionButton>
       </PageTitle>
+      <StuckNotice stuck={stuck} />
 
       <div className="space-y-8">
         {groups.map((g) =>
@@ -108,6 +112,11 @@ function DayCard({ day, items, today, subjects }: { day: string; items: Schedule
                   </span>
                   <span>· {KIND_LABEL[item.kind]}</span>
                 </div>
+                {item.moved_from ? (
+                  <div className="mt-0.5">
+                    <MovedTag from={item.moved_from} />
+                  </div>
+                ) : null}
                 <p className={`text-sm font-medium leading-snug ${item.completed_at ? "text-slate-500 line-through" : ""}`}>{item.title}</p>
               </div>
             </div>
