@@ -1,20 +1,28 @@
 import { createHash } from "node:crypto";
+import type { Busy } from "./calendar";
 import { addDays, toMinutes } from "./dates";
 import { studyDay } from "./plan";
 import type { BlockKind, ScheduleItem, SubjectId } from "./types";
 
-// Missed blocks roll forward. A block counts as missed once its day is over
-// and it still isn't ticked. Each one goes wherever it would be finished
-// soonest, as long as that's before its subject's exam:
-//   * a free gap in a day's study windows, if the day isn't already full;
+// Keeps the plan honest about the clock and your calendar.
+//
+// A block is missed once it ended more than an hour ago and still isn't
+// ticked. A block also has to move if something in your calendar now
+// overlaps it. Each one goes wherever it would be finished soonest, as long
+// as that's before its subject's exam:
+//   * a free gap in a day's study windows, clear of your calendar, if the day
+//     isn't already full;
 //   * split into shorter parts across several gaps;
 //   * in place of a mop-up or recall block for the same subject. Those exist
 //     to fix weak topics, and a topic you never got to is the weakest kind.
 //     The evening before the exam is never given up this way.
 // Exams never move. Blocks with no subject (the nightly recall) are habits
-// rather than content, so they stay put. A timed paper takes its marking with
-// it. Anything with no room left before the exam is reported as stuck.
+// rather than content: a missed or clashing one is simply dropped. A timed
+// paper takes its marking with it. Anything with no room left before the
+// exam is reported as stuck.
 
+/** How long after a block's planned end it counts as missed, in minutes. */
+export const GRACE_MINUTES = 60;
 /** Shortest part a block is split into, in minutes. */
 const MIN_PART = 45;
 const FLEXIBLE: BlockKind[] = ["mop_up", "recall"];
@@ -37,7 +45,7 @@ export interface RolledRow {
 export interface Rollover {
   /** Blocks to write: the moved ones, plus the extra parts of split ones. */
   rows: RolledRow[];
-  /** Mop-up or recall blocks given up to make room. */
+  /** Blocks to delete: mop-ups or recalls given up to make room, and missed or clashing habits. */
   freed: string[];
   /** Missed blocks with no room before their exam. Left where they are. */
   stuck: ScheduleItem[];
@@ -81,6 +89,10 @@ function dayOf(cal: Calendar, day: string) {
 
 function clone(cal: Calendar): Calendar {
   return new Map([...cal].map(([day, s]) => [day, { busy: [...s.busy], load: s.load }]));
+}
+
+function blockOut(cal: Calendar, b: Busy) {
+  dayOf(cal, b.day).busy.push([b.start, b.end]);
 }
 
 // Exams take up the time but don't count towards the day's study cap.
@@ -161,30 +173,46 @@ export function planRollover({
   today,
   nowMinutes,
   examDates,
+  busy = [],
 }: {
   items: ScheduleItem[];
   today: string;
   nowMinutes: number;
   examDates: Partial<Record<SubjectId, string>>;
+  busy?: Busy[];
 }): Rollover {
-  const missed = items.filter((i) => i.day < today && !i.completed_at && i.kind !== "exam" && i.subject_id);
-  const missedPapers = new Set(missed.filter((i) => i.kind === "timed_paper" && i.past_paper_id).map((i) => i.past_paper_id));
-  const moving = new Set(missed.map((i) => i.id));
-  for (const i of items) {
-    if (i.kind === "marking" && !i.completed_at && i.subject_id && missedPapers.has(i.past_paper_id)) moving.add(i.id);
-  }
   const result: Rollover = { rows: [], freed: [], stuck: [] };
+  const open = items.filter((i) => !i.completed_at && i.kind !== "exam");
+  const over = (i: ScheduleItem) => i.day < today || (i.day === today && toMinutes(i.end_time) + GRACE_MINUTES <= nowMinutes);
+  const clashes = (i: ScheduleItem) =>
+    !over(i) && busy.some((b) => b.day === i.day && b.start < toMinutes(i.end_time) && b.end > toMinutes(i.start_time));
+
+  // Habits that were missed or now clash just go.
+  const dropped = open.filter((i) => !i.subject_id && (over(i) || clashes(i)));
+  result.freed.push(...dropped.map((i) => i.id));
+
+  const missed = new Set(open.filter((i) => i.subject_id && over(i)).map((i) => i.id));
+  const clashing = new Set(open.filter((i) => i.subject_id && clashes(i)).map((i) => i.id));
+  const movingPapers = new Set(
+    open.filter((i) => i.kind === "timed_paper" && i.past_paper_id && (missed.has(i.id) || clashing.has(i.id))).map((i) => i.past_paper_id),
+  );
+  const moving = new Set([...missed, ...clashing]);
+  for (const i of open) {
+    if (i.kind === "marking" && i.subject_id && movingPapers.has(i.past_paper_id)) moving.add(i.id);
+  }
   if (moving.size === 0) return result;
 
   const byTime = (a: ScheduleItem, b: ScheduleItem) => a.day.localeCompare(b.day) || a.start_time.localeCompare(b.start_time);
   const queue = items.filter((i) => moving.has(i.id)).sort(byTime);
 
   const slotOf = (i: ScheduleItem): Slot => ({ day: i.day, start: toMinutes(i.start_time), end: toMinutes(i.end_time) });
+  const gone = new Set([...missed, ...clashing, ...result.freed]);
   let cal: Calendar = new Map();
-  for (const i of items) if (i.day >= today) occupy(cal, slotOf(i), i.kind);
+  for (const i of items) if (i.day >= today && !gone.has(i.id)) occupy(cal, slotOf(i), i.kind);
+  for (const b of busy) if (b.day >= today) blockOut(cal, b);
   // Blocks that may be given up. Ones that were themselves carried over are kept.
   const flexible = items
-    .filter((i) => i.day >= today && !i.completed_at && !moving.has(i.id) && !i.moved_from && i.subject_id && FLEXIBLE.includes(i.kind) && length(i) >= MIN_PART)
+    .filter((i) => i.day >= today && !over(i) && !i.completed_at && !moving.has(i.id) && !i.moved_from && i.subject_id && FLEXIBLE.includes(i.kind) && length(i) >= MIN_PART)
     .sort(byTime);
 
   const now: Point = { day: today, min: Math.ceil(nowMinutes / 30) * 30 };
@@ -192,27 +220,28 @@ export function planRollover({
   const stuckPapers = new Set<string>();
 
   for (const item of queue) {
-    // Only a marking block can be upcoming here: its paper was missed. It
-    // stays put unless the paper now lands after it.
-    const upcoming = item.day >= today;
+    // A marking block that wasn't missed itself only moves if its paper now
+    // lands after it.
+    const follower = !missed.has(item.id) && !clashing.has(item.id);
     const exam = examDates[item.subject_id!];
     const paper = item.past_paper_id;
     let after = now;
     if (item.kind === "marking" && paper) {
       if (stuckPapers.has(paper)) {
-        if (!upcoming) result.stuck.push(item);
+        if (missed.has(item.id)) result.stuck.push(item);
         continue;
       }
       const paperEnd = paperEnds.get(paper);
       if (paperEnd && isBefore(after, paperEnd)) after = paperEnd;
     }
-    if (upcoming) {
+    if (follower) {
       if (!isBefore({ day: item.day, min: toMinutes(item.start_time) }, after)) continue;
       release(cal, item);
     }
     const giveUp = () => {
-      if (upcoming) occupy(cal, slotOf(item), item.kind);
-      else result.stuck.push(item);
+      // Missed work is reported. Anything still ahead stays where it was.
+      if (missed.has(item.id)) result.stuck.push(item);
+      else occupy(cal, slotOf(item), item.kind);
       if (item.kind === "timed_paper" && paper) stuckPapers.add(paper);
     };
     if (!exam) {

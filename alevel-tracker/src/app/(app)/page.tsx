@@ -4,7 +4,7 @@ import { deleteSession } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { BlockCheck } from "@/components/block-check";
 import { LogSessionForm } from "@/components/log-session-form";
-import { MovedTag, StuckNotice } from "@/components/rollover-notice";
+import { BusyList, MovedTag, StuckNotice } from "@/components/rollover-notice";
 import { Card, Empty, KIND_LABEL, PageTitle, ProgressBar, RagBadge, SectionTitle, Stat, SubjectTag } from "@/components/ui";
 import { loadAttempts, loadCore, loadPapers, loadPlan, loadSessions } from "@/lib/data";
 import { addDays, daysBetween, durationMinutes, formatDay, formatHours, hhmm, londonMinutes, toMinutes, todayISO, weekStart } from "@/lib/dates";
@@ -16,7 +16,7 @@ export default async function TodayPage() {
   const today = todayISO();
   const nowMinutes = londonMinutes();
   const { supabase, subjects, topics, targets, progress } = await loadCore();
-  const [{ items: schedule, stuck }, sessions, attempts, papers] = await Promise.all([
+  const [{ items: schedule, stuck, busy }, sessions, attempts, papers] = await Promise.all([
     loadPlan(),
     loadSessions(supabase),
     loadAttempts(supabase),
@@ -85,6 +85,7 @@ export default async function TodayPage() {
               {todays.length ? "Today's checklist" : shownDay ? `Nothing scheduled today. Next up: ${formatDay(shownDay)}` : "Today's checklist"}
             </SectionTitle>
             {todays.length ? <ProgressBar value={doneCount} max={todays.length} className="bg-green-500" label="Blocks done today" /> : null}
+            {shownDay ? <BusyList busy={busy} day={shownDay} /> : null}
             {shown.length ? (
               <ol className="mt-4 space-y-3">
                 {shown.map((item) => (

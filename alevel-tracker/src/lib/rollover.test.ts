@@ -56,18 +56,39 @@ describe("planRollover", () => {
     expect(rows.map((r) => r.day)).toEqual(["2026-10-27", "2026-10-28", "2026-10-29"]);
   });
 
-  it("never moves exams or blocks without a subject, and leaves ticked blocks alone", () => {
+  it("never moves exams or ticked blocks, and drops missed habits", () => {
     const exam = block("2026-11-12", "09:00", "11:00", { kind: "exam" });
     const recall = block("2026-10-26", "19:30", "20:30", { subject_id: null, kind: "recall" });
     const ticked = block("2026-10-26", "09:00", "11:00", { completed_at: "2026-10-26T11:00:00Z" });
-    expect(run([exam, recall, ticked], "2026-11-13").rows).toEqual([]);
+    expect(run([exam, recall, ticked], "2026-11-13")).toEqual({ rows: [], freed: [recall.id], stuck: [] });
   });
 
-  it("doesn't move today's blocks, and only uses time later today", () => {
-    const earlier = block("2026-10-27", "09:00", "11:00");
+  it("waits until an hour after a block's end before moving it", () => {
+    const earlier = block("2026-10-27", "15:00", "17:00");
+    expect(run([earlier], "2026-10-27", 17 * 60 + 50).rows).toEqual([]);
+    expect(run([earlier], "2026-10-27", 18 * 60).rows).toEqual([expect.objectContaining({ id: earlier.id, day: "2026-10-27", start_time: "19:30" })]);
+  });
+
+  it("only uses time later today", () => {
     const missed = block("2026-10-26", "14:30", "16:30");
-    const { rows } = run([earlier, missed], "2026-10-27", 17 * 60 + 10);
+    const { rows } = run([missed], "2026-10-27", 17 * 60 + 10);
     expect(rows).toEqual([expect.objectContaining({ id: missed.id, day: "2026-10-27", start_time: "19:30", end_time: "21:30" })]);
+  });
+
+  it("keeps clear of busy times in your calendar", () => {
+    const missed = block("2026-10-26", "09:00", "11:00");
+    const busy = [{ day: "2026-10-27", start: 9 * 60, end: 21 * 60 + 30, title: "Day out" }];
+    const { rows } = planRollover({ items: [missed], today: "2026-10-27", nowMinutes: 8 * 60, examDates: exams, busy });
+    expect(rows).toEqual([expect.objectContaining({ day: "2026-10-28", start_time: "09:00" })]);
+  });
+
+  it("moves upcoming blocks that clash with the calendar and drops clashing habits", () => {
+    const content = block("2026-11-03", "16:30", "18:30");
+    const habit = block("2026-11-03", "19:30", "20:30", { subject_id: null, kind: "recall" });
+    const busy = [{ day: "2026-11-03", start: 16 * 60, end: 21 * 60, title: "Driving" }];
+    const { rows, freed } = planRollover({ items: [content, habit], today: "2026-11-02", nowMinutes: 8 * 60, examDates: exams, busy });
+    expect(freed).toEqual([habit.id]);
+    expect(rows).toEqual([expect.objectContaining({ id: content.id, day: "2026-11-02", start_time: "16:30", moved_from: "2026-11-03" })]);
   });
 
   it("keeps work for a subject before that subject's exam", () => {

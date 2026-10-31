@@ -4,7 +4,8 @@ import { deleteBlock, resetPlan } from "@/app/actions";
 import { ActionButton } from "@/components/action-button";
 import { BlockCheck } from "@/components/block-check";
 import { BlockForm } from "@/components/block-form";
-import { MovedTag, StuckNotice } from "@/components/rollover-notice";
+import { BusyList, MovedTag, StuckNotice } from "@/components/rollover-notice";
+import type { Busy } from "@/lib/calendar";
 import { Card, KIND_LABEL, PageTitle, ProgressBar, SectionTitle } from "@/components/ui";
 import { loadCore, loadPlan } from "@/lib/data";
 import { durationMinutes, formatDay, formatHours, hhmm, todayISO } from "@/lib/dates";
@@ -16,7 +17,7 @@ export const metadata: Metadata = { title: "Schedule" };
 
 export default async function SchedulePage() {
   const today = todayISO();
-  const [{ subjects }, { items, stuck }] = await Promise.all([loadCore(), loadPlan()]);
+  const [{ subjects }, { items, stuck, busy, syncedAt }] = await Promise.all([loadCore(), loadPlan()]);
 
   const byDay = new Map<string, ScheduleItem[]>();
   for (const item of items) byDay.set(item.day, [...(byDay.get(item.day) ?? []), item]);
@@ -33,11 +34,16 @@ export default async function SchedulePage() {
     <>
       <PageTitle
         title="Schedule"
-        subtitle={`${done} of ${items.length} blocks done. Ticking a block logs its time against the subject. Anything left unticked when its day ends moves to your next free slot before the exam.`}
+        subtitle={
+          <>
+            {done} of {items.length} blocks done. Ticking a block logs its time. Anything still unticked an hour after it was meant to finish moves to your next free slot before the exam
+            {syncedAt ? `, steering round your Google Calendar (synced ${formatSynced(syncedAt)})` : ""}.
+          </>
+        }
       >
         <ActionButton
           action={resetPlan}
-          confirm="Restore the original timetable? Your edits and ticks will be lost (logged hours stay)."
+          confirm="Put the original timetable back? Ticked blocks stay. Anything from days that have gone moves into your free time before the exams."
           className="btn-secondary"
         >
           <RotateCcw className="size-4" aria-hidden /> Reset plan
@@ -57,7 +63,7 @@ export default async function SchedulePage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 {g.days.map((d) => (
-                  <DayCard key={d} day={d} items={byDay.get(d)!} today={today} subjects={subjectOptions} />
+                  <DayCard key={d} day={d} items={byDay.get(d)!} today={today} subjects={subjectOptions} busy={busy} />
                 ))}
               </div>
             </section>
@@ -68,7 +74,7 @@ export default async function SchedulePage() {
             <h2 className="mb-3 font-semibold">Other days</h2>
             <div className="grid gap-4 md:grid-cols-2">
               {extra.map((d) => (
-                <DayCard key={d} day={d} items={byDay.get(d)!} today={today} subjects={subjectOptions} />
+                <DayCard key={d} day={d} items={byDay.get(d)!} today={today} subjects={subjectOptions} busy={busy} />
               ))}
             </div>
           </section>
@@ -83,7 +89,11 @@ export default async function SchedulePage() {
   );
 }
 
-function DayCard({ day, items, today, subjects }: { day: string; items: ScheduleItem[]; today: string; subjects: { id: string; name: string }[] }) {
+function formatSynced(iso: string) {
+  return new Date(iso).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function DayCard({ day, items, today, subjects, busy }: { day: string; items: ScheduleItem[]; today: string; subjects: { id: string; name: string }[]; busy: Busy[] }) {
   const done = items.filter((i) => i.completed_at).length;
   const minutes = items.reduce((s, i) => s + durationMinutes(i.start_time, i.end_time), 0);
   const isToday = day === today;
@@ -99,6 +109,7 @@ function DayCard({ day, items, today, subjects }: { day: string; items: Schedule
         </span>
       </div>
       <ProgressBar value={done} max={items.length} className="bg-green-500" label={`Blocks done on ${formatDay(day)}`} />
+      <BusyList busy={busy} day={day} />
       <ul className="mt-3 space-y-2">
         {items.map((item) => (
           <li key={item.id} className="rounded-lg border border-slate-100 p-2">

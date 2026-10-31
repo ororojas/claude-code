@@ -19,11 +19,12 @@ It runs on Next.js (App Router), Tailwind CSS, Supabase (Postgres + Auth) and Lu
 
 Everything lives in its own Postgres schema called `mocks`, not in `public`. That lets the tracker share a Supabase project with another app (here, the homework tracker) without any table names clashing. It adds no triggers to `auth.users`, so sign-ups to the other app are unaffected.
 
-Three migrations in `supabase/migrations/` build everything:
+Four migrations in `supabase/migrations/` build everything:
 
 - `20261026000000_schema.sql`: tables, row level security, and the functions below.
 - `20261026000100_reference_data.sql`: subjects, topics, the paper bank, default grade boundaries and the timetable.
 - `20261031000000_rollover.sql`: the `moved_from` column and `apply_rollover()`, for carrying missed blocks forward.
+- `20261031000100_calendar.sql`: the `busy_times` table and `replace_calendar()` for Google Calendar, and a reset that keeps your ticks.
 
 **Reference data** (read-only for signed-in users):
 
@@ -52,7 +53,8 @@ Three migrations in `supabase/migrations/` build everything:
 | --- | --- |
 | `ensure_seeded()` | Called the first time you open the app. Runs `seed_user()` to create your profile, targets, red topic list and timetable. Safe to call again. |
 | `set_block_done(item, done)` | Ticks or unticks a block and adds or removes the matching study session. |
-| `reset_my_plan()` | Restores the original timetable. Logged hours stay. |
+| `reset_my_plan()` | Puts the original timetable back. Ticked blocks stay, habit blocks whose time has gone are left out, and unticked work from past days is moved forward on the next page load. Logged hours stay. |
+| `replace_calendar(user, from, to, events)` | Replaces the stored calendar events in a date range with a fresh copy from Google Calendar. Only the calendar sync can call it. |
 | `apply_rollover(rows, freed)` | Writes a batch of carried-forward blocks in one transaction. Never touches a block you've ticked. |
 
 Target hours default to each subject's share of the planned timetable (Economics 30h, Business 26.5h, Sociology 32h).
@@ -82,7 +84,8 @@ src/
     grades.ts                  Grade from %, user overrides, marks needed for a target
     metrics.ts                 Per-subject metrics and dropped-marks totals
     dates.ts, plan.ts          UK-time "today", the four study phases, study windows per day
-    rollover.ts                Moves missed blocks forward before each exam
+    rollover.ts                Moves missed or clashing blocks forward before each exam
+    calendar.ts                Which calendar events count as busy, in UK time
     data.ts                    Supabase queries
 ```
 
@@ -176,18 +179,29 @@ npm run lint
 npm run build
 ```
 
-## Missed blocks move forward
+## The plan keeps itself up to date
 
-When a day ends, every block you didn't tick counts as missed. The next time you open Today or Schedule, `src/lib/rollover.ts` finds each one a new home before that subject's exam, and a "Moved from" tag shows where it came from.
+The plan checks the clock and your calendar every time you open Today or Schedule. All the logic is in `src/lib/rollover.ts`.
 
-- **Free time first.** On half-term days and weekends it can use 9:00–13:30, 14:30–19:00 and 19:30–21:30. On school days it can use 16:30–18:30 and 19:30–21:30. A day is full at 9 hours (free days) or 4 hours (school days), not counting exams, so a missed day gets spread over several days rather than piled onto tomorrow.
+**Missed sessions.** A block counts as missed an hour after it was meant to finish if it still isn't ticked. That hour gives you time to tick it. Missed work gets a new slot before that subject's exam, with a "Moved from" tag showing where it came from:
+
+- **Free time first.** On half-term days and weekends it can use 9:00–13:30, 14:30–19:00 and 19:30–21:30. On school days it can use 16:30–18:30 and 19:30–21:30. A day is full at 9 hours (free days) or 4 hours (school days), not counting exams, so a missed day gets spread out rather than piled onto tomorrow.
 - **Split if needed.** A block with two topics can become two one-hour parts on different days. Timed papers are never split.
 - **Mop-up time next.** If there's still no room, it takes over a mop-up or recall block for the same subject, since those are there to fix weak topics anyway. The evening before an exam is never taken.
 - **Whatever finishes soonest wins**, compared by day. If two options land on the same day, the simplest one is used.
-- Exams don't move. Blocks with no subject (the nightly recall) are habits, so they stay where they were. A timed paper takes its marking block with it.
-- If nothing fits before the exam, the block stays where it was and a warning lists it. Delete or shorten something you can skip and it fills the gap next time; or move it by hand, or delete it.
+- Exams don't move. A timed paper takes its marking block with it. Habit blocks with no subject (the nightly recall) are just dropped when missed.
+- If nothing fits before the exam, the block stays where it was and a warning lists it. Delete or shorten something you can skip and it fills the gap next time. You can also move it by hand, or delete it.
 
-It only reads your ticks, so tick what you've done. **Reset plan** puts the original timetable back.
+**Your calendar.** Events from Google Calendar are stored in `busy_times`, and `src/lib/calendar.ts` decides which ones block study time:
+
+- Counts as busy: lessons, appointments, meals and anything else with a time, 30 minutes or longer.
+- Doesn't count: all-day events, events marked "free", short breaks, and study sessions you've put in your own calendar ("Late study session", "Timed past papers", "Econ: …"). Those are the hours this plan uses, so treating them as busy would block out the plan itself.
+- New sessions never go into busy time. A planned session that clashes with something new in your calendar moves too.
+- Schedule shows what your calendar blocks out each day, and when it was last synced.
+
+To sync, list the events with the Google Calendar API and pass them to `replace_calendar()` (for example via the Supabase SQL editor or MCP). Nothing in the app talks to Google directly.
+
+Tick what you've done so the plan knows. **Reset plan** puts the original timetable back and keeps your ticks.
 
 ## Changing things
 
