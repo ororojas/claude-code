@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Calculator, ClipboardCheck, GraduationCap, Lightbulb, ListChecks, PenLine, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, ArrowRight, BookOpen, Calculator, ChartLine, ClipboardCheck, GraduationCap, Lightbulb, ListChecks, PenLine, Users } from "lucide-react";
 import { DiagramChecklist } from "@/components/diagram-checklist";
 import { PercentPicker } from "@/components/percent-picker";
 import { RagPicker } from "@/components/rag-picker";
@@ -9,6 +9,7 @@ import { TopicNotes } from "@/components/topic-notes";
 import { TutorBox } from "@/components/tutor-box";
 import { Card, PageTitle, SubjectTag } from "@/components/ui";
 import { examTechnique, teachCard } from "@/content";
+import { graphsFor } from "@/content/graphs";
 import { loadCore } from "@/lib/data";
 import { tutorEnabled } from "@/lib/tutor";
 
@@ -45,6 +46,7 @@ export default async function TeachPage({ params }: { params: Promise<{ topicId:
   const idx = siblings.findIndex((t) => t.id === topicId);
   const prev = siblings[idx - 1];
   const next = siblings[idx + 1];
+  const graphs = graphsFor(topicId);
 
   return (
     <>
@@ -99,6 +101,21 @@ export default async function TeachPage({ params }: { params: Promise<{ topicId:
                   <DiagramChecklist key={d.name} diagram={d} />
                 ))}
               </div>
+            </Section>
+          ) : null}
+
+          {graphs.length ? (
+            <Section icon={ChartLine} title="Graphs to know">
+              <p className="mb-3 text-sm text-slate-600">Drawn out step by step, with a mode that hides the labels so you can test yourself.</p>
+              <ul className="flex flex-wrap gap-2">
+                {graphs.map((g) => (
+                  <li key={g.id}>
+                    <Link href={`/graphs?s=${g.subject}#${g.id}`} className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 hover:bg-slate-200">
+                      <ChartLine className="size-3.5" aria-hidden /> {g.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </Section>
           ) : null}
 

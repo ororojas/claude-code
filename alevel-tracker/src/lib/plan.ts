@@ -43,6 +43,24 @@ export const PHASES: Phase[] = [
 export const PLAN_START = PHASES[0].start;
 export const PLAN_END = PHASES[PHASES.length - 1].end;
 
+export interface StudyDay {
+  /** When carried-over work may be put, as "HH:MM" pairs. */
+  windows: [string, string][];
+  /** Most minutes of study planned for the day, exams not counted. */
+  capMinutes: number;
+}
+
+const FREE_DAY: StudyDay = { windows: [["09:00", "13:30"], ["14:30", "19:00"], ["19:30", "21:30"]], capMinutes: 9 * 60 };
+const SCHOOL_DAY: StudyDay = { windows: [["16:30", "18:30"], ["19:30", "21:30"]], capMinutes: 4 * 60 };
+
+/** Half-term and weekends are free days; everything else is after school. */
+export function studyDay(iso: string): StudyDay {
+  const [halfTerm] = PHASES;
+  const dow = new Date(`${iso}T00:00:00Z`).getUTCDay();
+  if ((iso >= halfTerm.start && iso <= halfTerm.end) || dow === 0 || dow === 6) return FREE_DAY;
+  return SCHOOL_DAY;
+}
+
 export function phaseFor(iso: string): Phase {
   const match = PHASES.find((p) => iso >= p.start && iso <= p.end);
   if (match) return match;

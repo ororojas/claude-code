@@ -45,3 +45,8 @@ input[type="number"]::-webkit-outer-spin-button {
 @utility btn-ghost {
   @apply btn text-slate-600 hover:bg-slate-100;
 }
+
+/* Graphs practice mode: hide the parts of a diagram you're meant to remember. */
+.hide-labels .lbl {
+  visibility: hidden;
+}

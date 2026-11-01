@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, FileText, LayoutList, Settings, Sun } from "lucide-react";
+import { CalendarDays, ChartLine, FileText, LayoutList, Settings, Sun } from "lucide-react";
 
 const LINKS = [
   { href: "/", label: "Today", icon: Sun },
   { href: "/tracker", label: "Tracker", icon: LayoutList },
   { href: "/schedule", label: "Schedule", icon: CalendarDays },
   { href: "/papers", label: "Papers", icon: FileText },
+  { href: "/graphs", label: "Graphs", icon: ChartLine },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -48,7 +49,7 @@ export function Nav() {
         </div>
       </header>
       <nav
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-6 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
         aria-label="Main"
       >
         {LINKS.map(({ href, label, icon: Icon }) => (

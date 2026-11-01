@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
 
@@ -9,5 +9,6 @@ it("setup.sql matches the migrations", () => {
   const read = (f: string) => readFileSync(path.join(dir, f), "utf8");
   const setup = read("setup.sql");
   const body = setup.slice(setup.indexOf("-- A-level revision tracker"));
-  expect(body).toBe(`${read("migrations/20261026000000_schema.sql")}\n${read("migrations/20261026000100_reference_data.sql")}`);
+  const migrations = readdirSync(path.join(dir, "migrations")).filter((f) => f.endsWith(".sql")).sort();
+  expect(body).toBe(migrations.map((f) => read(`migrations/${f}`)).join("\n"));
 });

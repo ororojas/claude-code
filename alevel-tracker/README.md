@@ -9,8 +9,9 @@ It runs on Next.js (App Router), Tailwind CSS, Supabase (Postgres + Auth) and Lu
 | Feature | Where | How it works |
 | --- | --- | --- |
 | Target & syllabus tracker | `/tracker` | 33 topics across the three subjects. Each has a red/amber/green light and a % complete. Per subject you see hours logged vs target, topics mastered, average completion, papers done vs target, and latest/average grade vs target. |
-| Daily schedule | `/` and `/schedule` | The half-term → mop-up → timed-papers → mocks timetable is seeded for you (57 blocks). Today's page shows the current phase, exam countdowns and a checklist of today's blocks. Ticking a block logs its time against the subject, so "hours logged" fills itself in. |
+| Daily schedule | `/` and `/schedule` | The half-term → mop-up → timed-papers → mocks timetable is seeded for you (57 blocks). Today's page shows the current phase, exam countdowns and a checklist of today's blocks. Ticking a block logs its time against the subject, so "hours logged" fills itself in. Anything still unticked when its day ends moves forward on its own (see below). |
 | Past paper bank & score logger | `/papers` | Filter by AQA Econ, Edexcel Business or AQA Sociology. 37 papers (specimens plus the 2017–2025 series, including AS papers for Y12-only practice) with direct links where the board publishes them. Log a score and the grade is worked out from the boundaries. A Dropped Marks Analysis splits lost marks into knowledge gap, timing, structure and other, and tags weak topics. |
+| Graphs | `/graphs` | Every diagram worth knowing: 27 for AQA Economics Paper 1 (PPF, demand and supply, elasticity, taxes and subsidies, costs and revenue, monopoly, all four externalities, price controls, permits, government failure) and 17 for Edexcel Business Themes 2 and 3 (break-even, stock control, economies of scale, Ansoff, Porter, Bowman, five forces, SWOT, moving averages, decision trees, critical path, the business cycle, stakeholder mapping, Carroll, Lewin). Each one is drawn out with the order to draw it in, what it's for and the usual slip. Practice mode hides the labels or the whole graph so you can test yourself. |
 | Teach Me mini-tutor | `/teach/[topic]` | Every topic has a high-yield summary, key definitions, diagram checklists (Economics), formulas with worked answers (Business), key studies (Sociology), essay plans with model evaluation points, common mistakes and practice questions. An optional "Ask a follow-up" box uses Claude if you add an API key. |
 | Settings | `/settings` | Target grade, hours and papers per subject, exam date and session, and your own grade boundaries once the school publishes them. |
 
@@ -18,10 +19,12 @@ It runs on Next.js (App Router), Tailwind CSS, Supabase (Postgres + Auth) and Lu
 
 Everything lives in its own Postgres schema called `mocks`, not in `public`. That lets the tracker share a Supabase project with another app (here, the homework tracker) without any table names clashing. It adds no triggers to `auth.users`, so sign-ups to the other app are unaffected.
 
-Two migrations in `supabase/migrations/` build everything:
+Four migrations in `supabase/migrations/` build everything:
 
 - `20261026000000_schema.sql`: tables, row level security, and the functions below.
 - `20261026000100_reference_data.sql`: subjects, topics, the paper bank, default grade boundaries and the timetable.
+- `20261031000000_rollover.sql`: the `moved_from` column and `apply_rollover()`, for carrying missed blocks forward.
+- `20261031000100_calendar.sql`: the `busy_times` table and `replace_calendar()` for Google Calendar, and a reset that keeps your ticks.
 
 **Reference data** (read-only for signed-in users):
 
@@ -40,7 +43,7 @@ Two migrations in `supabase/migrations/` build everything:
 | `profiles` | One row per account. |
 | `user_subjects` | Target grade, target hours, target papers, exam date and session per subject. |
 | `topic_progress` | Red/amber/green status, % complete and notes per topic. |
-| `schedule_items` | Your copy of the timetable. Edit, add or delete blocks; `completed_at` marks a tick. |
+| `schedule_items` | Your copy of the timetable. Edit, add or delete blocks; `completed_at` marks a tick; `moved_from` is the day a missed block was first planned for. |
 | `study_sessions` | Minutes logged. Ticked blocks create one automatically (linked by `schedule_item_id`). |
 | `paper_attempts` | Date, paper, score out of total, timed or not, lost marks by reason, reflection, weak topics. A check constraint stops the dropped marks adding up to more than you lost. |
 
@@ -50,7 +53,9 @@ Two migrations in `supabase/migrations/` build everything:
 | --- | --- |
 | `ensure_seeded()` | Called the first time you open the app. Runs `seed_user()` to create your profile, targets, red topic list and timetable. Safe to call again. |
 | `set_block_done(item, done)` | Ticks or unticks a block and adds or removes the matching study session. |
-| `reset_my_plan()` | Restores the original timetable. Logged hours stay. |
+| `reset_my_plan()` | Puts the original timetable back. Ticked blocks stay, habit blocks whose time has gone are left out, and unticked work from past days is moved forward on the next page load. Logged hours stay. |
+| `replace_calendar(user, from, to, events)` | Replaces the stored calendar events in a date range with a fresh copy from Google Calendar. Only the calendar sync can call it. |
+| `apply_rollover(rows, freed)` | Writes a batch of carried-forward blocks in one transaction. Never touches a block you've ticked. |
 
 Target hours default to each subject's share of the planned timetable (Economics 30h, Business 26.5h, Sociology 32h).
 
@@ -69,13 +74,18 @@ src/
     (app)/schedule/page.tsx    Full timetable by phase, with edit/add/delete/reset
     (app)/papers/page.tsx      Score log, Dropped Marks Analysis, paper bank, topic question sets
     (app)/teach/[topicId]/     Teach Me page
+    (app)/graphs/page.tsx      Every Economics and Business diagram, with practice mode
     (app)/settings/page.tsx    Targets, exam details, grade boundaries, sign out
   components/                  RagPicker, PercentPicker, BlockCheck, AttemptForm, TutorBox, …
+    graphs/                    The diagrams as SVG, plotted from real equations so curves cross where they should
   content/                     Teach Me notes and exam technique for every topic (econ.ts, business.ts, sociology.ts)
+                               and the drawing steps for every graph (graphs.ts)
   lib/
     grades.ts                  Grade from %, user overrides, marks needed for a target
     metrics.ts                 Per-subject metrics and dropped-marks totals
-    dates.ts, plan.ts          UK-time "today" and the four study phases
+    dates.ts, plan.ts          UK-time "today", the four study phases, study windows per day
+    rollover.ts                Moves missed or clashing blocks forward before each exam
+    calendar.ts                Which calendar events count as busy, in UK time
     data.ts                    Supabase queries
 ```
 
@@ -91,7 +101,7 @@ Either create a new project at [supabase.com/dashboard](https://supabase.com/das
 
 Pick one way.
 
-**SQL editor (no tools needed).** Open **SQL Editor → New query**, paste the whole of `supabase/setup.sql` (both migrations in one file), and click **Run**.
+**SQL editor (no tools needed).** Open **SQL Editor → New query**, paste the whole of `supabase/setup.sql` (all the migrations in one file), and click **Run**.
 
 **Supabase CLI.** From this folder:
 
@@ -169,12 +179,37 @@ npm run lint
 npm run build
 ```
 
+## The plan keeps itself up to date
+
+The plan checks the clock and your calendar every time you open Today or Schedule. All the logic is in `src/lib/rollover.ts`.
+
+**Missed sessions.** A block counts as missed an hour after it was meant to finish if it still isn't ticked. That hour gives you time to tick it. Missed work gets a new slot before that subject's exam, with a "Moved from" tag showing where it came from:
+
+- **Free time first.** On half-term days and weekends it can use 9:00–13:30, 14:30–19:00 and 19:30–21:30. On school days it can use 16:30–18:30 and 19:30–21:30. A day is full at 9 hours (free days) or 4 hours (school days), not counting exams, so a missed day gets spread out rather than piled onto tomorrow.
+- **Split if needed.** A block with two topics can become two one-hour parts on different days. Timed papers are never split.
+- **Mop-up time next.** If there's still no room, it takes over a mop-up or recall block for the same subject, since those are there to fix weak topics anyway. The evening before an exam is never taken.
+- **Whatever finishes soonest wins**, compared by day. If two options land on the same day, the simplest one is used.
+- Exams don't move. A timed paper takes its marking block with it. Habit blocks with no subject (the nightly recall) are just dropped when missed.
+- If nothing fits before the exam, the block stays where it was and a warning lists it. Delete or shorten something you can skip and it fills the gap next time. You can also move it by hand, or delete it.
+
+**Your calendar.** Events from Google Calendar are stored in `busy_times`, and `src/lib/calendar.ts` decides which ones block study time:
+
+- Counts as busy: lessons, appointments, meals and anything else with a time, 30 minutes or longer.
+- Doesn't count: all-day events, events marked "free", short breaks, and study sessions you've put in your own calendar ("Late study session", "Timed past papers", "Econ: …"). Those are the hours this plan uses, so treating them as busy would block out the plan itself.
+- New sessions never go into busy time. A planned session that clashes with something new in your calendar moves too.
+- Schedule shows what your calendar blocks out each day, and when it was last synced.
+
+To sync, list the events with the Google Calendar API and pass them to `replace_calendar()` (for example via the Supabase SQL editor or MCP). Nothing in the app talks to Google directly.
+
+Tick what you've done so the plan knows. **Reset plan** puts the original timetable back and keeps your ticks.
+
 ## Changing things
 
 - **Timetable.** Edit blocks in the app, or change `plan_template` in the reference-data migration and use **Reset plan**.
 - **Grade boundaries.** Settings → enter raw marks out of the paper total. Grades everywhere recalculate.
 - **Exam session times.** Business and Sociology sessions on 13 November weren't known, so their blocks say "session not confirmed". Fix the times in Schedule and the session in Settings.
 - **Teach Me notes.** Edit `src/content/*.ts`. `npm test` fails if a topic is missing notes.
+- **Graphs.** Notes live in `src/content/graphs.ts` and drawings in `src/components/graphs/`, matched by id. `npm test` checks every graph has both and draws without broken numbers.
 
 ## Sources and assumptions
 
