@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- added to an iPad or phone home screen, the page opens without browser toolbars -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Proving Ground">
 <!-- artifact:begin -->
 <title>Proving Ground</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -94,13 +99,17 @@
 }
 
 [hidden] { display: none !important; }
-html, body { height: 100%; }
+html, body { height: 100%; overscroll-behavior: none; touch-action: pan-x pan-y; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   font: 14px/1.45 var(--font-body);
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
 }
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
@@ -130,6 +139,7 @@ body {
 }
 button, select, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
+button, select { touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--measure); outline-offset: 2px; }
 
 .eyebrow {
@@ -166,7 +176,7 @@ button { cursor: pointer; }
 }
 .brand-sub { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 .brand-toggle { margin-left: auto; display: none; border: 1px solid var(--line); background: var(--chip); border-radius: 6px; padding: 4px 8px; font: 600 12px/1.2 var(--font-display); letter-spacing: .05em; text-transform: uppercase; }
-.scene-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; }
+.scene-body { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
 .select-wrap { position: relative; }
 .select-wrap select {
   width: 100%; appearance: none; -webkit-appearance: none;
@@ -186,9 +196,7 @@ button { cursor: pointer; }
   font: 600 13px/1.2 var(--font-display); letter-spacing: 0.04em; text-transform: uppercase;
   transition: background .12s;
 }
-.btn:hover { background: var(--chip-hover); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn.primary:hover { filter: brightness(1.05); }
 .controls { display: grid; gap: 8px; }
 .readout { font: 12px/1.55 var(--font-mono); font-variant-numeric: tabular-nums; border-top: 1px solid var(--line); padding-top: 8px; }
 .readout:empty { display: none; }
@@ -216,7 +224,7 @@ button { cursor: pointer; }
   border-bottom: 2px solid transparent; margin-bottom: -1px;
 }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
-.tabpane { padding: 12px 14px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.tabpane { padding: 12px 14px 14px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; min-height: 0; touch-action: pan-y; overscroll-behavior: contain; }
 .group { display: flex; flex-direction: column; gap: 7px; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip {
@@ -227,7 +235,6 @@ button { cursor: pointer; }
   text-align: left;
 }
 .chip small { font: 400 10.5px/1.1 var(--font-mono); color: var(--muted); }
-.chip:hover { background: var(--chip-hover); }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
 .chip[aria-pressed="true"] small { color: var(--accent-ink); opacity: .75; }
 .chip:disabled { opacity: .45; cursor: not-allowed; }
@@ -282,7 +289,6 @@ button { cursor: pointer; }
   position: relative;
 }
 .tool svg { width: 22px; height: 22px; }
-.tool:hover { background: var(--chip-hover); }
 .tool[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 .tool kbd { position: absolute; top: 3px; right: 5px; font: 400 9px/1 var(--font-mono); opacity: .55; }
 .tool.square { min-width: 44px; }
@@ -290,6 +296,8 @@ button { cursor: pointer; }
 .speed .seg button { padding: 5px 7px; font-size: 11.5px; }
 .speed .eyebrow { font-size: 10px; text-align: center; }
 .panel-toggle { display: none; }
+.fs-btn .i-exit, .fs-btn[aria-pressed="true"] .i-enter { display: none; }
+.fs-btn[aria-pressed="true"] .i-exit { display: block; }
 
 /* ----- stats (bottom right) and toast ----- */
 .stats {
@@ -321,6 +329,34 @@ button { cursor: pointer; }
 .toast[hidden] { display: none !important; }
 .nogl { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; }
 
+@media (hover: hover) {
+  .btn:hover { background: var(--chip-hover); }
+  .btn.primary:hover { background: var(--accent); filter: brightness(1.05); }
+  .chip:hover { background: var(--chip-hover); }
+  .chip[aria-pressed="true"]:hover { background: var(--accent); }
+  .tool:hover { background: var(--chip-hover); }
+  .tool[aria-pressed="true"]:hover { background: var(--accent); }
+}
+/* finger-sized targets on touch screens (the phone layout below trims the dock again) */
+@media (pointer: coarse) {
+  .btn { padding: 10px 13px; font-size: 14px; }
+  .brand-toggle { padding: 8px 11px; }
+  .select-wrap select { padding: 11px 34px 11px 12px; }
+  .chips { gap: 6px; }
+  .chip { padding: 8px 11px 7px; font-size: 14.5px; }
+  .chip small { font-size: 11px; }
+  .tabs button { padding: 15px 6px 14px; font-size: 14px; }
+  .field label { font-size: 14px; }
+  .field input[type="range"] { min-height: 30px; }
+  .toggle { min-height: 36px; font-size: 14.5px; }
+  .toggle input { width: 22px; height: 22px; }
+  .seg button { padding: 10px 0; font-size: 13.5px; }
+  .icon-btn { width: 40px; height: 40px; }
+  .icon-btn svg { width: 17px; height: 17px; }
+  .tool { min-width: 62px; padding: 9px 6px 8px; }
+  .tool kbd { display: none; }
+  .speed .seg button { padding: 9px 8px; font-size: 12.5px; }
+}
 @media (max-width: 1100px) {
   .stats { display: none; }
   .toast { top: calc(16px + env(safe-area-inset-top, 0px)); }
@@ -345,7 +381,7 @@ button { cursor: pointer; }
   }
   .panel:not(.open) { display: none; }
   .panel-toggle { display: flex; }
-  .dock { left: 10px; right: 10px; transform: none; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); justify-content: space-between; gap: 1px; padding: 4px; overflow-x: auto; }
+  .dock { left: 10px; right: 10px; transform: none; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); justify-content: space-between; gap: 1px; padding: 4px; overflow-x: auto; touch-action: pan-x; }
   .dock .sep { margin: 4px 1px; }
   .tool { min-width: 0; flex: 1 1 0; padding: 6px 1px 5px; font-size: 9.5px; letter-spacing: 0.04em; }
   .tool svg { width: 20px; height: 20px; }
@@ -498,6 +534,7 @@ button { cursor: pointer; }
     </div>
   </div>
   <button class="tool square" id="reset" title="Reset the scenario (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4.5 4v4h4"/></svg>Reset</button>
+  <button class="tool square fs-btn" id="fullscreen" hidden aria-pressed="false" title="Full screen"><svg class="i-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg class="i-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg><span id="fs-label">Expand</span></button>
   <button class="tool square panel-toggle" id="panel-toggle" aria-expanded="false" aria-controls="panel" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Setup</button>
 </nav>
 
@@ -1701,7 +1738,7 @@ canvas.addEventListener('pointerdown', (e) => {
     gesture = { mode: 'grab' };
     return;
   }
-  gesture = { mode: 'pending', x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, hit };
+  gesture = { mode: 'pending', x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, hit, slop: e.pointerType === 'touch' ? 10 : 6 };
 });
 canvas.addEventListener('pointermove', (e) => {
   const prev = pointers.get(e.pointerId);
@@ -1724,7 +1761,7 @@ canvas.addEventListener('pointermove', (e) => {
   }
   if (gesture.mode === 'grab' && grab) { moveGrab(e); return; }
   const dx = e.clientX - (gesture.x ?? e.clientX), dy = e.clientY - (gesture.y ?? e.clientY);
-  if (gesture.mode === 'pending' && Math.hypot(e.clientX - gesture.x0, e.clientY - gesture.y0) > 6) gesture.mode = 'orbit';
+  if (gesture.mode === 'pending' && Math.hypot(e.clientX - gesture.x0, e.clientY - gesture.y0) > gesture.slop) gesture.mode = 'orbit';
   if (gesture.mode === 'orbit') {
     orbit.goal.theta -= dx * 0.0062;
     orbit.goal.phi -= dy * 0.0062;
@@ -1744,6 +1781,8 @@ function endPointer(e) {
 }
 canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
+// Safari's own pinch gesture would zoom the whole page instead of the camera
+for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
   if (grab) {
@@ -2809,6 +2848,8 @@ function buildPanels() {
   $('play').addEventListener('click', () => setPaused(!paused));
   $('step').addEventListener('click', () => { setPaused(true); stepOnce = true; });
   $('reset').addEventListener('click', () => loadScenario(scenarioId));
+  $('fullscreen').hidden = !fsAllowed;
+  $('fullscreen').addEventListener('click', toggleFullscreen);
   for (const b of $('timescale').querySelectorAll('button')) {
     b.addEventListener('click', () => {
       timeScale = Number(b.dataset.s);
@@ -2929,6 +2970,51 @@ function updateArrow() {
   arrow.setLength(len, Math.min(0.3, len * 0.3), Math.min(0.16, len * 0.15));
 }
 
+// Full screen hides the browser's toolbars on a tablet. The button stays
+// hidden where the page is not allowed to go full screen.
+const fsAllowed = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFullscreen() {
+  const root = document.documentElement;
+  try {
+    const go = fsElement() ? document.exitFullscreen || document.webkitExitFullscreen : root.requestFullscreen || root.webkitRequestFullscreen;
+    const p = go.call(fsElement() ? document : root);
+    if (p && p.catch) p.catch(() => toast('Full screen is not available here.'));
+  } catch {
+    toast('Full screen is not available here.');
+  }
+}
+function syncFullscreen() {
+  const on = !!fsElement();
+  $('fullscreen').setAttribute('aria-pressed', String(on));
+  $('fullscreen').title = on ? 'Exit full screen' : 'Full screen';
+  $('fs-label').textContent = on ? 'Exit' : 'Expand';
+}
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
+
+// Big Retina screens can outrun the GPU: when frames run slow, render at a
+// lower pixel ratio, and never climb back to a ratio that was too slow.
+const quality = { ceiling: Math.min(window.devicePixelRatio || 1, 2), ratio: 0, sum: 0, n: 0, prev: 0 };
+quality.ratio = quality.ceiling;
+function adaptResolution(now) {
+  const gap = quality.prev ? (now - quality.prev) / 1000 : 0;
+  quality.prev = now;
+  if (!gap || gap > 0.25) return; // a pause or a hidden tab says nothing about speed
+  quality.sum += gap;
+  quality.n++;
+  if (quality.sum < 1.5) return;
+  const avg = quality.sum / quality.n;
+  quality.sum = quality.n = 0;
+  let r = quality.ratio;
+  if (avg > 1 / 45 && r > 1) { quality.ceiling = r - 0.25; r = Math.max(1, r - 0.25); }
+  else if (avg < 1 / 57 && r < quality.ceiling) r = Math.min(quality.ceiling, r + 0.25);
+  if (r === quality.ratio) return;
+  quality.ratio = r;
+  renderer.setPixelRatio(r);
+  resize();
+}
+
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
@@ -2940,6 +3026,7 @@ window.addEventListener('resize', resize);
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  adaptResolution(now);
   const t0 = performance.now();
   let steps = 0;
   if (!paused) {

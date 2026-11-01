@@ -3,6 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- added to an iPad or phone home screen, the page opens without browser toolbars -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ana &amp; Kata">
 <!-- artifact:begin -->
 <title>Ana &amp; Kata</title>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -83,20 +88,24 @@
 }
 
 [hidden] { display: none !important; }
-html, body { height: 100%; }
+html, body { height: 100%; overscroll-behavior: none; touch-action: pan-x pan-y; }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
   font: 15px/1.5 var(--font-body);
   overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
   -webkit-font-smoothing: antialiased;
 }
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
 button, input { font: inherit; color: inherit; }
-button { cursor: pointer; }
+button { cursor: pointer; touch-action: manipulation; }
 :focus-visible { outline: 2px solid var(--kata); outline-offset: 2px; }
 .card {
   background: var(--panel);
@@ -112,9 +121,11 @@ button { cursor: pointer; }
   border: 1px solid var(--line); background: var(--chip); border-radius: 8px;
   padding: 8px 14px; font-weight: 700; font-size: 14px;
 }
-.btn:hover { background: var(--chip-hover); }
 .btn.primary { background: var(--button); color: var(--button-ink); border-color: transparent; }
-.btn.primary:hover { filter: brightness(1.08); }
+.btn.icon { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; flex: none; }
+.btn.icon svg { width: 16px; height: 16px; }
+.fs-btn .i-exit, .fs-btn[aria-pressed="true"] .i-enter { display: none; }
+.fs-btn[aria-pressed="true"] .i-exit { display: block; }
 .ana { color: var(--ana); }
 .kata { color: var(--kata); }
 
@@ -128,6 +139,7 @@ button { cursor: pointer; }
 .lc-num { font: 600 12px/1 var(--font-mono); color: var(--muted); }
 .lc-title { margin: 0; font: 400 21px/1.15 var(--font-display); letter-spacing: 0.02em; text-transform: lowercase; }
 .lc-menu { margin-left: auto; padding: 4px 9px; font-size: 13px; }
+.lc-head .fs-btn { align-self: center; }
 .lc-hint { margin: 0; font-size: 14.5px; line-height: 1.5; max-width: 60ch; text-wrap: pretty; }
 .lc-stats { display: flex; gap: 16px; font: 13px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .gems { display: inline-flex; gap: 4px; align-items: center; }
@@ -178,10 +190,12 @@ button { cursor: pointer; }
   background: color-mix(in srgb, var(--bg) 55%, transparent);
   -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   overflow-y: auto;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .menu { box-sizing: border-box; width: min(812px, 100%); padding: 26px 26px 22px; display: flex; flex-direction: column; gap: 18px; }
 /* Play stays reachable while the menu scrolls on short screens */
-@media (max-width: 760px), (max-height: 800px) {
+@media (max-width: 699px), (max-height: 800px) {
   .menu > .menu-actions { position: sticky; bottom: 0; margin: -6px -26px -22px; padding: 12px 26px 22px; background: var(--panel-solid); border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; }
 }
 @media (min-width: 1180px) {
@@ -197,7 +211,6 @@ button { cursor: pointer; }
   text-align: left; border: 1px solid var(--line); background: var(--chip); border-radius: 8px;
   padding: 9px 10px 8px; display: flex; flex-direction: column; gap: 3px; min-height: 66px;
 }
-.level:hover:not(:disabled) { background: var(--chip-hover); }
 .level .n { font: 600 11px/1 var(--font-mono); color: var(--muted); }
 .level .t { font: 700 15px/1.2 var(--font-body); overflow-wrap: anywhere; }
 .level .b { font: 11.5px/1 var(--font-mono); color: var(--muted); margin-top: auto; }
@@ -218,16 +231,36 @@ button { cursor: pointer; }
 .fade { position: fixed; inset: 0; background: var(--bg); opacity: 0; pointer-events: none; transition: opacity .25s; }
 .fade.on { opacity: 1; }
 
+@media (hover: hover) {
+  .btn:hover { background: var(--chip-hover); }
+  .btn.primary:hover { background: var(--button); filter: brightness(1.08); }
+  .level:hover:not(:disabled) { background: var(--chip-hover); }
+  .chip:hover { background: var(--chip-hover); }
+}
+/* finger-sized targets on touch screens */
+@media (pointer: coarse) {
+  .btn { padding: 10px 16px; font-size: 15px; }
+  .lc-menu, .lc-toggle { padding: 8px 13px; font-size: 14px; }
+  .btn.icon { width: 40px; height: 40px; padding: 0; }
+  .btn.icon svg { width: 19px; height: 19px; }
+  .chip { padding: 10px 13px; font-size: 15px; }
+  .chips { gap: 7px; }
+  .toggle { min-height: 40px; font-size: 15px; }
+  .toggle input { width: 22px; height: 22px; }
+  .field label { font-size: 14.5px; }
+  .field input[type="range"] { min-height: 30px; }
+  .level { min-height: 74px; }
+}
 /* ----- lab panel ----- */
 .labpanel {
   position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); top: calc(16px + env(safe-area-inset-top, 0px));
   width: 300px; max-height: calc(100% - 32px); overflow-y: auto; padding: 14px 15px 15px;
+  touch-action: pan-y; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 12px;
 }
 .labpanel h2 { margin: 0; font: 400 20px/1.1 var(--font-display); text-transform: lowercase; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .chip { border: 1px solid var(--line); background: var(--chip); border-radius: 7px; padding: 6px 9px; font-size: 13.5px; }
-.chip:hover { background: var(--chip-hover); }
 .chip[aria-pressed="true"] { background: var(--button); color: var(--button-ink); border-color: transparent; }
 .field { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: baseline; }
 .field label { font-size: 13.5px; }
@@ -237,10 +270,11 @@ button { cursor: pointer; }
 .toggle input { accent-color: var(--ana); width: 16px; height: 16px; margin: 0; }
 .fact { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
 .labinfo { position: fixed; left: calc(16px + env(safe-area-inset-left, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); width: min(330px, calc(100vw - 350px)); padding: 13px 15px; display: flex; flex-direction: column; gap: 7px; }
+.lab-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .labinfo h2 { margin: 0; font: 400 21px/1.1 var(--font-display); text-transform: lowercase; }
 .labinfo p { margin: 0; font-size: 14px; }
 
-@media (max-width: 760px) {
+@media (max-width: 699px) {
   .card { box-sizing: border-box; }
   .gauge { top: auto; bottom: calc(176px + env(safe-area-inset-bottom, 0px)); transform: none; right: max(16px, env(safe-area-inset-right, 0px)); width: 76px; padding: 7px 4px; }
   .gauge canvas { height: 150px; width: 36px; }
@@ -258,6 +292,14 @@ button { cursor: pointer; }
   .menu > .menu-actions { margin: -6px -18px -18px; padding: 12px 18px calc(18px + env(safe-area-inset-bottom, 0px)); }
 }
 body.touch .touchpad { display: block; }
+@media (min-width: 700px) {
+  body.touch .stick { width: 172px; height: 172px; left: calc(40px + env(safe-area-inset-left, 0px)); bottom: calc(34px + env(safe-area-inset-bottom, 0px)); }
+  body.touch .stick-knob { width: 70px; height: 70px; margin: -35px 0 0 -35px; }
+  body.touch .pad-buttons { grid-template-columns: 80px 80px; grid-template-rows: 80px 80px; gap: 14px; right: calc(36px + env(safe-area-inset-right, 0px)); bottom: calc(30px + env(safe-area-inset-bottom, 0px)); }
+  body.touch .pad-buttons button { font-size: 14px; }
+  /* the gauge moves to the top right, clear of the buttons */
+  body.touch .gauge { top: calc(16px + env(safe-area-inset-top, 0px)); bottom: auto; transform: none; }
+}
 body.touch .keys { display: none; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -271,6 +313,7 @@ body.touch .keys { display: none; }
     <h2 class="lc-title" id="lc-title"></h2>
     <button class="btn lc-toggle" id="lc-toggle" aria-expanded="false">Hint</button>
     <button class="btn lc-menu" id="lc-menu">Levels</button>
+    <button class="btn icon fs-btn" hidden aria-pressed="false" aria-label="Full screen" title="Full screen"><svg class="i-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg class="i-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
   </div>
   <p class="lc-hint" id="lc-hint"></p>
   <div class="lc-stats">
@@ -344,7 +387,7 @@ body.touch .keys { display: none; }
 </div>
 
 <section class="labinfo card" id="labinfo" hidden>
-  <h2>4d lab</h2>
+  <div class="lab-head"><h2>4d lab</h2><button class="btn icon fs-btn" hidden aria-pressed="false" aria-label="Full screen" title="Full screen"><svg class="i-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg class="i-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button></div>
   <p id="lab-what">Drop 4D shapes onto a 4D floor and watch their 3D cross-sections. Click a shape to kick it through all four directions. Turn the slice with the sliders to cut the same shapes at a new angle.</p>
   <p class="mono" id="lab-read" style="font-size:12.5px;color:var(--muted)"></p>
 </section>
@@ -775,6 +818,7 @@ const LEVELS = [
   {
     id: 'roll', name: 'Roll', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
     hint: 'Roll with WASD or the arrow keys and jump with Space. Pick up every crystal, then roll into the gate.',
+    touchHint: 'Roll with the stick and tap jump. Pick up every crystal, then roll into the gate.',
     geo: [
       box([-3, -1, -2, -1.5], [3, 0, 30, 1.5]),
       box([-3, 0, 11, -1.5], [3, 0.55, 15, 1.5]),
@@ -787,6 +831,7 @@ const LEVELS = [
   {
     id: 'ana', name: 'Ana', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
     hint: 'A wall, but it is only 3 m thick in the fourth direction. Hold E to move ana (+w) until the wall becomes an orange ghost, roll past it, then hold Q to come back.',
+    touchHint: 'A wall, but it is only 3 m thick in the fourth direction. Hold ana ▲ until the wall becomes an orange ghost, roll past it, then hold kata ▼ to come back.',
     geo: [
       box([-3, -1, -2, -1.5], [3, 0, 24, 4.5]),
       box([-3.4, 0, -2, -1.5], [-3, 3.2, 24, 4.5]),
@@ -799,6 +844,7 @@ const LEVELS = [
   {
     id: 'kata', name: 'Kata', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
     hint: 'The floor stops here, but only at this w. Hold Q to move kata (−w) and the blue ghost of a bridge turns solid.',
+    touchHint: 'The floor stops here, but only at this w. Hold kata ▼ to move −w and the blue ghost of a bridge turns solid.',
     geo: [
       box([-3, -1, -2, -1.5], [3, 0, 8, 1.5]),
       box([-3, -1, 6, -4.5], [3, 0, 15, -1.5]),
@@ -824,6 +870,7 @@ const LEVELS = [
   {
     id: 'turn', name: 'Turn', spawn: [0, 0.6, 0, 0], yaw: Math.PI,
     hint: 'This path runs straight into the fourth dimension. Press Tab (or turn ↻) to rotate your view a quarter turn: ana becomes forward and the path stretches out in front of you.',
+    touchHint: 'This path runs straight into the fourth dimension. Tap turn ↻ to rotate your view a quarter turn: ana becomes forward and the path stretches out in front of you.',
     geo: [
       box([-3, -1, -3, -1.5], [3, 0, 3, 1.5]),
       box([-1.4, -1, -1.4, 1.5], [1.4, 0, 1.4, 27]),
@@ -837,6 +884,7 @@ const LEVELS = [
   {
     id: 'rising', name: 'Rising', spawn: [0, 0.6, 2, 0], yaw: Math.PI,
     hint: 'This slope climbs through w, not z. Stand on it and move ana: the floor lifts you. Turn your view (Tab) and it looks like an ordinary ramp.',
+    touchHint: 'This slope climbs through w, not z. Stand on it and hold ana ▲: the floor lifts you. Tap turn ↻ and it looks like an ordinary ramp.',
     geo: [
       box([-4, -1, -2, -1.5], [4, 0, 12, 1.5]),
       // a hyperbox tilted in the yw plane: its top rises 0.45 m per metre of w
@@ -1039,50 +1087,79 @@ window.addEventListener('blur', () => keys.clear());
 const cam = { yaw: Math.PI, pitch: 0.42, dist: 7.5, target: new THREE.Vector3(), labTarget: new THREE.Vector3(0, 1.2, 0) };
 let drag = null;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+const fingers = new Map();
+let pinch = null;
+const maxDist = () => (mode === 'lab' || mode === 'lab-menu' ? 30 : 16);
 canvas.addEventListener('pointerdown', (e) => {
   canvas.focus({ preventScroll: true });
   ensureAudio();
   canvas.setPointerCapture(e.pointerId);
-  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, moved: false };
+  fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (fingers.size === 2) {
+    // a second finger turns the gesture into a pinch: no looking, no kicking
+    const [a, b] = [...fingers.values()];
+    pinch = { d0: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), dist0: cam.dist };
+    drag = null;
+    return;
+  }
+  if (fingers.size > 2) return;
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, moved: false, slop: e.pointerType === 'touch' ? 9 : 5 };
 });
 canvas.addEventListener('pointermove', (e) => {
+  const f = fingers.get(e.pointerId);
+  if (f) { f.x = e.clientX; f.y = e.clientY; }
+  if (pinch && fingers.size === 2) {
+    const [a, b] = [...fingers.values()];
+    cam.dist = clamp(pinch.dist0 * (pinch.d0 / Math.max(20, Math.hypot(a.x - b.x, a.y - b.y))), 3, maxDist());
+    return;
+  }
   if (!drag || drag.id !== e.pointerId) return;
   const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
   drag.x = e.clientX; drag.y = e.clientY;
-  if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > 5) drag.moved = true;
+  if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) > drag.slop) drag.moved = true;
   cam.yaw -= dx * 0.006;
   cam.pitch = clamp(cam.pitch + dy * 0.005 * (settings.invertY ? -1 : 1), 0.05, 1.35);
 });
-canvas.addEventListener('pointerup', (e) => {
-  if (drag && !drag.moved && mode === 'lab') labClick(e);
+function endFinger(e) {
+  fingers.delete(e.pointerId);
+  if (pinch) {
+    if (fingers.size < 2) pinch = null;
+    return;
+  }
+  if (!drag || drag.id !== e.pointerId) return;
+  if (e.type === 'pointerup' && !drag.moved && mode === 'lab') labClick(e);
   drag = null;
-});
-canvas.addEventListener('pointercancel', () => { drag = null; });
+}
+canvas.addEventListener('pointerup', endFinger);
+canvas.addEventListener('pointercancel', endFinger);
 canvas.addEventListener('wheel', (e) => {
   e.preventDefault();
-  cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.001), 3, mode === 'lab' ? 30 : 16);
+  cam.dist = clamp(cam.dist * Math.exp(e.deltaY * 0.001), 3, maxDist());
 }, { passive: false });
+// Safari's own pinch gesture would zoom the whole page instead of the camera
+for (const t of ['gesturestart', 'gesturechange']) document.addEventListener(t, (e) => e.preventDefault(), { passive: false });
 
 // touch stick and buttons
 function setupTouch() {
   // phones and tablets start with the on-screen controls
   if (window.matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
   const stick = $('stick'), knob = $('knob');
-  let sid = null, cx = 0, cy = 0;
+  let sid = null, cx = 0, cy = 0, reach = 50;
   stick.addEventListener('pointerdown', (e) => {
     sid = e.pointerId;
     stick.setPointerCapture(sid);
     const r = stick.getBoundingClientRect();
     cx = r.left + r.width / 2; cy = r.top + r.height / 2;
+    reach = r.width * 0.38; // full tilt this far from the centre
     move(e);
   });
   const move = (e) => {
     if (e.pointerId !== sid) return;
-    let dx = (e.clientX - cx) / 50, dy = (e.clientY - cy) / 50;
+    let dx = (e.clientX - cx) / reach, dy = (e.clientY - cy) / reach;
     const l = Math.hypot(dx, dy);
     if (l > 1) { dx /= l; dy /= l; }
     touch.x = dx; touch.y = dy;
-    knob.style.transform = `translate(${dx * 40}px, ${dy * 40}px)`;
+    knob.style.transform = `translate(${dx * reach * 0.8}px, ${dy * reach * 0.8}px)`;
   };
   stick.addEventListener('pointermove', move);
   const end = (e) => { if (e.pointerId !== sid) return; sid = null; touch.x = touch.y = 0; knob.style.transform = ''; };
@@ -1090,8 +1167,14 @@ function setupTouch() {
   stick.addEventListener('pointercancel', end);
   const hold = (id, key) => {
     const b = $(id);
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); touch[key] = true; if (key === 'jump') jumpBuffer = 0.12; ensureAudio(); });
-    for (const t of ['pointerup', 'pointercancel', 'pointerleave']) b.addEventListener(t, () => { touch[key] = false; });
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      try { b.setPointerCapture(e.pointerId); } catch { /* the press still counts */ }
+      touch[key] = true;
+      if (key === 'jump') jumpBuffer = 0.12;
+      ensureAudio();
+    });
+    for (const t of ['pointerup', 'pointercancel', 'lostpointercapture']) b.addEventListener(t, () => { touch[key] = false; });
   };
   hold('t-ana', 'ana');
   hold('t-kata', 'kata');
@@ -1102,6 +1185,7 @@ window.addEventListener('pointerdown', (e) => {
   if (e.pointerType === 'touch' && !document.body.classList.contains('touch')) {
     document.body.classList.add('touch');
     if (mode === 'play') $('touchpad').hidden = false;
+    if (level) renderLevelCard();
   }
 }, { capture: true, passive: true });
 
@@ -1307,7 +1391,7 @@ function toast(msg, ms = 2600) {
   el.style.top = '';
   const t = el.getBoundingClientRect();
   let below = 0;
-  for (const id of ['levelcard', 'labinfo', 'labpanel']) {
+  for (const id of ['levelcard', 'labinfo', 'labpanel', 'gauge']) {
     const c = $(id);
     if (c.hidden) continue;
     const r = c.getBoundingClientRect();
@@ -1325,7 +1409,7 @@ function fadeFlash() {
 function renderLevelCard() {
   $('lc-num').textContent = String(levelIndex + 1).padStart(2, '0');
   $('lc-title').textContent = level.name;
-  $('lc-hint').textContent = level.hint;
+  $('lc-hint').textContent = (document.body.classList.contains('touch') && level.touchHint) || level.hint;
   $('lc-gems').innerHTML = gems.map((g) => `<span class="gem-dot${g.got ? ' got' : ''}"></span>`).join('');
   $('lc-gems').setAttribute('aria-label', `${gems.filter((g) => g.got).length} of ${gems.length} crystals`);
   const best = progress.best[level.id];
@@ -1633,6 +1717,54 @@ function setupLab() {
   $('lab-back').addEventListener('click', openMenu);
 }
 
+// Full screen hides the browser's toolbars on a tablet. The buttons stay
+// hidden where the page is not allowed to go full screen.
+const fsAllowed = !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+function toggleFullscreen() {
+  const root = document.documentElement;
+  try {
+    const go = fsElement() ? document.exitFullscreen || document.webkitExitFullscreen : root.requestFullscreen || root.webkitRequestFullscreen;
+    const p = go.call(fsElement() ? document : root);
+    if (p && p.catch) p.catch(() => toast('Full screen is not available here.'));
+  } catch {
+    toast('Full screen is not available here.');
+  }
+}
+function syncFullscreen() {
+  const on = !!fsElement();
+  for (const b of document.querySelectorAll('.fs-btn')) {
+    b.setAttribute('aria-pressed', String(on));
+    b.title = on ? 'Exit full screen' : 'Full screen';
+    b.setAttribute('aria-label', b.title);
+  }
+}
+for (const b of document.querySelectorAll('.fs-btn')) { b.hidden = !fsAllowed; b.addEventListener('click', toggleFullscreen); }
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
+
+// Big Retina screens can outrun the GPU: when frames run slow, render at a
+// lower pixel ratio, and never climb back to a ratio that was too slow.
+const quality = { ceiling: Math.min(window.devicePixelRatio || 1, 2), ratio: 0, sum: 0, n: 0, prev: 0 };
+quality.ratio = quality.ceiling;
+function adaptResolution(now) {
+  const gap = quality.prev ? (now - quality.prev) / 1000 : 0;
+  quality.prev = now;
+  if (!gap || gap > 0.25) return; // a pause or a hidden tab says nothing about speed
+  quality.sum += gap;
+  quality.n++;
+  if (quality.sum < 1.5) return;
+  const avg = quality.sum / quality.n;
+  quality.sum = quality.n = 0;
+  let r = quality.ratio;
+  if (avg > 1 / 45 && r > 1) { quality.ceiling = r - 0.25; r = Math.max(1, r - 0.25); }
+  else if (avg < 1 / 57 && r < quality.ceiling) r = Math.min(quality.ceiling, r + 0.25);
+  if (r === quality.ratio) return;
+  quality.ratio = r;
+  renderer.setPixelRatio(r);
+  resize();
+}
+
 // ---------------------------------------------------------------------------
 // Main loop
 // ---------------------------------------------------------------------------
@@ -1643,7 +1775,7 @@ let viewShift = 0;
 function updateViewShift() {
   let shift = 0;
   const panel = $('labpanel'), info = $('labinfo');
-  if ((mode === 'lab' || mode === 'lab-menu') && window.innerWidth <= 760 && !panel.hidden) {
+  if ((mode === 'lab' || mode === 'lab-menu') && window.innerWidth <= 699 && !panel.hidden) {
     const top = info.hidden ? 0 : info.getBoundingClientRect().bottom;
     const bottom = panel.getBoundingClientRect().top;
     shift = Math.max(0, Math.round(window.innerHeight / 2 - (top + bottom) / 2));
@@ -1684,6 +1816,7 @@ let acc = 0, last = performance.now(), simTime = 0;
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  adaptResolution(now);
   if (world && (mode === 'play' || mode === 'lab')) {
     acc += dt;
     let steps = 0;

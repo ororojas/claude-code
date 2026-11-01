@@ -20,6 +20,8 @@ python3 -m http.server 8000
 
 There is no build step. Each app loads Three.js r170 from cdnjs and its fonts from Google Fonts, so it needs a network connection.
 
+Both apps are built for touch as well as mouse and keyboard, including iPads in either orientation. Buttons grow to finger size on touch screens, and Safari's own page zoom and pull-to-refresh are switched off so they don't fight the controls. Where the browser allows it, a button switches to full screen. If you serve the folder, Add to Home Screen on an iPad opens each app without Safari's toolbars.
+
 ## Proving Ground (3D)
 
 A test range for real-world physics. Every object uses a real material at its real density, from polystyrene foam at 30 kg/m³ up to gold at 19,300.
@@ -27,6 +29,7 @@ A test range for real-world physics. Every object uses a real material at its re
 **Controls**
 
 - Drag empty space to orbit. Right-drag or use two fingers to pan. Scroll or pinch to zoom.
+- On a touchscreen, tap with Spawn, Launch, Blast or Erase, and drag an object with Grab. Expand in the dock goes full screen.
 - Tools: `1` Grab, `2` Spawn, `3` Launch, `4` Blast, `5` Erase.
 - `Space` pauses. `.` steps one frame while paused. `R` resets the scenario.
 - `F` follows the selected object, `Delete` removes it and `Esc` lets go of it.
@@ -58,7 +61,7 @@ Move along w and the slice changes: a wall that only spans part of w fades away,
 - `E` moves ana and `Q` moves kata.
 - `Tab` turns the view a quarter turn into w. Forward then points along w, and z becomes the hidden direction.
 - Drag to look and scroll to zoom. `R` restarts the level and `Esc` opens the menu.
-- On a phone, the stick rolls and the four buttons give ana, kata, turn and jump.
+- On an iPad or phone, the stick rolls and the four buttons give ana, kata, turn and jump. Drag the scene to look around and pinch to zoom.
 
 **Levels:** Roll, Ana, Kata, The room, Turn, Rising, Hyperspheres, Drift, Vaults and Hypercube. Each one adds a single idea, ending inside a hollow tesseract whose way out lies in w.
 
