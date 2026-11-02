@@ -1,2 +1,3 @@
 .DS_Store
-
+# Playwright MCP writes page snapshots and screenshots here
+.playwright-mcp/

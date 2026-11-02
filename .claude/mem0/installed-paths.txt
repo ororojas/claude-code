@@ -1,0 +1,7 @@
+.claude/mem0
+.claude/skills/mem0
+.claude/skills/mem0-cli
+.claude/skills/mem0-integrate
+.claude/skills/mem0-oss-to-platform
+.claude/skills/mem0-test-integration
+.claude/skills/mem0-vercel-ai-sdk

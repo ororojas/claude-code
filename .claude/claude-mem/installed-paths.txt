@@ -1,0 +1,14 @@
+.claude/claude-mem
+.claude/skills/babysit
+.claude/skills/build
+.claude/skills/childhood
+.claude/skills/design-is
+.claude/skills/do
+.claude/skills/handoff
+.claude/skills/learn-codebase
+.claude/skills/make-plan
+.claude/skills/oh-my-issues
+.claude/skills/pathfinder
+.claude/skills/standup
+.claude/skills/what-the
+.claude/skills/wowerpoint
