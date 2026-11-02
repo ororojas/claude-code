@@ -1,0 +1,441 @@
+type	name	description	path
+agent	academic-researcher	Conducts literature reviews, citation analysis, methodology evaluation, and research synthesis for technical and scientific topics	agents/research-analysis/academic-researcher.md
+agent	accessibility-specialist	WCAG 2.2 compliance, screen reader testing, keyboard navigation, and ARIA patterns	agents/quality-assurance/accessibility-specialist.md
+agent	agent-installer	Install and configure agent collections, resolve dependencies, and validate environments	agents/orchestration/agent-installer.md
+agent	ai-engineer	AI application development with model API integration, RAG pipelines, agent frameworks, and embedding strategies	agents/data-ai/ai-engineer.md
+agent	angular-architect	Angular 17+ development with signals, standalone components, RxJS patterns, and NgRx state management	agents/language-experts/angular-architect.md
+agent	API Design Expert	Senior API architect specializing in RESTful design, GraphQL schemas, and API-first development	plugins/api-architect/agents/api-expert.md
+agent	api-designer	REST and GraphQL API design with OpenAPI specs, versioning, and pagination patterns	agents/core-development/api-designer.md
+agent	api-documentation	Creates comprehensive API documentation using OpenAPI/Swagger, Redoc, and interactive examples with versioning and change tracking	agents/developer-experience/api-documentation.md
+agent	api-gateway-engineer	API gateway patterns, rate limiting, authentication proxies, and request routing	agents/core-development/api-gateway-engineer.md
+agent	autoresearch-agent	Automated ML experiment optimization using tree search — designs experiments, generates code, evaluates results, and iterates	agents/data-ai/autoresearch-agent.md
+agent	backend-developer	Node.js backend development with Express, Fastify, middleware patterns, and API performance optimization	agents/core-development/backend-developer.md
+agent	benchmarking-specialist	Designs performance benchmarks, load tests, comparative evaluations, and reproducible measurement methodologies for software systems	agents/research-analysis/benchmarking-specialist.md
+agent	blockchain-developer	Develops smart contracts and Web3 applications with Solidity, Hardhat, and blockchain integration patterns	agents/specialized-domains/blockchain-developer.md
+agent	build-engineer	Designs and optimizes build systems, bundlers, and compilation pipelines for fast and reliable artifact production	agents/developer-experience/build-engineer.md
+agent	business-analyst	Performs requirements analysis, process mapping, gap analysis, and stakeholder alignment for technical projects	agents/business-product/business-analyst.md
+agent	chaos-engineer	Chaos testing, fault injection, resilience validation, and failure mode analysis	agents/quality-assurance/chaos-engineer.md
+agent	cli-developer	Builds robust CLI tools using Commander.js, yargs, clap, and other frameworks with polished user interfaces	agents/developer-experience/cli-developer.md
+agent	clojure-developer	REPL-driven development, persistent data structures, Ring/Compojure, and ClojureScript	agents/language-experts/clojure-developer.md
+agent	cloud-architect	AWS/GCP/Azure multi-cloud patterns, IaC, cost optimization, and well-architected framework	agents/infrastructure/cloud-architect.md
+agent	Code Review Expert	Senior engineer performing actionable code reviews focused on correctness, security, and maintainability	plugins/code-guardian/agents/reviewer.md
+agent	code-reviewer	Comprehensive code review covering patterns, anti-patterns, security, performance, and readability	agents/quality-assurance/code-reviewer.md
+agent	competitive-analyst	Performs competitive analysis including feature comparison, market positioning, and strategic differentiation assessment	agents/research-analysis/competitive-analyst.md
+agent	compliance-auditor	SOC 2, GDPR, HIPAA compliance checking, audit evidence collection, and policy enforcement	agents/quality-assurance/compliance-auditor.md
+agent	computer-vision-engineer	Builds image classification, object detection, and segmentation pipelines using OpenCV, PyTorch, and production-grade inference optimization	agents/data-ai/computer-vision-engineer.md
+agent	content-strategist	Plans content strategy with SEO-driven writing, editorial calendars, topic clustering, and content performance measurement	agents/business-product/content-strategist.md
+agent	context-manager	Context window optimization, progressive loading, and strategic compaction	agents/orchestration/context-manager.md
+agent	csharp-developer	C# and .NET 8+ development with ASP.NET Core, Entity Framework Core, minimal APIs, and async patterns	agents/language-experts/csharp-developer.md
+agent	customer-success	Builds customer support infrastructure with ticket triage, knowledge base systems, workflow automation, and customer health scoring	agents/business-product/customer-success.md
+agent	data-engineer	Data pipeline engineering with ETL/ELT workflows, Spark, data warehousing, and pipeline orchestration	agents/data-ai/data-engineer.md
+agent	data-researcher	Performs data analysis, pattern recognition, statistical interpretation, and evidence-based insight extraction	agents/research-analysis/data-researcher.md
+agent	data-scientist	Statistical analysis, data visualization, hypothesis testing, and exploratory data analysis with Python	agents/data-ai/data-scientist.md
+agent	data-visualization	Creates interactive dashboards and data visualizations using D3.js, Chart.js, Matplotlib, and Plotly with accessibility and performance optimization	agents/data-ai/data-visualization.md
+agent	database-admin	PostgreSQL, MySQL, MongoDB optimization, migrations, replication, and backup strategies	agents/infrastructure/database-admin.md
+agent	database-optimizer	Database performance optimization with query tuning, indexing strategies, partitioning, and capacity planning	agents/data-ai/database-optimizer.md
+agent	dependency-manager	Audits, updates, and manages project dependencies with attention to security, compatibility, and lockfile integrity	agents/developer-experience/dependency-manager.md
+agent	deployment-engineer	Blue-green deployments, canary releases, rolling updates, and feature flag management	agents/infrastructure/deployment-engineer.md
+agent	developer-portal	Builds internal developer portals using Backstage, service catalogs, and self-service infrastructure for platform engineering	agents/developer-experience/developer-portal.md
+agent	devops-engineer	CI/CD pipelines, Docker, Kubernetes, monitoring, and GitOps workflows	agents/infrastructure/devops-engineer.md
+agent	django-developer	Django 5+ development with Django REST Framework, ORM optimization, migrations, and async views	agents/language-experts/django-developer.md
+agent	documentation-engineer	Creates technical documentation including API references, guides, tutorials, and architecture decision records	agents/developer-experience/documentation-engineer.md
+agent	dx-optimizer	Improves developer experience through tooling ergonomics, workflow friction reduction, and environment standardization	agents/developer-experience/dx-optimizer.md
+agent	e-commerce-engineer	Builds e-commerce systems including product catalogs, shopping carts, inventory management, and order processing	agents/specialized-domains/e-commerce-engineer.md
+agent	education-tech	Builds learning management systems with SCORM/xAPI compliance, adaptive learning engines, assessment tools, and learner analytics	agents/specialized-domains/education-tech.md
+agent	electron-developer	Electron desktop applications, IPC communication, native OS integration, and auto-updates	agents/core-development/electron-developer.md
+agent	elixir-expert	Elixir development with Phoenix, OTP supervision trees, LiveView, and distributed systems on BEAM	agents/language-experts/elixir-expert.md
+agent	embedded-systems	Develops firmware and embedded software in C and Rust with RTOS integration and hardware abstraction	agents/specialized-domains/embedded-systems.md
+agent	error-coordinator	Handle errors across multi-agent workflows, implement recovery strategies, and prevent cascading failures	agents/orchestration/error-coordinator.md
+agent	error-detective	Error tracking, stack trace analysis, reproduction step generation, and root cause identification	agents/quality-assurance/error-detective.md
+agent	etl-specialist	Builds robust data pipelines with schema evolution, data quality checks, incremental loading, and fault-tolerant processing	agents/data-ai/etl-specialist.md
+agent	event-driven-architect	Event sourcing, CQRS, message queues, and distributed event-driven system design	agents/core-development/event-driven-architect.md
+agent	feature-engineer	Designs feature stores, feature pipelines, and encoding strategies that ensure consistent feature computation across training and serving	agents/data-ai/feature-engineer.md
+agent	fintech-engineer	Builds financial systems with precise arithmetic, regulatory compliance, audit trails, and transaction integrity	agents/specialized-domains/fintech-engineer.md
+agent	flutter-expert	Flutter 3+ cross-platform development with Dart, state management, navigation, and platform channels	agents/language-experts/flutter-expert.md
+agent	frontend-architect	React/Next.js specialist with performance optimization, SSR/SSG, and accessibility	agents/core-development/frontend-architect.md
+agent	fullstack-engineer	End-to-end feature development across frontend, backend, and database layers	agents/core-development/fullstack-engineer.md
+agent	game-developer	Designs game systems, logic, and architecture patterns for Unity, Godot, and custom game engines	agents/specialized-domains/game-developer.md
+agent	geospatial-engineer	Builds GIS applications with PostGIS, spatial queries, mapping APIs, tile servers, and geospatial data processing pipelines	agents/specialized-domains/geospatial-engineer.md
+agent	git-workflow-manager	Designs Git branching strategies, CI integration patterns, and repository workflow automation	agents/developer-experience/git-workflow-manager.md
+agent	golang-developer	Go concurrency patterns, interfaces, error handling, testing, and module management	agents/language-experts/golang-developer.md
+agent	graphql-architect	GraphQL schema design, resolver implementation, federation, and performance optimization with DataLoader	agents/core-development/graphql-architect.md
+agent	growth-engineer	Implements A/B testing frameworks, analytics instrumentation, funnel optimization, and data-driven growth experiments	agents/business-product/growth-engineer.md
+agent	haskell-developer	Pure functional programming, monads, type classes, GHC extensions, and Haskell ecosystem	agents/language-experts/haskell-developer.md
+agent	healthcare-engineer	Builds HIPAA-compliant healthcare systems with HL7 FHIR interoperability, medical data pipelines, and clinical workflow integration	agents/specialized-domains/healthcare-engineer.md
+agent	incident-responder	Incident triage, runbook execution, communication protocols, and recovery procedures	agents/infrastructure/incident-responder.md
+agent	iot-engineer	Designs IoT systems with MQTT messaging, edge computing, device management, and telemetry pipelines	agents/specialized-domains/iot-engineer.md
+agent	java-architect	Spring Boot 3+ application architecture with JPA, security, microservices, and reactive programming	agents/language-experts/java-architect.md
+agent	knowledge-synthesizer	Compress and synthesize information across sources, build knowledge graphs, and extract insights	agents/orchestration/knowledge-synthesizer.md
+agent	kotlin-specialist	Kotlin development with coroutines, Ktor, Kotlin Multiplatform, and idiomatic patterns	agents/language-experts/kotlin-specialist.md
+agent	kubernetes-specialist	Kubernetes operators, CRDs, service mesh with Istio, and advanced cluster management	agents/infrastructure/kubernetes-specialist.md
+agent	legacy-modernizer	Plans and executes legacy codebase migrations with incremental strategies and risk mitigation	agents/developer-experience/legacy-modernizer.md
+agent	legal-advisor	Drafts terms of service, privacy policies, software licenses, and compliance documentation for technology products	agents/business-product/legal-advisor.md
+agent	llm-architect	LLM system design with fine-tuning, model selection, inference optimization, and evaluation frameworks	agents/data-ai/llm-architect.md
+agent	lua-developer	Game scripting with Lua, Neovim plugin development, embedded Lua integration, and LuaJIT	agents/language-experts/lua-developer.md
+agent	market-researcher	Conducts market sizing, TAM/SAM/SOM analysis, competitive intelligence, survey design, and customer segment identification	agents/research-analysis/market-researcher.md
+agent	marketing-analyst	Implements campaign analysis, attribution modeling, ROI tracking, and marketing data infrastructure for data-driven growth decisions	agents/business-product/marketing-analyst.md
+agent	mcp-developer	Develops MCP servers and tools following the Model Context Protocol specification for AI agent integration	agents/developer-experience/mcp-developer.md
+agent	media-streaming	Builds video streaming platforms with HLS/DASH delivery, transcoding pipelines, CDN optimization, and adaptive bitrate streaming	agents/specialized-domains/media-streaming.md
+agent	microservices-architect	Distributed systems design with event-driven architecture, saga patterns, service mesh, and observability	agents/core-development/microservices-architect.md
+agent	ml-engineer	Machine learning pipeline development with training, evaluation, feature engineering, and model deployment	agents/data-ai/ml-engineer.md
+agent	mlops-engineer	ML model lifecycle management with serving infrastructure, monitoring, A/B testing, and CI/CD for models	agents/data-ai/mlops-engineer.md
+agent	mobile-developer	React Native and Flutter cross-platform specialist with native bridge patterns	agents/core-development/mobile-developer.md
+agent	monorepo-architect	Turborepo/Nx workspace strategies, dependency graphs, and monorepo build optimization	agents/core-development/monorepo-architect.md
+agent	monorepo-tooling	Manages monorepo infrastructure with changesets, workspace dependencies, version management, and selective CI pipelines	agents/developer-experience/monorepo-tooling.md
+agent	multi-agent-coordinator	Coordinate parallel agent execution, manage dependencies, and merge outputs from multiple agents	agents/orchestration/multi-agent-coordinator.md
+agent	network-engineer	DNS management, load balancer configuration, CDN setup, and firewall rule design	agents/infrastructure/network-engineer.md
+agent	nextjs-developer	Next.js 14+ App Router development with React Server Components, ISR, middleware, and edge runtime	agents/language-experts/nextjs-developer.md
+agent	nim-developer	Nim metaprogramming, GC strategies, C/C++ interop, and cross-compilation	agents/language-experts/nim-developer.md
+agent	nlp-engineer	NLP pipeline development with text processing, embeddings, classification, NER, and transformer fine-tuning	agents/data-ai/nlp-engineer.md
+agent	ocaml-developer	OCaml type inference, pattern matching, Dream web framework, and opam ecosystem	agents/language-experts/ocaml-developer.md
+agent	patent-analyst	Conducts patent searches, prior art analysis, IP landscape mapping, and freedom-to-operate assessments for technology products	agents/research-analysis/patent-analyst.md
+agent	payment-integration	Integrates payment processors like Stripe with proper error handling, webhook verification, and PCI compliance	agents/specialized-domains/payment-integration.md
+agent	penetration-tester	Authorized security testing, OWASP Top 10 assessment, vulnerability reporting, and remediation guidance	agents/quality-assurance/penetration-tester.md
+agent	performance-engineer	Profiling, benchmarking, memory analysis, load testing, and optimization patterns	agents/quality-assurance/performance-engineer.md
+agent	performance-monitor	Monitor agent execution, track token usage, measure response quality, and optimize workflows	agents/orchestration/performance-monitor.md
+agent	php-developer	PHP 8.3+ and Laravel 11 development with Eloquent, queues, middleware, and Composer package management	agents/language-experts/php-developer.md
+agent	platform-engineer	Internal developer platforms, service mesh, observability, and SLO/SLI management	agents/infrastructure/platform-engineer.md
+agent	product-manager	Creates PRDs, user stories, acceptance criteria, and prioritization frameworks for product development	agents/business-product/product-manager.md
+agent	project-manager	Manages sprint planning, task tracking, timeline estimation, and Agile ceremony facilitation	agents/business-product/project-manager.md
+agent	prompt-engineer	Prompt optimization with chain-of-thought, structured outputs, few-shot learning, and systematic evaluation	agents/data-ai/prompt-engineer.md
+agent	python-engineer	Python 3.12+ with typing, async/await, dataclasses, pydantic, and packaging	agents/language-experts/python-engineer.md
+agent	qa-automation	Test automation frameworks, CI integration, test data management, and reporting	agents/quality-assurance/qa-automation.md
+agent	rails-expert	Ruby on Rails 7+ development with Hotwire, ActiveRecord patterns, Turbo, and Stimulus	agents/language-experts/rails-expert.md
+agent	react-specialist	React 19 development with hooks, state management, concurrent features, and component architecture	agents/language-experts/react-specialist.md
+agent	real-estate-tech	Builds property technology platforms with MLS integration, geospatial search, property valuation models, and listing management systems	agents/specialized-domains/real-estate-tech.md
+agent	recommendation-engine	Designs recommendation systems using collaborative filtering, content-based methods, and hybrid approaches with real-time personalization	agents/data-ai/recommendation-engine.md
+agent	refactoring-specialist	Performs systematic code refactoring including dead code removal, abstraction extraction, and structural improvements	agents/developer-experience/refactoring-specialist.md
+agent	research-analyst	Conducts structured technical research with systematic literature review, evidence synthesis, and actionable findings	agents/research-analysis/research-analyst.md
+agent	robotics-engineer	Develops robotics systems with ROS2, sensor fusion, motion planning, SLAM, and real-time control loops	agents/specialized-domains/robotics-engineer.md
+agent	rust-systems	Rust ownership, lifetimes, async runtime, FFI, unsafe patterns, and performance tuning	agents/language-experts/rust-systems.md
+agent	sales-engineer	Creates technical demos, proof-of-concept implementations, integration guides, and competitive technical analysis for sales engagements	agents/business-product/sales-engineer.md
+agent	scala-developer	Functional programming in Scala, Akka actors, Play Framework, and Cats Effect	agents/language-experts/scala-developer.md
+agent	scrum-master	Facilitates Scrum ceremonies, tracks team velocity, removes impediments, and drives continuous improvement	agents/business-product/scrum-master.md
+agent	search-specialist	Performs advanced search, information retrieval, source evaluation, and knowledge synthesis across diverse sources	agents/research-analysis/search-specialist.md
+agent	security-auditor	OWASP Top 10, dependency scanning, secrets detection, and penetration testing guidance	agents/quality-assurance/security-auditor.md
+agent	security-engineer	Infrastructure security, IAM policies, mTLS, secrets management with Vault, and compliance	agents/infrastructure/security-engineer.md
+agent	security-researcher	Conducts CVE analysis, vulnerability research, threat modeling, attack surface assessment, and security advisory evaluation	agents/research-analysis/security-researcher.md
+agent	seo-specialist	Optimizes web applications for search engine visibility with structured data, meta tags, and technical SEO implementation	agents/specialized-domains/seo-specialist.md
+agent	sre-engineer	SLOs, error budgets, incident response, postmortems, and production reliability	agents/infrastructure/sre-engineer.md
+agent	svelte-developer	SvelteKit development with runes, server-side rendering, form actions, and fine-grained reactivity	agents/language-experts/svelte-developer.md
+agent	swift-developer	SwiftUI, iOS 17+, Combine, structured concurrency, and Apple platform development	agents/language-experts/swift-developer.md
+agent	task-coordinator	Multi-agent task distribution, dependency management, and parallel execution	agents/orchestration/task-coordinator.md
+agent	technical-writer	Produces polished technical documentation with consistent style, clear structure, and audience-appropriate language	agents/business-product/technical-writer.md
+agent	technology-scout	Evaluates emerging technologies, conducts build-vs-buy analysis, assesses vendor solutions, and produces technology adoption recommendations	agents/research-analysis/technology-scout.md
+agent	terraform-engineer	Infrastructure as Code with Terraform, module design, state management, and multi-cloud provisioning	agents/infrastructure/terraform-engineer.md
+agent	test-architect	Testing strategy with unit/integration/e2e, TDD, property-based testing, and mutation testing	agents/quality-assurance/test-architect.md
+agent	testing-infrastructure	Designs test runners, CI test splitting, flaky test management, and test infrastructure that scales across large engineering organizations	agents/developer-experience/testing-infrastructure.md
+agent	tooling-engineer	Configures and builds developer tooling including linters, formatters, type checkers, and custom code analysis tools	agents/developer-experience/tooling-engineer.md
+agent	trend-analyst	Analyzes technology trends, adoption curves, and ecosystem shifts to inform strategic technical decisions	agents/research-analysis/trend-analyst.md
+agent	typescript-specialist	Advanced TypeScript patterns including generics, conditional types, and module augmentation	agents/language-experts/typescript-specialist.md
+agent	ui-designer	UI/UX implementation, design systems, Figma-to-code translation, and component libraries	agents/core-development/ui-designer.md
+agent	ux-researcher	Designs and conducts user research studies including usability testing, surveys, and behavioral analysis	agents/business-product/ux-researcher.md
+agent	vector-database-engineer	Designs embedding pipelines and vector search systems using FAISS, Pinecone, Qdrant, and Weaviate for semantic retrieval at scale	agents/data-ai/vector-database-engineer.md
+agent	voice-assistant	Builds voice-enabled applications with speech-to-text, text-to-speech, dialog management, and platform integration for Alexa and Google Assistant	agents/specialized-domains/voice-assistant.md
+agent	vscode-extension	Develops VS Code extensions with Language Server Protocol integration, custom editors, webview panels, and marketplace publishing	agents/developer-experience/vscode-extension.md
+agent	vue-specialist	Vue 3 development with Composition API, Pinia state management, Nuxt 3, and VueUse composables	agents/language-experts/vue-specialist.md
+agent	websocket-engineer	Real-time communication with WebSockets, Socket.io, scaling strategies, and reconnection handling	agents/core-development/websocket-engineer.md
+agent	workflow-director	End-to-end workflow orchestration, checkpoint management, and error recovery	agents/orchestration/workflow-director.md
+agent	zig-developer	Zig systems programming, comptime metaprogramming, allocator strategies, and C interop	agents/language-experts/zig-developer.md
+command	a11y-scan	Scan web application components for accessibility violations against WCAG guidelines.	plugins/accessibility-checker/commands/a11y-scan.md
+command	add-breakpoints	Implement responsive design breakpoints for a component or page.	plugins/responsive-designer/commands/add-breakpoints.md
+command	add-endpoint	Add a new API endpoint to an existing backend service with validation and tests.	plugins/backend-architect/commands/add-endpoint.md
+command	add-feature	Add a new feature module to an existing project with all supporting files.	plugins/project-scaffold/commands/add-feature.md
+command	add-index	Add database indexes to improve query performance with migration safety.	plugins/database-optimizer/commands/add-index.md
+command	add-model	Create a Swift data model with Codable conformance and validation.	plugins/ios-developer/commands/add-model.md
+command	add-page	Add a new page to a web application with routing, data fetching, and SEO metadata.	plugins/web-dev/commands/add-page.md
+command	add-tool	Add a new tool to an existing MCP server with proper schema and handler.	plugins/model-context-protocol/commands/add-tool.md
+command	add-types	Add TypeScript type definitions to existing TypeScript files with weak typing.	plugins/type-migrator/commands/add-types.md
+command	add-viewmodel	Create an Android ViewModel with proper state management and data flow.	plugins/android-developer/commands/add-viewmodel.md
+command	adr	Write an Architecture Decision Record documenting a significant technical decision.	commands/architecture/adr.md
+command	affected	Detect which packages in a monorepo are affected by recent changes.	plugins/monorepo-manager/commands/affected.md
+command	amend	Amend the most recent commit with additional changes or an updated message.	plugins/commit-commands/commands/amend.md
+command	analyze-bundle	Analyze JavaScript bundle size and identify optimization opportunities.	plugins/bundle-analyzer/commands/analyze-bundle.md
+command	analyze-ci-failure	Analyze and diagnose a CI/CD pipeline failure.	plugins/ci-debugger/commands/analyze-ci-failure.md
+command	analyze-complexity	Calculate cyclomatic complexity and identify overly complex functions.	plugins/complexity-reducer/commands/analyze-complexity.md
+command	analyze-failures	Analyze test failures to identify root causes, patterns, and suggest targeted fixes.	plugins/test-results-analyzer/commands/analyze-failures.md
+command	analyze-prompt	Analyze an AI prompt for clarity, effectiveness, and potential issues.	plugins/prompt-optimizer/commands/analyze-prompt.md
+command	analyze-query	Analyze database queries for performance issues using EXPLAIN plans and query patterns.	plugins/database-optimizer/commands/analyze-query.md
+command	analyze-screenshot	Analyze a screenshot or UI image to identify elements, layout issues, and implementation details.	plugins/vision-specialist/commands/analyze-screenshot.md
+command	analyze-workflow	Analyze the development workflow to identify bottlenecks, friction, and improvement opportunities.	plugins/workflow-optimizer/commands/analyze-workflow.md
+command	annotate	Add inline documentation (JSDoc, docstrings, comments) to under-documented code.	plugins/code-explainer/commands/annotate.md
+command	anonymize	Implement data anonymization and pseudonymization for PII protection.	plugins/data-privacy/commands/anonymize.md
+command	api-docs	Generate API documentation from route definitions and handlers.	commands/documentation/api-docs.md
+command	api-docs	Generate API reference documentation from source code annotations, types, and route definitions.	plugins/doc-forge/commands/api-docs.md
+command	approve-pr	Approve a pull request after verifying it meets quality standards.	plugins/pr-reviewer/commands/approve-pr.md
+command	architect	Generate a comprehensive architecture document for a system or feature based on requirements.	plugins/code-architect/commands/architect.md
+command	aria-fix	Fix ARIA attributes and accessibility issues in web components.	plugins/accessibility-checker/commands/aria-fix.md
+command	audit	Perform a security audit of the codebase covering common vulnerability categories.	commands/security/audit.md
+command	audit-deps	Audit all project dependencies for vulnerabilities, licensing issues, and maintenance status.	plugins/dependency-manager/commands/audit-deps.md
+command	audit-infra	Audit infrastructure for security issues, misconfigurations, and optimization opportunities.	plugins/infrastructure-maintainer/commands/audit-infra.md
+command	audit-pii	Scan the codebase and data stores for personally identifiable information (PII) exposure risks.	plugins/data-privacy/commands/audit-pii.md
+command	automate	Create DevOps automation scripts for CI/CD pipelines, deployments, and infrastructure tasks.	plugins/devops-automator/commands/automate.md
+command	benchmark	Run performance benchmarks against API endpoints.	plugins/api-benchmarker/commands/benchmark.md
+command	benchmark	Run benchmarks to measure and compare performance of code implementations.	plugins/performance-monitor/commands/benchmark.md
+command	bisect	Use git bisect to find the exact commit that introduced a bug through binary search.	plugins/debug-session/commands/bisect.md
+command	build-image	Build a Docker image with best practices for caching, security, and size optimization.	plugins/docker-helper/commands/build-image.md
+command	build-regex	Build a regular expression pattern from a natural language description.	plugins/regex-builder/commands/build-regex.md
+command	bump-version	Bump the project version following semantic versioning rules based on changes since last release.	plugins/release-manager/commands/bump-version.md
+command	capture-baseline	Capture baseline screenshots for visual regression testing.	plugins/visual-regression/commands/capture-baseline.md
+command	changelog	Generate a changelog from git history since the last tag or a specified reference point.	commands/git/changelog.md
+command	changelog	Parse the git history since the last release tag and generate a structured markdown changelog.	plugins/smart-commit/commands/changelog.md
+command	check-contrast	Check color contrast ratios against WCAG accessibility requirements.	plugins/color-contrast/commands/check-contrast.md
+command	check-gdpr	Verify GDPR compliance by checking data handling, consent management, and user rights.	plugins/compliance-checker/commands/check-gdpr.md
+command	check-licenses	Check all dependency licenses for compliance with project requirements.	plugins/license-checker/commands/check-licenses.md
+command	check-soc2	Verify SOC 2 compliance by checking security controls, availability, and data integrity.	plugins/compliance-checker/commands/check-soc2.md
+command	checkpoint	Save a session checkpoint capturing current progress, decisions, and next steps.	commands/workflow/checkpoint.md
+command	ci-pipeline	Generate a CI pipeline configuration for GitHub Actions.	commands/devops/ci-pipeline.md
+command	ci-pipeline	Generate a GitHub Actions CI/CD workflow tailored to the current project.	plugins/deploy-pilot/commands/ci-pipeline.md
+command	cleanup	Find and remove dead code, unused imports, and unreachable branches.	commands/refactoring/cleanup.md
+command	code-migrate	Migrate code from one framework version, library, or pattern to another.	plugins/migrate-tool/commands/code-migrate.md
+command	commit	Analyze the currently staged changes (`git diff --cached`) and generate a conventional commit message.	commands/git/commit.md
+command	commit	Analyze all staged git changes and generate an intelligent conventional commit message.	plugins/smart-commit/commands/commit.md
+command	commit-push	Stage, commit, and push changes with an auto-generated conventional commit message.	plugins/commit-commands/commands/commit-push.md
+command	compare	Compare multiple ML experiment runs side-by-side to identify the best configuration.	plugins/experiment-tracker/commands/compare.md
+command	compare	Compare current screenshots against baselines to detect visual regressions.	plugins/visual-regression/commands/compare.md
+command	compare-models	Compare multiple ML models to select the best performer.	plugins/model-evaluator/commands/compare-models.md
+command	compare-tools	Compare multiple developer tools side-by-side to make an informed selection decision.	plugins/tool-evaluator/commands/compare-tools.md
+command	complete	Complete a partially implemented feature by filling gaps and ensuring production readiness.	plugins/feature-dev/commands/complete.md
+command	configure-blob	Create and configure an Azure Blob Storage account with security best practices.	plugins/azure-helper/commands/configure-blob.md
+command	configure-gcs	Create and configure a GCS bucket with proper security settings.	plugins/gcp-helper/commands/configure-gcs.md
+command	configure-s3	Create and configure an S3 bucket with security best practices.	plugins/aws-helper/commands/configure-s3.md
+command	consolidate	Merge and consolidate duplicate CSS rules and redundant stylesheets.	plugins/css-cleaner/commands/consolidate.md
+command	create-activity	Generate a Jetpack Compose screen with proper architecture.	plugins/android-developer/commands/create-activity.md
+command	create-chart	Generate a Helm chart for deploying an application to Kubernetes.	plugins/helm-charts/commands/create-chart.md
+command	create-component	Create a frontend component with proper structure, types, and accessibility.	plugins/frontend-developer/commands/create-component.md
+command	create-contract	Create a Pact contract definition for consumer-driven contract testing.	plugins/contract-tester/commands/create-contract.md
+command	create-cron	Configure a cron job with proper scheduling and error handling.	plugins/cron-scheduler/commands/create-cron.md
+command	create-dashboard	Create monitoring dashboards with key metrics for service observability.	plugins/monitoring-setup/commands/create-dashboard.md
+command	create-demo	Create a technical demo that showcases product capabilities to prospective customers.	plugins/technical-sales/commands/create-demo.md
+command	create-guide	Create a comprehensive onboarding guide for new developers joining the project.	plugins/onboarding-guide/commands/create-guide.md
+command	create-issue	Create a well-structured GitHub issue with proper metadata.	plugins/github-issue-manager/commands/create-issue.md
+command	create-migration	Generate a database migration file for schema changes.	plugins/migration-generator/commands/create-migration.md
+command	create-module	Create a reusable Terraform module for infrastructure provisioning.	plugins/terraform-helper/commands/create-module.md
+command	create-retriever	Build a retrieval component for RAG pipeline with optimized search.	plugins/rag-builder/commands/create-retriever.md
+command	create-screen	Create a React Native screen with navigation, layout, and platform-specific handling.	plugins/react-native-dev/commands/create-screen.md
+command	create-server	Scaffold a new MCP (Model Context Protocol) server with tools, resources, and prompts.	plugins/model-context-protocol/commands/create-server.md
+command	create-thread	Create a Slack thread for ongoing discussion about a topic.	plugins/slack-notifier/commands/create-thread.md
+command	create-ticket	Create a structured Linear issue with proper workflow configuration.	plugins/linear-helper/commands/create-ticket.md
+command	create-view	Generate a SwiftUI view with proper architecture and best practices.	plugins/ios-developer/commands/create-view.md
+command	create-widget	Create a Flutter widget with proper state management and Material/Cupertino design.	plugins/flutter-mobile/commands/create-widget.md
+command	create-workflow	Generate an n8n workflow JSON from a natural language description of the automation.	plugins/n8n-workflow/commands/create-workflow.md
+command	csp	Generate Content Security Policy headers for a web application.	commands/security/csp.md
+command	dashboard	Generate a monitoring dashboard configuration for project metrics visualization.	plugins/analytics-reporter/commands/dashboard.md
+command	db-migrate	Generate a database migration file for schema changes.	plugins/migrate-tool/commands/db-migrate.md
+command	dead-code	Find and remove dead code from the codebase.	commands/refactoring/dead-code.md
+command	debug	Systematically debug an issue by analyzing symptoms, forming hypotheses, and testing them.	plugins/bug-detective/commands/debug.md
+command	debug	Start an interactive debugging session to diagnose and fix a runtime issue.	plugins/debug-session/commands/debug.md
+command	debug-pod	Debug a failing or unhealthy Kubernetes pod by analyzing events, logs, and configuration.	plugins/k8s-helper/commands/debug-pod.md
+command	dependency-audit	Audit project dependencies for known vulnerabilities and outdated packages.	commands/security/dependency-audit.md
+command	deploy	Deploy the application to a target environment with pre/post checks.	commands/devops/deploy.md
+command	design-api	Design a RESTful or GraphQL API based on the project's domain model and requirements.	plugins/api-architect/commands/design-api.md
+command	design-review	Conduct a structured design review of a module, feature, or system component.	commands/architecture/design-review.md
+command	design-schema	Design a database schema based on application requirements.	plugins/schema-designer/commands/design-schema.md
+command	design-service	Design a backend service architecture with clear boundaries, data models, and API contracts.	plugins/backend-architect/commands/design-service.md
+command	diagram	Generate Mermaid diagrams from codebase analysis or description.	commands/architecture/diagram.md
+command	diagram	Generate architecture diagrams using Mermaid or ASCII art for system visualization.	plugins/code-architect/commands/diagram.md
+command	diff-env	Compare environment variables between two environments.	plugins/env-sync/commands/diff-env.md
+command	discuss	Debate implementation approaches by presenting structured arguments for multiple options.	plugins/discuss/commands/discuss.md
+command	doc-gen	Generate documentation from the codebase for the specified scope.	commands/documentation/doc-gen.md
+command	dockerfile	Generate an optimized Dockerfile for the current project.	commands/devops/dockerfile.md
+command	dockerfile	Generate an optimized multi-stage Dockerfile for the current project.	plugins/deploy-pilot/commands/dockerfile.md
+command	document-all	Auto-document the entire codebase by generating module-level docs, function signatures, and API references.	plugins/codebase-documenter/commands/document-all.md
+command	e2e	Generate end-to-end tests using Playwright for critical user flows.	commands/testing/e2e.md
+command	env-setup	Set up environment configuration files from templates with validation.	plugins/env-manager/commands/env-setup.md
+command	env-validate	Validate environment configuration against the template and runtime requirements.	plugins/env-manager/commands/env-validate.md
+command	estimate	Estimate effort and time for development tasks using structured sizing methodology.	plugins/plan/commands/estimate.md
+command	evaluate	Evaluate a developer tool against structured criteria to determine its fitness for a project.	plugins/tool-evaluator/commands/evaluate.md
+command	evaluate-model	Evaluate machine learning model performance with comprehensive metrics.	plugins/model-evaluator/commands/evaluate-model.md
+command	explain	Explain a code file, function, or concept in clear, structured language.	plugins/code-explainer/commands/explain.md
+command	explain-plan	Generate and interpret a SQL query execution plan in plain language.	plugins/query-optimizer/commands/explain-plan.md
+command	explore	Perform smart codebase exploration to understand project structure, patterns, and conventions.	plugins/explore/commands/explore.md
+command	extract	Extract a function, component, or module from existing code into its own unit.	commands/refactoring/extract.md
+command	extract-fn	Extract a block of code into a well-named, reusable function with proper typing.	plugins/refactor-engine/commands/extract-fn.md
+command	extract-text	Extract text content from images, screenshots, or diagrams for processing and analysis.	plugins/vision-specialist/commands/extract-text.md
+command	fetch-docs	Fetch up-to-date library documentation via Context7 to ensure accurate code generation.	plugins/context7-docs/commands/fetch-docs.md
+command	find-dead-code	Identify unused code across the codebase.	plugins/dead-code-finder/commands/find-dead-code.md
+command	find-leaks	Detect and diagnose memory leaks in the application.	plugins/memory-profiler/commands/find-leaks.md
+command	find-unused-css	Identify CSS rules that are not used by any component or page.	plugins/css-cleaner/commands/find-unused-css.md
+command	fix-aria	Fix incorrect or missing ARIA attributes for accessibility compliance.	plugins/screen-reader-tester/commands/fix-aria.md
+command	fix-comments	Address PR review comments by implementing requested changes automatically.	plugins/fix-pr/commands/fix-comments.md
+command	fix-issue	Fix a GitHub issue by number: read the issue, create a branch, implement the fix, and open a PR.	commands/git/fix-issue.md
+command	fix-issue	Automatically fix a GitHub issue by analyzing its description and implementing a solution.	plugins/fix-github-issue/commands/fix-issue.md
+command	fix-issues	Apply fixes for Lighthouse audit failures to improve scores.	plugins/lighthouse-runner/commands/fix-issues.md
+command	fix-pipeline	Apply fixes to a broken CI/CD pipeline configuration.	plugins/ci-debugger/commands/fix-pipeline.md
+command	fix-vulnerability	Fix a specific security vulnerability with proper remediation and verification.	plugins/security-guidance/commands/fix-vulnerability.md
+command	flow-release	Complete a feature/bugfix/hotfix flow by merging back to the target branch.	plugins/git-flow/commands/flow-release.md
+command	flow-start	Start a new feature, bugfix, or hotfix branch following git-flow conventions.	plugins/git-flow/commands/flow-start.md
+command	generate-api-ref	Generate API reference documentation from source code and route definitions.	plugins/api-reference/commands/generate-api-ref.md
+command	generate-changelog	Generate a changelog from git history, grouping commits by type and version.	plugins/changelog-gen/commands/generate-changelog.md
+command	generate-data	Generate realistic test data based on schema definitions or models.	plugins/test-data-generator/commands/generate-data.md
+command	generate-docs	Generate comprehensive documentation for the current project or a specified module.	plugins/doc-forge/commands/generate-docs.md
+command	generate-embeddings	Generate vector embeddings for text data using embedding models.	plugins/embedding-manager/commands/generate-embeddings.md
+command	generate-erd	Generate a visual ERD from the existing database schema.	plugins/schema-designer/commands/generate-erd.md
+command	generate-manifest	Generate production-ready Kubernetes manifests from application configuration.	plugins/k8s-helper/commands/generate-manifest.md
+command	generate-notice	Generate a NOTICE file with all third-party license attributions.	plugins/license-checker/commands/generate-notice.md
+command	generate-openapi	Generate an OpenAPI 3.1 specification from the existing codebase or API design.	plugins/api-architect/commands/generate-openapi.md
+command	generate-readme	Generate a comprehensive README.md from project analysis.	plugins/readme-generator/commands/generate-readme.md
+command	generate-report	Generate a detailed accessibility audit report with remediation steps.	plugins/a11y-audit/commands/generate-report.md
+command	generate-report	Generate a detailed performance report from load test results.	plugins/load-tester/commands/generate-report.md
+command	generate-seeds	Generate database seed scripts with realistic data for development.	plugins/seed-generator/commands/generate-seeds.md
+command	generate-spec	Generate an OpenAPI 3.1 specification from existing API routes and handlers.	plugins/openapi-expert/commands/generate-spec.md
+command	generate-tests	Generate comprehensive unit tests for a specified function, class, or module.	plugins/unit-test-generator/commands/generate-tests.md
+command	hardening	Apply security hardening measures to the codebase.	commands/security/hardening.md
+command	health-check	Create health check scripts to verify service and infrastructure availability.	plugins/devops-automator/commands/health-check.md
+command	implement	Implement a feature from specification through a structured development workflow.	plugins/feature-dev/commands/implement.md
+command	implement-design	Implement a UI design from a specification, screenshot, or Figma description into working code.	plugins/ui-designer/commands/implement-design.md
+command	improve-prompt	Analyze and improve an AI prompt for clarity, specificity, and effectiveness.	plugins/ai-prompt-lab/commands/improve-prompt.md
+command	index-docs	Index documents into a vector store for retrieval-augmented generation.	plugins/rag-builder/commands/index-docs.md
+command	integration-test	Generate integration tests for a module, testing real interactions between components.	commands/testing/integration-test.md
+command	integration-test	Generate integration tests verifying component interactions and real data flows.	plugins/test-writer/commands/integration-test.md
+command	k8s-manifest	Generate Kubernetes manifests for deploying the current application.	commands/devops/k8s-manifest.md
+command	k8s-manifest	Generate production-ready Kubernetes manifests for the current application.	plugins/deploy-pilot/commands/k8s-manifest.md
+command	launch-checklist	Generate a comprehensive launch checklist for a feature or product release.	plugins/product-shipper/commands/launch-checklist.md
+command	list-adrs	List and summarize all existing Architecture Decision Records.	plugins/adr-writer/commands/list-adrs.md
+command	load-test	Run a load test against an API endpoint to measure throughput and identify breaking points.	plugins/api-tester/commands/load-test.md
+command	map	Generate a dependency map showing how modules and files relate to each other in the codebase.	plugins/explore/commands/map.md
+command	memory-bank	Update the project's CLAUDE.md memory bank with current session learnings.	commands/documentation/memory-bank.md
+command	migrate	Plan and execute a framework or library migration incrementally.	commands/architecture/migrate.md
+command	migrate-file	Convert a JavaScript file to TypeScript with proper type annotations.	plugins/type-migrator/commands/migrate-file.md
+command	mockup	Generate UI mockups as HTML files with inline CSS for rapid visual prototyping.	plugins/rapid-prototyper/commands/mockup.md
+command	monitor	Set up monitoring, alerting, and observability for the application.	commands/devops/monitor.md
+command	mutate	Run mutation testing to evaluate test suite effectiveness.	plugins/mutation-tester/commands/mutate.md
+command	native-module	Create a React Native native module to bridge platform-specific functionality.	plugins/react-native-dev/commands/native-module.md
+command	onboard	Generate an onboarding guide for new developers joining the project.	commands/documentation/onboard.md
+command	optimize	Apply targeted performance optimizations to a specified file, function, or module.	plugins/perf-profiler/commands/optimize.md
+command	optimize-dockerfile	Optimize an existing Dockerfile for smaller images, faster builds, and better security.	plugins/docker-helper/commands/optimize-dockerfile.md
+command	optimize-perf	Analyze and optimize code for runtime performance with measurable improvements.	plugins/optimize/commands/optimize-perf.md
+command	optimize-prompt	Rewrite and optimize an AI prompt for better performance and reliability.	plugins/prompt-optimizer/commands/optimize-prompt.md
+command	optimize-query	Analyze and optimize a slow SQL query for better performance.	plugins/query-optimizer/commands/optimize-query.md
+command	optimize-size	Analyze and reduce code bundle size, dependency bloat, and binary footprint.	plugins/optimize/commands/optimize-size.md
+command	orchestrate	Run a multi-step workflow by breaking a complex task into coordinated sub-tasks.	commands/workflow/orchestrate.md
+command	organize	Sort, group, and clean up import statements across the project.	plugins/import-organizer/commands/organize.md
+command	plan	Create a structured implementation plan for the requested feature or change.	commands/architecture/plan.md
+command	plan	Create a structured implementation plan with tasks, dependencies, and risk assessment.	plugins/plan/commands/plan.md
+command	plan-apply	Run Terraform plan, review changes, and apply infrastructure updates.	plugins/terraform-helper/commands/plan-apply.md
+command	plan-sprint	Plan a development sprint with capacity allocation, task assignment, and milestones.	plugins/sprint-prioritizer/commands/plan-sprint.md
+command	platform-channel	Create a Flutter platform channel for native iOS and Android communication.	plugins/flutter-mobile/commands/platform-channel.md
+command	pr-create	Create a pull request with a structured description based on the current branch's changes.	commands/git/pr-create.md
+command	pr-review	Review a pull request by number: fetch the diff, analyze changes, and post review comments.	commands/git/pr-review.md
+command	prioritize	Prioritize a backlog of tasks using structured scoring and dependency analysis.	plugins/sprint-prioritizer/commands/prioritize.md
+command	profile	Analyze the codebase for performance bottlenecks, resource inefficiencies, and scalability concerns.	plugins/perf-profiler/commands/profile.md
+command	profile-api	Profile an API endpoint to identify performance bottlenecks and optimization opportunities.	plugins/performance-monitor/commands/profile-api.md
+command	profile-memory	Capture and analyze memory usage of the application.	plugins/memory-profiler/commands/profile-memory.md
+command	prototype	Quickly scaffold a working prototype with minimal viable structure to validate an idea.	plugins/rapid-prototyper/commands/prototype.md
+command	rebase	Rebase the current feature branch onto the latest upstream branch and resolve conflicts.	plugins/update-branch/commands/rebase.md
+command	record-test	Record user interactions to generate an end-to-end test file.	plugins/e2e-runner/commands/record-test.md
+command	refactor	Perform a systematic refactoring of the specified code area.	commands/architecture/refactor.md
+command	refactor-py	Refactor Python code for clarity, performance, and Pythonic idioms.	plugins/python-expert/commands/refactor-py.md
+command	release	Create a tagged release with auto-generated release notes from recent commits.	commands/git/release.md
+command	release	Create a full release with changelog, GitHub release, and package publishing.	plugins/release-manager/commands/release.md
+command	remove-dead-code	Safely remove identified dead code from the codebase.	plugins/dead-code-finder/commands/remove-dead-code.md
+command	rename	Rename a symbol (variable, function, class, file) across the entire codebase.	commands/refactoring/rename.md
+command	report	Generate a project analytics report covering code quality, velocity, and health metrics.	plugins/analytics-reporter/commands/report.md
+command	report	Generate a comprehensive performance report from benchmark results.	plugins/api-benchmarker/commands/report.md
+command	report-cost	Generate a development cost report with breakdowns, trends, and optimization recommendations.	plugins/finance-tracker/commands/report-cost.md
+command	review	Perform a thorough code review of the current uncommitted changes or a specified file/directory.	plugins/code-guardian/commands/review.md
+command	review	Perform an automated code review with categorized findings and severity ratings.	plugins/code-review-assistant/commands/review.md
+command	review-pr	Perform a thorough code review of a pull request with actionable feedback.	plugins/pr-reviewer/commands/review-pr.md
+command	rollback	Roll back the most recent database migration or to a specific version.	plugins/migration-generator/commands/rollback.md
+command	run-audit	Execute a comprehensive accessibility audit against WCAG guidelines.	plugins/a11y-audit/commands/run-audit.md
+command	run-audit	Execute a Lighthouse performance audit on web pages.	plugins/lighthouse-runner/commands/run-audit.md
+command	run-e2e	Run end-to-end tests against the application using Playwright or Cypress.	plugins/e2e-runner/commands/run-e2e.md
+command	run-load-test	Run load and stress tests against API endpoints or web pages.	plugins/load-tester/commands/run-load-test.md
+command	scaffold	Scaffold a new project with a complete, production-ready structure.	plugins/project-scaffold/commands/scaffold.md
+command	scaffold-app	Scaffold a full-stack web application with frontend, backend, and database setup.	plugins/web-dev/commands/scaffold-app.md
+command	scaffold-desktop	Scaffold a desktop application using Electron or Tauri with proper project structure.	plugins/desktop-app/commands/scaffold-desktop.md
+command	search-similar	Find semantically similar items using vector similarity search.	plugins/embedding-manager/commands/search-similar.md
+command	secrets-scan	Scan the codebase for leaked secrets, API keys, tokens, and credentials.	commands/security/secrets-scan.md
+command	security-check	Perform a security assessment of the codebase to identify vulnerabilities and risks.	plugins/security-guidance/commands/security-check.md
+command	security-scan	Perform a security-focused scan of the codebase targeting OWASP Top 10 and common vulnerability patterns.	plugins/code-guardian/commands/security-scan.md
+command	seed-db	Seed a database with generated test data.	plugins/test-data-generator/commands/seed-db.md
+command	send-update	Send a formatted status update to a Slack channel.	plugins/slack-notifier/commands/send-update.md
+command	setup-cloud-run	Configure and deploy a Cloud Run service with best practices.	plugins/gcp-helper/commands/setup-cloud-run.md
+command	setup-functions	Configure and deploy an Azure Functions application.	plugins/azure-helper/commands/setup-functions.md
+command	setup-lambda	Configure and deploy an AWS Lambda function with proper settings.	plugins/aws-helper/commands/setup-lambda.md
+command	setup-monitoring	Set up monitoring and alerting for application and infrastructure metrics.	plugins/monitoring-setup/commands/setup-monitoring.md
+command	ship	Execute a complete feature shipping workflow from code to production deployment.	plugins/product-shipper/commands/ship.md
+command	simplify	Simplify code to improve readability and maintainability.	commands/refactoring/simplify.md
+command	simplify	Simplify complex code by reducing nesting, eliminating duplication, and improving clarity.	plugins/refactor-engine/commands/simplify.md
+command	simplify-fn	Refactor a complex function to reduce cyclomatic complexity.	plugins/complexity-reducer/commands/simplify-fn.md
+command	snapshot-test	Generate snapshot tests for UI components or serializable outputs.	commands/testing/snapshot-test.md
+command	social-media	Generate social media content for developer audiences across platforms.	plugins/content-creator/commands/social-media.md
+command	style	Apply styling to a component using the project's design system and styling approach.	plugins/frontend-developer/commands/style.md
+command	suggest-colors	Suggest alternative colors that meet WCAG contrast requirements.	plugins/color-contrast/commands/suggest-colors.md
+command	suggest-improvements	Suggest concrete development workflow improvements based on analysis findings.	plugins/workflow-optimizer/commands/suggest-improvements.md
+command	sync-env	Synchronize environment variables across development, staging, and production.	plugins/env-sync/commands/sync-env.md
+command	sync-versions	Synchronize package versions across a monorepo for consistent releases.	plugins/monorepo-manager/commands/sync-versions.md
+command	tdd	Start a TDD (Test-Driven Development) cycle for the requested feature or function.	commands/testing/tdd.md
+command	test-coverage	Analyze test coverage gaps and generate tests for uncovered code paths.	commands/testing/test-coverage.md
+command	test-endpoint	Test an API endpoint with various request scenarios and validate responses.	plugins/api-tester/commands/test-endpoint.md
+command	test-fix	Diagnose and fix failing tests in the project.	commands/testing/test-fix.md
+command	test-prompt	Test an AI prompt against multiple scenarios to verify consistent, quality output.	plugins/ai-prompt-lab/commands/test-prompt.md
+command	test-regex	Test a regular expression against sample inputs and edge cases.	plugins/regex-builder/commands/test-regex.md
+command	test-responsive	Test responsive design across multiple device sizes and orientations.	plugins/responsive-designer/commands/test-responsive.md
+command	test-sr	Test application compatibility with screen readers.	plugins/screen-reader-tester/commands/test-sr.md
+command	think	Activate deep analysis mode to reason through complex problems with extended multi-step thinking.	plugins/ultrathink/commands/think.md
+command	trace	Trace the execution path of a request or operation through the codebase.	plugins/bug-detective/commands/trace.md
+command	track	Track an ML experiment by logging parameters, metrics, and artifacts for comparison.	plugins/experiment-tracker/commands/track.md
+command	track-cost	Track development costs by estimating time, compute, and resource expenses for a project.	plugins/finance-tracker/commands/track-cost.md
+command	tree-shake	Improve tree shaking effectiveness to reduce bundle size.	plugins/bundle-analyzer/commands/tree-shake.md
+command	triage-issues	Analyze and triage open GitHub issues for prioritization.	plugins/github-issue-manager/commands/triage-issues.md
+command	type-hints	Add comprehensive type hints to Python code for better IDE support and type safety.	plugins/python-expert/commands/type-hints.md
+command	unit-test	Generate unit tests for a module, covering all public functions and edge cases.	plugins/test-writer/commands/unit-test.md
+command	update-codemap	Update the project codemap to reflect the current state of the codebase.	commands/documentation/update-codemap.md
+command	update-deps	Safely update project dependencies with compatibility verification.	plugins/dependency-manager/commands/update-deps.md
+command	update-infra	Plan and execute infrastructure updates with safety checks and rollback procedures.	plugins/infrastructure-maintainer/commands/update-infra.md
+command	update-readme	Update or create a README.md that accurately reflects the current state of the project.	plugins/doc-forge/commands/update-readme.md
+command	update-status	Update the status and progress of Linear tickets.	plugins/linear-helper/commands/update-status.md
+command	upgrade-chart	Upgrade an existing Helm release with new chart version or values.	plugins/helm-charts/commands/upgrade-chart.md
+command	validate-schedule	Validate and explain a cron schedule expression.	plugins/cron-scheduler/commands/validate-schedule.md
+command	validate-spec	Validate an existing OpenAPI specification for correctness and completeness.	plugins/openapi-expert/commands/validate-spec.md
+command	verify	Perform a systematic second-pass verification of code changes to catch errors before commit.	plugins/double-check/commands/verify.md
+command	verify-contract	Verify that a provider service fulfills all consumer contracts.	plugins/contract-tester/commands/verify-contract.md
+command	worktree	Set up git worktrees for parallel development on multiple branches simultaneously.	commands/git/worktree.md
+command	worktree-clean	Clean up finished git worktrees by removing directories and pruning references.	plugins/create-worktrees/commands/worktree-clean.md
+command	worktree-create	Create a git worktree for parallel development on a separate branch without stashing.	plugins/create-worktrees/commands/worktree-create.md
+command	wrap-up	End the current session with a structured summary and memory update.	commands/workflow/wrap-up.md
+command	write-adr	Create a new Architecture Decision Record documenting a technical decision.	plugins/adr-writer/commands/write-adr.md
+command	write-changelog	Generate a detailed changelog entry from git history and merged PRs.	plugins/changelog-writer/commands/write-changelog.md
+command	write-post	Write a technical blog post with a clear structure, code examples, and actionable takeaways.	plugins/content-creator/commands/write-post.md
+command	write-proposal	Write a technical proposal or proof-of-concept plan for a prospective customer.	plugins/technical-sales/commands/write-proposal.md
+skill	accessibility-wcag	Web accessibility patterns for WCAG 2.2 compliance including ARIA, keyboard navigation, screen readers, and testing	skills/accessibility-wcag
+skill	agentkit-seo	Route broad or ambiguous AgentKit SEO work to the right module while keeping context scoped. Use when a request spans multiple surfaces, asks for overall digital-presence strategy, involves provider or install architect…	skills/agentkit-seo
+skill	api-design-patterns	REST API design with resource naming, pagination, versioning, and OpenAPI spec generation	skills/api-design-patterns
+skill	authentication-patterns	Authentication and authorization patterns including OAuth2, JWT, RBAC, session management, and PKCE flows	skills/authentication-patterns
+skill	aws-cloud-patterns	AWS cloud patterns for Lambda, ECS, S3, DynamoDB, and Infrastructure as Code with CDK/Terraform	skills/aws-cloud-patterns
+skill	ci-cd-pipelines	CI/CD pipeline patterns for GitHub Actions, GitLab CI, testing strategies, and deployment automation	skills/ci-cd-pipelines
+skill	claude-memory-kit	Persistent memory system for Claude Code. Two-layer architecture (hot cache + knowledge wiki), safety hooks, /close-day end-of-day synthesis. Zero external dependencies.	skills/claude-memory-kit
+skill	continuous-learning	Auto-extract patterns from coding sessions, track corrections, and build reusable knowledge with confidence scoring	skills/continuous-learning
+skill	data-engineering	Data engineering patterns for ETL pipelines, data warehousing, Apache Spark, and data quality validation	skills/data-engineering
+skill	database-optimization	Query optimization, indexing strategies, and database performance tuning for PostgreSQL and MySQL	skills/database-optimization
+skill	deep-dive	Claude-native deep research using DAG-based query planning, parallel subagent execution, and gap-driven iteration. No external API needed.	skills/deep-dive
+skill	devops-automation	CI/CD pipeline design with GitHub Actions, Docker, Kubernetes, Helm, and GitOps patterns	skills/devops-automation
+skill	django-patterns	Django architecture patterns including DRF, ORM optimization, signals, middleware, and project structure	skills/django-patterns
+skill	docker-best-practices	Docker best practices including multi-stage builds, compose patterns, image optimization, and security	skills/docker-best-practices
+skill	frontend-excellence	Modern frontend patterns for React Server Components, performance optimization, and Core Web Vitals	skills/frontend-excellence
+skill	git-advanced	Advanced git workflows including worktrees, bisect, interactive rebase, hooks, and recovery techniques	skills/git-advanced
+skill	golang-idioms	Idiomatic Go patterns for error handling, interfaces, concurrency, testing, and module management	skills/golang-idioms
+skill	graphql-design	GraphQL schema design, resolver patterns, subscriptions, DataLoader for N+1 prevention, and error handling	skills/graphql-design
+skill	kubernetes-operations	Kubernetes operations including manifests, Helm charts, operators, troubleshooting, and resource management	skills/kubernetes-operations
+skill	llm-integration	LLM integration patterns including API usage, streaming, function calling, RAG pipelines, and cost optimization	skills/llm-integration
+skill	manage-skills	Discover, list, create, edit, toggle, copy, move, and delete AI agent skills across 11 tools (Cursor, Claude, Agents, Windsurf, Copilot, Codex, Cline, Aider, Continue, Roo Code, Augment)	skills/manage-skills
+skill	mcp-development	MCP server development including tool design, resource endpoints, prompt templates, and transport configuration	skills/mcp-development
+skill	microservices-design	Microservices design patterns including service mesh, event-driven architecture, saga pattern, and API gateway	skills/microservices-design
+skill	mobile-development	Mobile development patterns for React Native and Flutter including navigation, state management, and responsive design	skills/mobile-development
+skill	monitoring-observability	Monitoring and observability with OpenTelemetry, Prometheus, Grafana dashboards, and structured logging	skills/monitoring-observability
+skill	nextjs-mastery	Next.js 14+ App Router patterns including RSC, ISR, middleware, parallel routes, and data fetching	skills/nextjs-mastery
+skill	performance-optimization	Web performance optimization including bundle analysis, lazy loading, caching strategies, and Core Web Vitals	skills/performance-optimization
+skill	postgres-optimization	PostgreSQL optimization including indexes, query plans, partitioning, JSONB operations, and connection pooling	skills/postgres-optimization
+skill	prompt-engineering	Prompt engineering patterns including structured prompts, chain-of-thought, few-shot learning, and system prompt design	skills/prompt-engineering
+skill	python-best-practices	Pythonic code with modern type hints, dataclasses, async patterns, packaging, and testing	skills/python-best-practices
+skill	react-patterns	React 19 patterns including Server Components, Actions, Suspense, hooks, and component composition	skills/react-patterns
+skill	redis-patterns	Redis patterns including caching strategies, pub/sub, streams for event processing, Lua scripts, and data structures	skills/redis-patterns
+skill	rust-systems	Rust systems programming patterns including ownership, traits, async runtime, error handling, and unsafe guidelines	skills/rust-systems
+skill	security-hardening	Application security covering input validation, auth, headers, secrets management, and dependency auditing	skills/security-hardening
+skill	springboot-patterns	Spring Boot patterns including JPA repositories, REST controllers, layered services, and configuration	skills/springboot-patterns
+skill	styleseed	cp -r styleseed/engine/* your-project/	skills/styleseed
+skill	tdd-mastery	Test-driven development workflow with Red-Green-Refactor cycle across languages	skills/tdd-mastery
+skill	testing-strategies	Testing strategies including contract testing, snapshot testing, mutation testing, property-based testing, and test organization	skills/testing-strategies
+skill	typescript-advanced	Advanced TypeScript patterns including generics, conditional types, mapped types, template literals, and type guards	skills/typescript-advanced
+skill	websocket-realtime	Real-time communication patterns with WebSocket, Socket.io, Server-Sent Events, and scaling strategies	skills/websocket-realtime
