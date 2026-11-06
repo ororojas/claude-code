@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Physics Simulators</title>
+<style>
+/* Index for the two apps in this folder: one card each, side by side on wide screens. */
+:root {
+  --bg: #efece6;
+  --card: #f9f8f5;
+  --ink: #1c1f24;
+  --muted: #5f646d;
+  --line: rgba(28, 31, 36, 0.14);
+  --hazard: #f2b300;
+  --ana: #e3612b;
+  --kata: #2f6bd4;
+  --shadow: 0 1px 2px rgba(20, 22, 28, 0.06), 0 10px 28px rgba(20, 22, 28, 0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12151b;
+    --card: #1a1e26;
+    --ink: #e8eaef;
+    --muted: #9ba2ae;
+    --line: rgba(232, 234, 239, 0.14);
+    --hazard: #f5c133;
+    --ana: #ff7a45;
+    --kata: #5b92ff;
+    --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12151b;
+  --card: #1a1e26;
+  --ink: #e8eaef;
+  --muted: #9ba2ae;
+  --line: rgba(232, 234, 239, 0.14);
+  --hazard: #f5c133;
+  --ana: #ff7a45;
+  --kata: #5b92ff;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: 980px; margin: 0 auto; padding: 56px 16px 48px; }
+.eyebrow { margin: 0 0 10px; font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; letter-spacing: -0.01em; text-wrap: balance; }
+.lede { margin: 12px 0 0; max-width: 56ch; color: var(--muted); font-size: 17px; }
+.apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 36px; }
+.app {
+  display: flex; flex-direction: column; gap: 14px; padding: 18px 20px 20px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  color: inherit; text-decoration: none; transition: transform 0.15s, box-shadow 0.15s;
+}
+.app:hover { transform: translateY(-2px); }
+.app:focus-visible { outline: 2px solid var(--kata); outline-offset: 3px; }
+.art { width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; border-radius: 8px; background: var(--bg); }
+.app h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+.kind { margin: 2px 0 0; font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.app p.body { margin: 0; text-wrap: pretty; }
+.go { margin-top: auto; font-weight: 700; }
+.app:hover .go { text-decoration: underline; text-underline-offset: 3px; }
+footer { margin-top: 36px; color: var(--muted); font-size: 14.5px; max-width: 70ch; }
+footer p { margin: 0 0 8px; }
+code { font: 13.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .app { transition: none; } .app:hover { transform: none; } }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">physics-simulators</p>
+  <h1>A 3D physics sandbox and a 4D puzzle game</h1>
+  <p class="lede">Both run in the browser on physics engines written for this folder. There is nothing to build: open one and play.</p>
+
+  <div class="apps">
+    <a class="app" href="real-physics-3d/index.html">
+      <svg class="art" viewBox="0 0 320 180" role="img" aria-label="A stack of crates with a ball flying toward it">
+        <line x1="20" y1="150" x2="300" y2="150" stroke="currentColor" stroke-opacity="0.35" stroke-width="2"/>
+        <g style="fill: var(--card)" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <rect x="190" y="110" width="40" height="40"/><rect x="232" y="110" width="40" height="40"/>
+          <rect x="211" y="68" width="40" height="40"/>
+          <rect x="211" y="26" width="40" height="40" transform="rotate(8 231 46)"/>
+        </g>
+        <path d="M40 120 Q 110 20 172 74" fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="2" stroke-dasharray="5 6"/>
+        <circle cx="176" cy="80" r="12" style="fill: var(--hazard)" stroke="currentColor" stroke-width="2"/>
+        <path d="M184 66 l6 -6 M188 76 l9 -2 M183 90 l7 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <h2>Proving Ground</h2>
+        <p class="kind">3D rigid-body simulator</p>
+      </div>
+      <p class="body">Twelve scenarios on a real-physics engine: dominoes, Jenga, Newton's cradle, a bowling lane with an oil pattern, a wrecking ball and a castle siege. Objects use real materials at their real densities, and you can rerun anything on the Moon, Mars or Jupiter.</p>
+      <span class="go">Open the simulator →</span>
+    </a>
+
+    <a class="app" href="hyperspace-4d/index.html">
+      <svg class="art" viewBox="0 0 320 180" role="img" aria-label="A tesseract drawn as a cube inside a cube">
+        <g fill="none" stroke-width="2" stroke-linejoin="round">
+          <g style="stroke: var(--kata)">
+            <path d="M100 52 H200 V152 H100 Z"/>
+            <path d="M136 30 H236 V130 H136 Z" stroke-opacity="0.55"/>
+            <path d="M100 52 L136 30 M200 52 L236 30 M200 152 L236 130 M100 152 L136 130"/>
+          </g>
+          <g style="stroke: var(--ana)">
+            <path d="M137 79 H177 V119 H137 Z"/>
+            <path d="M153 69 H193 V109 H153 Z" stroke-opacity="0.55"/>
+            <path d="M137 79 L153 69 M177 79 L193 69 M177 119 L193 109 M137 119 L153 109"/>
+          </g>
+          <g stroke="currentColor" stroke-opacity="0.4">
+            <path d="M100 52 L137 79 M200 52 L177 79 M200 152 L177 119 M100 152 L137 119"/>
+            <path d="M136 30 L153 69 M236 30 L193 69 M236 130 L193 109 M136 130 L153 109"/>
+          </g>
+        </g>
+      </svg>
+      <div>
+        <h2>Ana &amp; Kata</h2>
+        <p class="kind">4D puzzle game</p>
+      </div>
+      <p class="body">You are a hypersphere, and you see the 3D slice of a 4D world. Move ana or kata, the two ways along the fourth direction, to slip past walls that only exist over part of it. Ten levels, plus a lab where you drop tesseracts and 24&#8209;cells and cut them at any angle.</p>
+      <span class="go">Play the game →</span>
+    </a>
+  </div>
+
+  <footer>
+    <p>Both pages load Three.js and their fonts from public CDNs, so they need a network connection. They also work when opened straight from disk.</p>
+    <p>The engines are checked against textbook results:</p>
+    <p><code>node --test physics-simulators/tests/*.test.js</code></p>
+  </footer>
+</main>
+</body>
+</html>
