@@ -1,6 +1,6 @@
 # Third-party skills
 
-Eleven open-source skill packs are copied into this repo. Anything under `.claude/skills`,
+Fifteen open-source skill packs are copied into this repo. Anything under `.claude/skills`,
 `.claude/agents` and `.claude/commands` loads in every Claude Code session on this repo,
 including cloud sessions started from the web or the mobile app. The two skills from Nova's
 2 Nov batch are listed separately in `.claude/skills/NOVA_BATCH_2026-11-02.md`.
@@ -12,12 +12,16 @@ including cloud sessions started from the web or the mobile app. The two skills 
 | CLI-Anything | [HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything) `34f5195`, 2026-09-22 | Apache-2.0 | `.claude/skills/cli-anything/`, `.claude/skills/cli-hub-meta-skill/`, 69 `.claude/skills/cli-anything-<app>/` | `/cli-anything <path-or-repo>` builds a CLI. `/cli-anything refine`, `test`, `validate` and `list` do the rest |
 | ECC | [affaan-m/ECC](https://github.com/affaan-m/ECC) `b38be6a`, 2026-10-29 (v2.2.3) | MIT | 314 skills in `.claude/skills/`, 71 agents in `.claude/agents/`, 86 commands in `.claude/commands/`, support files in `.claude/ecc/` | `/ecc-guide` gives a tour. `/tdd-workflow`, `/verification-loop` and `/e2e-testing` are good starting points |
 | Graphify | [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) `32e5efe`, 2026-11-01 (v0.9.100) | Apache-2.0, with an MIT notice for earlier contributions | `.claude/skills/graphify/` | `/graphify alevel-tracker` maps a folder into a knowledge graph. The first run installs its Python package |
+| Cloudflare security audit | [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) `c1c8a8c`, 2026-09-14 | MIT | `.claude/skills/security-audit/` | Claude uses it for security questions. The full six-phase audit runs only when you ask for one |
+| Watch | [bradautomates/claude-video](https://github.com/bradautomates/claude-video) `03ceb42`, 2026-09-25 | MIT | `.claude/skills/watch/` | `/watch <url>` |
+| Vercel agent skills | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `1a2c79d`, 2026-10-27 | MIT (declared in its README and skill frontmatter) | 9 folders in `.claude/skills/`: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-view-transitions`, `vercel-react-native-skills`, `web-design-guidelines`, `writing-guidelines`, `deploy-to-vercel`, `vercel-cli-with-tokens`, `vercel-optimize` | Claude applies the React ones when writing React or Next.js. `/deploy-to-vercel`, `/vercel-optimize` and `/web-design-guidelines` run on request |
 | Superpowers | [obra/superpowers](https://github.com/obra/superpowers) `2ce8aa1`, 2026-10-21 (v7.0.1) | MIT | 15 skills in `.claude/skills/`, its startup hook script in `.claude/superpowers/` | Claude picks them up from their descriptions. `/brainstorming` before building something, `/systematic-debugging` for a bug, `/writing-plans` then `/subagent-driven-development` for a bigger change |
 | Claude plugins (official) | [anthropics/claude-plugins-official](https://github.com/anthropics/claude-plugins-official) `a7ba5b9`, 2026-10-30 | Apache-2.0, plus each plugin's own license in `.claude/claude-plugins-official/licenses/` | 23 skills, 17 agents and 10 commands from 19 of its 40 plugins | `/frontend-design`, `/claude-md-improver`, `/pr-review-toolkit-review-pr`, `/official-feature-dev`, `/skill-creator` |
 | wshobson/agents | [wshobson/agents](https://github.com/wshobson/agents) `7e2fb55`, 2026-10-30 (catalog v1.7.1) | MIT. Its `conductor` and `superself` plugins say Apache-2.0 | 185 skills, 147 agents and 96 commands, support files in `.claude/wshobson/` | Ask for an agent by name, such as `backend-architect` or `kubernetes-architect`. `/full-review`, `/tdd-cycle`, `/python-scaffold`, `/avoid-ai-writing` |
-| find-skills | [vercel-labs/skills](https://github.com/vercel-labs/skills) `92a9a34`, 2026-10-29 | MIT | `.claude/skills/find-skills/` | Ask "is there a skill for X". It searches with `npx skills find` |
+| Find Skills | [vercel-labs/skills](https://github.com/vercel-labs/skills) `92a9a34`, 2026-10-29 | MIT | `.claude/skills/find-skills/` | Ask "is there a skill for X?" It searches skills.sh with `npx skills find` |
 | claude-mem workflow skills | [thedotmack/claude-mem](https://github.com/thedotmack/claude-mem) `26ccf4d`, 2026-11-02 (v15.8.3) | Apache-2.0 | 13 skills in `.claude/skills/`, license in `.claude/claude-mem/` | `/handoff` before you end a long session, `/make-plan` then `/do`, `/babysit` on a PR |
-| Mem0 developer skills | [mem0ai/mem0](https://github.com/mem0ai/mem0) `753496c`, 2026-10-30 | Apache-2.0 | 6 skills in `.claude/skills/`, license in `.claude/mem0/` | `/mem0-integrate` adds Mem0 memory to an app you are building |
+| mem0 skills | [mem0ai/mem0](https://github.com/mem0ai/mem0) `753496c`, 2026-10-30 | Apache-2.0 | 6 folders in `.claude/skills/`: `mem0`, `mem0-cli`, `mem0-integrate`, `mem0-oss-to-platform`, `mem0-test-integration`, `mem0-vercel-ai-sdk` | For building long-term memory into apps such as Jarvis. `/mem0-integrate` adds mem0 to a repo |
+| Shelf | Five big collections, listed under [The shelf](#the-shelf) | Per collection | `.claude/shelf/` and `.claude/skills/shelf/` | `/shelf <what you need>` finds an item and pulls it in |
 
 Arena runs a tournament of sub-agents, and that gets expensive. The default of 100 agents
 makes 595 sub-agent calls. `--quick` uses 16 agents and makes 91 calls.
@@ -113,6 +117,20 @@ To update it, replace `SKILL.md` and `references/` with `graphify/skill.md` and
 `graphify/skills/claude/references/` from a newer upstream copy. The Apache-2.0 license, the
 MIT license and the NOTICE file are included in the folder.
 
+## Vercel agent skills
+
+These are copied unchanged, with a few things to know:
+
+- Vercel's folders are named after each skill's `name` field, which is also what `npx skills add`
+  does. So `react-best-practices` became `vercel-react-best-practices`. The packaged `.zip` copies
+  and the build tooling under `packages/` were left out.
+- Vercel ships no LICENSE file. Its README and four of the skills declare MIT.
+- `web-design-guidelines` and `writing-guidelines` fetch their rules from GitHub every time they
+  run, so what they check can change after this copy was made.
+- `deploy-to-vercel` deploys previews unless you ask for production, and asks before any git
+  push. `vercel-cli-with-tokens` and `vercel-optimize` need the Vercel CLI and a `VERCEL_TOKEN`.
+  `vercel-optimize` shells out only to `vercel` and `rg`.
+
 ## Superpowers
 
 All 15 skills were copied. The only change: Superpowers skills point at each other with the
@@ -122,14 +140,15 @@ references now read `writing-plans`.
 The plugin also ships a startup hook. At the start of every session it pastes the
 `using-superpowers` skill into the conversation, and that skill tells Claude to check for a
 matching skill before every reply, clarifying questions included. The hook is what makes
-Superpowers strict. Its script is in `.claude/superpowers/session-start`, but it is not
-switched on yet, because that means editing `.claude/settings.json` (see "Waiting on you"
-below). Until then the skills still load, and Claude uses them when a description matches
-the task. Nothing forces it to.
+Superpowers strict. Its script is in `.claude/superpowers/session-start`, but it has been
+left off (see "Decided on `.claude/settings.json`" below) — the same call already made for
+ECC's and Graphify's own session-wide hooks in this repo. Until you turn it on, the skills
+still load normally, and Claude uses them when a description matches the task. Nothing forces
+it to.
 
-Once the hook is on, expect more skill calls, even on short questions. `brainstorming` asks
-questions one at a time before any code gets written. Say "skip brainstorming" when you just
-want a quick change.
+If you turn the hook on, expect more skill calls, even on short questions. `brainstorming`
+asks questions one at a time before any code gets written. Say "skip brainstorming" when you
+just want a quick change.
 
 The optional visual brainstorming page runs a small web server on 127.0.0.1 and loads its
 logo from primeradiant.com, the author's site. The hook script differs from upstream in one
@@ -211,18 +230,18 @@ were changed to point there. The protect-mcp and review-agent-governance hooks a
 switched on. Their setup skills, `/protect-mcp-setup` and `/review-agent-setup`, walk through
 adding them if you want signed audit trails or approval gates.
 
-## find-skills and the `npx skills` installer
+## Find Skills and the `npx skills` installer
 
 vercel-labs/skills is mostly a command-line installer that runs through `npx skills`, so
 there is nothing to install for it. Its one user-facing skill, `find-skills`, is copied. Ask
-"is there a skill for X" and Claude searches with `npx skills find`.
+"is there a skill for X?" and Claude searches with `npx skills find`.
 
 The skill suggests `npx skills add <owner/repo@skill> -g -y`. In a cloud session `-g`
 installs into the container's home folder, which goes away when the session ends. Use
 `npx skills add <owner/repo> --skill <name> -a claude-code` instead. That puts the skill in
 this repo's `.claude/skills/`, and committing it keeps it.
 
-## Memory: claude-mem and Mem0
+## Memory: claude-mem and mem0
 
 Neither memory engine is installed. Both need their plugin running in the background, and
 both keep or send a record of what happens in every session.
@@ -231,7 +250,7 @@ both keep or send a record of what happens in every session.
   stores the result in `~/.claude-mem`. A cloud session deletes that folder along with the
   container, so it can't carry memory from one cloud session to the next. The only way
   around that is its paid cloud sync (cmem.ai), which uploads your sessions to that service.
-- Mem0's Claude Code plugin captures your prompts and Claude's replies through hooks and
+- mem0's Claude Code plugin captures your prompts and Claude's replies through hooks and
   sends them to the Mem0 Platform. That memory does survive between cloud sessions, but it
   needs a Mem0 API key, and the text of every session goes to Mem0.
 
@@ -247,7 +266,7 @@ claude plugin marketplace add mem0ai/mem0
 claude plugin install mem0@mem0-plugins --scope user --config api_key="$MEM0_API_KEY"
 ```
 
-For cloud sessions, the Mem0 plugin could be wired into this repo, with the API key saved as
+For cloud sessions, the mem0 plugin could be wired into this repo, with the API key saved as
 an environment secret. That sends your session text to Mem0, so it is left for you to decide.
 
 What was copied is the part that works on its own:
@@ -260,8 +279,10 @@ What was copied is the part that works on its own:
 - The other 17 were left out. They need the worker or its search tools (`mem-search`,
   `timeline-report`, `smart-explore` and others), or they exist to maintain claude-mem
   itself (`version-bump`, `release`, `build-and-release`).
-- Mem0's 6 skills for building Mem0 into an app: `mem0`, `mem0-cli`, `mem0-integrate`,
-  `mem0-test-integration`, `mem0-oss-to-platform` and `mem0-vercel-ai-sdk`.
+- mem0's 6 skills for building mem0 into an app: `mem0`, `mem0-cli`, `mem0-integrate`,
+  `mem0-oss-to-platform`, `mem0-test-integration` and `mem0-vercel-ai-sdk`.
+  `mem0-oss-to-platform` quotes mem0's data migration one-liner (`curl ... | bash`) with a
+  note not to run it unprompted. That was the only thing the first scan of these flagged.
 
 ## MCP servers
 
@@ -290,26 +311,70 @@ set. The github-mcp-server repo has no skills of its own. playwright-mcp has one
 `playwright-triage`, but it only runs inside that repo's own issue-triage workflow, so it was
 left out.
 
-## Waiting on you: `.claude/settings.json`
+## The shelf
 
-Two changes to `.claude/settings.json` are drafted and not made. Claude Code's auto mode
-stops Claude from editing its own settings and hooks on its own initiative, so they need your
-go-ahead.
+Five of the collections are too big to load. Between them they hold 2,810 items: 1,562 skills,
+600 agents and 648 commands. Loaded in full they would add about 460,000 characters, roughly
+115,000 tokens, to every turn, even with each description cut to 220 characters. 58 of the
+names clash with skills, agents or commands already here, and 65 names appear in more than one
+collection.
 
-1. `skillOverrides` set to `"name-only"` for 327 of the 349 new skills and commands. Without
-   this, the new entries add about 86,000 characters of descriptions to the skill list Claude
-   reads every turn, and the repo's part of the list grows from about 27,000 to about
-   114,000 characters. On a model with a 200,000-token context window that runs well past
-   the list's budget, and Claude Code then trims descriptions across the board, starting with
-   the skills you use least, your claude.ai skills included. With the overrides the repo's
-   part comes to about 40,000 characters. These 22 keep their full descriptions: the 14 core
-   Superpowers skills, `find-skills`, `frontend-design`, `claude-md-improver`,
-   `claude-automation-recommender`, `playground`, `session-report`, `avoid-ai-writing` and
-   `handoff`. The same change raises `skillListingBudgetFraction` from 0.08 to 0.1, so the
-   whole list, synced skills included, still fits on a 200,000-token window with some room
-   left.
-2. The Superpowers startup hook described above, as a `SessionStart` entry that runs
-   `.claude/superpowers/session-start`.
+So they're indexed instead of copied:
+
+| Key | Collection | Commit | License | Skills | Agents | Commands |
+| --- | --- | --- | --- | ---: | ---: | ---: |
+| `alirezarezvani` | [alirezarezvani/claude-skills](https://github.com/alirezarezvani/claude-skills) | `9ef0c3c` | MIT | 389 | 128 | 161 |
+| `wshobson` | [wshobson/agents](https://github.com/wshobson/agents) | `7e2fb55` | MIT | 185 | 202 | 95 |
+| `ccplugins` | [ccplugins/awesome-claude-code-plugins](https://github.com/ccplugins/awesome-claude-code-plugins) | `5bd4f16` | Apache-2.0 | 84 | 132 | 129 |
+| `rohitg00` | [rohitg00/awesome-claude-code-toolkit](https://github.com/rohitg00/awesome-claude-code-toolkit) | `ebdf1d5` | Apache-2.0 | 40 | 138 | 262 |
+| `composio` | [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | `be2a406` | Per skill, no root license | 864 | 0 | 1 |
+
+Note: `wshobson/agents` is indexed here under its old, pre-11/2 scope *and* fully copied in as
+its own pack above. The copy (185 skills, 147 agents, 96 commands from its 92 plugins) is what
+actually loads; this `wshobson` shelf row is left over from before that copy was added and
+points at the same upstream repo. It isn't worth pulling individual items through
+`.claude/shelf/pull.sh wshobson ...` any more — anything in it is already installed, under the
+name `.claude/wshobson/RENAMES.md` gives it.
+
+- `.claude/shelf/<key>.tsv` has one row per item: type, name, description and path.
+- `bash .claude/shelf/pull.sh <key> <path> [new-name]` fetches that one item at the pinned
+  commit into `.claude/skills/`, `.claude/agents/` or `.claude/commands/`. It refuses names
+  that are taken, copies the upstream license into a skill folder that lacks one, and flags
+  shell pipes, override phrasing, plugin-only paths and pre-approved tools.
+- The `shelf` skill tells Claude how to search and pull, so asking for something that isn't
+  loaded is enough.
+- The index skips hidden folders (mirrors for other tools, such as `.gemini/`) and `docs/`,
+  `tests/`, `examples/` and `templates/`. Exact duplicates are dropped. rohitg00's hooks, rules
+  and MCP configs aren't indexed.
+- 832 of the `composio` skills automate one app each through Composio's Rube MCP connector, so
+  they need a Composio account.
+- To refresh the shelf, shallow-clone the five repos into one folder as `owner_repo` and run
+  `python3 -I .claude/shelf/build_index.py <that folder> .claude/shelf`. The new commits land in
+  `collections.tsv`.
+
+## Decided on `.claude/settings.json`
+
+Two changes needed your go-ahead before Claude could make them, since auto mode stops Claude
+from editing its own settings and hooks on its own initiative. Both are now decided:
+
+1. **Made.** `skillOverrides` is set to `"name-only"` for 327 of the 349 skills and commands
+   added on 2 Nov. Without this, those entries would add about 86,000 characters of
+   descriptions to the skill list Claude reads every turn, taking the repo's part of the list
+   from about 27,000 to about 114,000 characters — well past the budget on a 200,000-token
+   window, which would have Claude Code trimming descriptions across the board, starting with
+   the skills you use least, your claude.ai skills included. With the overrides applied, the
+   repo's part comes to about 40,000 characters instead. 22 of the 349 keep their full
+   descriptions: 14 of Superpowers' 15 skills (all but `diagnosing-superpowers`), `find-skills`,
+   `frontend-design`, `claude-md-improver`, `claude-automation-recommender`, `playground`,
+   `session-report`, `avoid-ai-writing` and `handoff`. `skillListingBudgetFraction` went from
+   0.08 to 0.1 alongside it, so the whole list, synced skills included, still fits on a
+   200,000-token window with room left.
+2. **Left off.** The Superpowers startup hook (`SessionStart` → `.claude/superpowers/session-start`)
+   was not wired in. ECC's 28 hooks and Graphify's "always on" hooks were left unwired in this
+   repo for the same reason: a hook that fires on every tool call or every session start changes
+   how Claude behaves on unrelated work too, not just in this repo's own skill-heavy sessions. If
+   you want it on, add a `SessionStart` entry to `.claude/settings.json` that runs
+   `.claude/superpowers/session-start` — see "Superpowers" above for what changes once you do.
 
 Agents have no equivalent setting. The 164 new agents add about 51,000 characters, roughly
 13,000 tokens, to the agent list Claude sees every turn. If that is too much, delete the agent
@@ -320,22 +385,22 @@ where every file came from.
 
 Claude Code puts a list of skill names and descriptions into context on every turn so Claude
 knows what it can use. The list has a size cap, and past the cap descriptions get dropped,
-starting with the skills used least. Adding about 480 entries at full length would have
-pushed the list to roughly four times the cap, and most skills, including the ones synced
-from your claude.ai account, would have lost their descriptions.
+starting with the skills used least.
 
-`.claude/settings.json` keeps the list manageable:
+`.claude/settings.json` keeps the list manageable, in two layers:
 
-- `skillOverrides` sets 420 entries to `"name-only"`. These are the rest of ECC's skills, ECC's
-  commands, the 69 per-app CLI-Anything skills and `graphify`. Claude still sees every name and can use
-  any of them, and `/name` works as usual.
-- These keep full descriptions: `arena`, `karpathy-guidelines`, `cli-anything`,
-  `cli-hub-meta-skill`, and the 50 skills in ECC's own "minimal" profile (its 52 workflow
-  skills minus `configure-ecc` and `skill-host-compat`).
-- `skillListingBudgetFraction` is 0.08, which leaves room for the whole list without
-  truncation. The entries added here come to about 27,000 characters, roughly 7,000 tokens
-  per turn, on top of the skills you already had. ECC's 71 agents add about 4,000 tokens to
-  the agent list.
+- From the first build: `skillOverrides` sets 429 entries to `"name-only"` — the rest of ECC's
+  skills, ECC's commands, the 69 per-app CLI-Anything skills, `graphify`, five of the mem0
+  skills, and `vercel-cli-with-tokens`, `vercel-react-native-skills`,
+  `vercel-react-view-transitions` and `writing-guidelines`. These keep full descriptions:
+  `arena`, `karpathy-guidelines`, `cli-anything`, `cli-hub-meta-skill`, and the 50 skills in
+  ECC's own "minimal" profile (its 52 workflow skills minus `configure-ecc` and
+  `skill-host-compat`).
+- From the 2 Nov packs: 327 more entries set to `"name-only"`, as described above.
+- `skillOverrides` now has 751 entries in total. `skillListingBudgetFraction` is 0.1, which
+  leaves room for the whole list without truncation: roughly 7,000 tokens per turn from the
+  first build's entries, plus roughly 13,000 tokens from the 2 Nov packs' overrides and new
+  agents combined, on top of the skills you already had.
 
 To give a skill its description back, change its value to `"on"` or delete its line. To hide
 one from Claude but keep `/name`, use `"user-invocable-only"`. `"off"` hides it from both.
@@ -358,15 +423,15 @@ one from Claude but keep `/name`, use `"user-invocable-only"`. `"off"` hides it 
 - Seven of the new entries pre-approve unrestricted Bash while they run: `/create-plugin`,
   `/create-docker-mcp-tunnel`, `/pr-review-toolkit-review-pr`, `/business-case`,
   `/financial-projections`, `/market-opportunity` and the `standup` skill.
-- The notes in `mem0-oss-to-platform` mention Mem0's migration script, which is run with
-  `curl ... | bash` from Mem0's own GitHub repo. The skill treats that migration as opt-in.
 - `receipts` and `session-report` read your transcripts in `~/.claude/projects`. In a cloud
   session that only covers the current container.
 
 ## Updating or removing a pack
 
-Arena, Karpathy and CLI-Hub are plain folders. To update one, replace the folder with the
-upstream copy.
+Arena, Karpathy, CLI-Hub, the Cloudflare audit, Watch, the Vercel skills, Find Skills and the
+mem0 skills are plain folders. To update one, replace the folder with the upstream copy.
+
+To remove the shelf, delete `.claude/shelf/` and `.claude/skills/shelf/`.
 
 For CLI-Anything and ECC, delete everything in the pack's `installed-paths.txt`, clone the
 upstream repo, and lay it out again the same way. Re-apply the renames above and check for new
@@ -378,7 +443,7 @@ To remove a pack, delete its folders. For ECC and CLI-Anything, delete every pat
 The packs added on 2 Nov work the same way. Each one's `installed-paths.txt` lists every
 skill folder, agent file, command file and support folder it added. To update one, clone the
 upstream repo again, lay it out the same way, and re-apply the renames in its `RENAMES.md`
-(Superpowers, find-skills, claude-mem and Mem0 have no renames). To remove one, delete the
+(Superpowers, find-skills, claude-mem and mem0 have no renames). To remove one, delete the
 paths in its `installed-paths.txt` and any of its names in `skillOverrides`. For Superpowers,
 also remove its `SessionStart` hook if you turned it on. Playwright is the `playwright` entry
 in `.mcp.json` plus `.claude/mcp/playwright.sh`.
