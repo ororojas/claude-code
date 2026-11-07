@@ -268,6 +268,11 @@
     "master-agreement-generator": "name-only",
     "mcp-dependency-review": "name-only",
     "mcp-server-patterns": "name-only",
+    "mem0-cli": "name-only",
+    "mem0-integrate": "name-only",
+    "mem0-oss-to-platform": "name-only",
+    "mem0-test-integration": "name-only",
+    "mem0-vercel-ai-sdk": "name-only",
     "messages-ops": "name-only",
     "ml-adoption-playbook": "name-only",
     "mle-workflow": "name-only",
@@ -414,6 +419,9 @@
     "unified-notifications-ops": "name-only",
     "update-codemaps": "name-only",
     "update-docs": "name-only",
+    "vercel-cli-with-tokens": "name-only",
+    "vercel-react-native-skills": "name-only",
+    "vercel-react-view-transitions": "name-only",
     "video-editing": "name-only",
     "videodb": "name-only",
     "visa-doc-translate": "name-only",
@@ -421,6 +429,7 @@
     "vue-patterns": "name-only",
     "vue-review": "name-only",
     "workspace-surface-audit": "name-only",
+    "writing-guidelines": "name-only",
     "x-api": "name-only"
   }
 }
