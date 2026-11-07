@@ -735,6 +735,9 @@
     "update-docs": "name-only",
     "uv-package-manager": "name-only",
     "vector-index-tuning": "name-only",
+    "vercel-cli-with-tokens": "name-only",
+    "vercel-react-native-skills": "name-only",
+    "vercel-react-view-transitions": "name-only",
     "video-editing": "name-only",
     "videodb": "name-only",
     "visa-doc-translate": "name-only",
@@ -753,6 +756,7 @@
     "workflow-patterns": "name-only",
     "workspace-surface-audit": "name-only",
     "wowerpoint": "name-only",
+    "writing-guidelines": "name-only",
     "x-api": "name-only",
     "xss-scan": "name-only"
   }
