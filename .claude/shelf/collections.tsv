@@ -1,0 +1,6 @@
+key	repo	commit	license	skills	agents	commands
+alirezarezvani	alirezarezvani/claude-skills	9ef0c3c213932e645cc5cbeeb3c35c3a762a2437	MIT	389	128	161
+wshobson	wshobson/agents	7e2fb559cf4b824b27f1fec49fe88f7511066d26	MIT	185	202	95
+ccplugins	ccplugins/awesome-claude-code-plugins	5bd4f168edf7c18a8303cbfde20708ff62aabc4d	Apache-2.0	84	132	129
+rohitg00	rohitg00/awesome-claude-code-toolkit	ebdf1d596d2cde5c5cceb32177e8d1cf4829e7d9	Apache-2.0	40	138	262
+composio	ComposioHQ/awesome-claude-skills	be2a406907dbc61b73e6827ded415c96139d13a2	per skill (no root license)	864	0	1
