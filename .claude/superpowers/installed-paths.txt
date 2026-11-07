@@ -1,0 +1,16 @@
+.claude/skills/brainstorming
+.claude/skills/diagnosing-superpowers
+.claude/skills/dispatching-parallel-agents
+.claude/skills/executing-plans
+.claude/skills/finishing-a-development-branch
+.claude/skills/receiving-code-review
+.claude/skills/requesting-code-review
+.claude/skills/subagent-driven-development
+.claude/skills/systematic-debugging
+.claude/skills/test-driven-development
+.claude/skills/using-git-worktrees
+.claude/skills/using-superpowers
+.claude/skills/verification-before-completion
+.claude/skills/writing-plans
+.claude/skills/writing-skills
+.claude/superpowers
