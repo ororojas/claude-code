@@ -1,0 +1,14 @@
+{
+  "name": "voxel-survival",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A first-person voxel survival game built from scratch with WebGL2 — no engine, no build step, no assets.",
+  "type": "module",
+  "scripts": {
+    "start": "node serve.js",
+    "test": "node test/run.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
