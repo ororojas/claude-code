@@ -11,18 +11,27 @@ including cloud sessions started from the web or the mobile app.
 | CLI-Anything | [HKUDS/CLI-Anything](https://github.com/HKUDS/CLI-Anything) `34f5195`, 2026-09-22 | Apache-2.0 | `.claude/skills/cli-anything/`, `.claude/skills/cli-hub-meta-skill/`, 69 `.claude/skills/cli-anything-<app>/` | `/cli-anything <path-or-repo>` builds a CLI. `/cli-anything refine`, `test`, `validate` and `list` do the rest |
 | ECC | [affaan-m/ECC](https://github.com/affaan-m/ECC) `b38be6a`, 2026-10-29 (v2.2.3) | MIT | 314 skills in `.claude/skills/`, 71 agents in `.claude/agents/`, 86 commands in `.claude/commands/`, support files in `.claude/ecc/` | `/ecc-guide` gives a tour. `/tdd-workflow`, `/verification-loop` and `/e2e-testing` are good starting points |
 | Graphify | [Graphify-Labs/graphify](https://github.com/Graphify-Labs/graphify) `32e5efe`, 2026-11-01 (v0.9.100) | Apache-2.0, with an MIT notice for earlier contributions | `.claude/skills/graphify/` | `/graphify alevel-tracker` maps a folder into a knowledge graph. The first run installs its Python package |
-| Cloudflare security audit | [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) `c1c8a8c`, 2026-09-14 | MIT | `.claude/skills/security-audit/` | Claude uses it for security questions. The full six-phase audit runs only when you ask for one |
-| Watch | [bradautomates/claude-video](https://github.com/bradautomates/claude-video) `03ceb42`, 2026-09-25 | MIT | `.claude/skills/watch/` | `/watch <url>` |
-| Vercel agent skills | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `1a2c79d`, 2026-10-27 | MIT (declared in its README and skill frontmatter) | 9 folders in `.claude/skills/`: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-view-transitions`, `vercel-react-native-skills`, `web-design-guidelines`, `writing-guidelines`, `deploy-to-vercel`, `vercel-cli-with-tokens`, `vercel-optimize` | Claude applies the React ones when writing React or Next.js. `/deploy-to-vercel`, `/vercel-optimize` and `/web-design-guidelines` run on request |
-| Find Skills | [vercel-labs/skills](https://github.com/vercel-labs/skills) `92a9a34`, 2026-10-29 | MIT | `.claude/skills/find-skills/` | Ask "is there a skill for X?" It searches skills.sh with `npx skills find` |
+| Cloudflare security audit | [cloudflare/security-audit-skill](https://github.com/cloudflare/security-audit-skill) `c1c8a8c`, 2026-09-14 | MIT | `plugins/oro-skills/skills/security-audit/` | Claude uses it for security questions. The full six-phase audit runs only when you ask for one |
+| Watch | [bradautomates/claude-video](https://github.com/bradautomates/claude-video) `03ceb42`, 2026-09-25 | MIT | `plugins/oro-skills/skills/watch/` | `/watch <url>` |
+| Vercel agent skills | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) `1a2c79d`, 2026-10-27 | MIT (declared in its README and skill frontmatter) | 9 folders. Five in `plugins/oro-skills/skills/` (`vercel-react-best-practices`, `vercel-composition-patterns`, `deploy-to-vercel`, `vercel-optimize`, `web-design-guidelines`), the rest in `.claude/skills/`: `vercel-react-best-practices`, `vercel-composition-patterns`, `vercel-react-view-transitions`, `vercel-react-native-skills`, `web-design-guidelines`, `writing-guidelines`, `deploy-to-vercel`, `vercel-cli-with-tokens`, `vercel-optimize` | Claude applies the React ones when writing React or Next.js. `/deploy-to-vercel`, `/vercel-optimize` and `/web-design-guidelines` run on request |
+| Find Skills | [vercel-labs/skills](https://github.com/vercel-labs/skills) `92a9a34`, 2026-10-29 | MIT | `plugins/oro-skills/skills/find-skills/` | Ask "is there a skill for X?" It searches skills.sh with `npx skills find` |
 | mem0 skills | [mem0ai/mem0](https://github.com/mem0ai/mem0) `753496c`, 2026-10-30 | Apache-2.0 | 6 folders in `.claude/skills/`: `mem0`, `mem0-cli`, `mem0-integrate`, `mem0-oss-to-platform`, `mem0-test-integration`, `mem0-vercel-ai-sdk` | For building long-term memory into apps such as Jarvis. `/mem0-integrate` adds mem0 to a repo |
-| Shelf | Five big collections, listed under [The shelf](#the-shelf) | Per collection | `.claude/shelf/` and `.claude/skills/shelf/` | `/shelf <what you need>` finds an item and pulls it in |
+| Shelf | Five big collections, listed under [The shelf](#the-shelf) | Per collection | `plugins/oro-skills/skills/shelf/` (index, `pull.sh` and the skill) | `/shelf <what you need>` finds an item and pulls it in |
 
 Arena runs a tournament of sub-agents, and that gets expensive. The default of 100 agents
 makes 595 sub-agent calls. `--quick` uses 16 agents and makes 91 calls.
 
 Exact lists of the paths each big pack added are in `.claude/ecc/installed-paths.txt` and
 `.claude/skills/cli-anything/installed-paths.txt`.
+
+## The everywhere set
+
+Nine skills live in `plugins/oro-skills/skills/` instead of `.claude/skills/`: `security-audit`,
+`watch`, `find-skills`, `shelf` and five Vercel skills. That folder is the `oro-skills` plugin in
+this repo's marketplace, and on the laptop `~/.claude/skills` is a junction to it, so these load
+in every project. Cloud sessions get them with
+`/plugin install oro-skills --marketplace ororojas/claude-code`.
+See `plugins/oro-skills/README.md`.
 
 ## Why these are plain files and not plugins
 
@@ -145,8 +154,8 @@ So they're indexed instead of copied:
 | `rohitg00` | [rohitg00/awesome-claude-code-toolkit](https://github.com/rohitg00/awesome-claude-code-toolkit) | `ebdf1d5` | Apache-2.0 | 40 | 138 | 262 |
 | `composio` | [ComposioHQ/awesome-claude-skills](https://github.com/ComposioHQ/awesome-claude-skills) | `be2a406` | Per skill, no root license | 864 | 0 | 1 |
 
-- `.claude/shelf/<key>.tsv` has one row per item: type, name, description and path.
-- `bash .claude/shelf/pull.sh <key> <path> [new-name]` fetches that one item at the pinned
+- `plugins/oro-skills/skills/shelf/<key>.tsv` has one row per item: type, name, description and path.
+- `bash plugins/oro-skills/skills/shelf/pull.sh <key> <path> [new-name]` fetches that one item at the pinned
   commit into `.claude/skills/`, `.claude/agents/` or `.claude/commands/`. It refuses names
   that are taken, copies the upstream license into a skill folder that lacks one, and flags
   shell pipes, override phrasing, plugin-only paths and pre-approved tools.
@@ -158,7 +167,7 @@ So they're indexed instead of copied:
 - 832 of the `composio` skills automate one app each through Composio's Rube MCP connector, so
   they need a Composio account.
 - To refresh the shelf, shallow-clone the five repos into one folder as `owner_repo` and run
-  `python3 -I .claude/shelf/build_index.py <that folder> .claude/shelf`. The new commits land in
+  `python3 -I plugins/oro-skills/skills/shelf/build_index.py <that folder> plugins/oro-skills/skills/shelf`. The new commits land in
   `collections.tsv`.
 
 ## Context cost and `.claude/settings.json`
@@ -211,7 +220,7 @@ one from Claude but keep `/name`, use `"user-invocable-only"`. `"off"` hides it 
 Arena, Karpathy, CLI-Hub, the Cloudflare audit, Watch, the Vercel skills, Find Skills and the
 mem0 skills are plain folders. To update one, replace the folder with the upstream copy.
 
-To remove the shelf, delete `.claude/shelf/` and `.claude/skills/shelf/`.
+To remove the shelf, delete `plugins/oro-skills/skills/shelf/`.
 
 For CLI-Anything and ECC, delete everything in the pack's `installed-paths.txt`, clone the
 upstream repo, and lay it out again the same way. Re-apply the renames above and check for new

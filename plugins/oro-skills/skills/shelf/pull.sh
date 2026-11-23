@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Pull one skill, agent or command from the shelf into .claude/, at the
+# Pull one skill, agent or command from the shelf into the current project's .claude/, at the
 # upstream commit recorded in collections.tsv.
 #
-#   bash .claude/shelf/pull.sh <collection> <path> [new-name]
+#   bash <shelf skill dir>/pull.sh <collection> <path> [new-name]
 #
 # <collection>  a key from collections.tsv: alirezarezvani, wshobson, ccplugins,
 #               rohitg00 or composio
@@ -11,7 +11,8 @@
 set -euo pipefail
 
 shelf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-claude_dir="$(dirname "$shelf")"
+# Items land in the project you are working in. Set SHELF_DEST to pull elsewhere.
+claude_dir="${SHELF_DEST:-$PWD/.claude}"
 
 usage() {
   sed -n '5,12p' "${BASH_SOURCE[0]}" | sed -E 's/^# ?//' >&2

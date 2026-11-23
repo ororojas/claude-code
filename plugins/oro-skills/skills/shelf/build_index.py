@@ -1,6 +1,6 @@
 """Build the shelf catalogs for the big skill collections.
 
-Usage: python3 -I .claude/shelf/build_index.py <clones_dir> .claude/shelf
+Usage: python3 -I <shelf skill dir>/build_index.py <clones_dir> <shelf skill dir>
 
 <clones_dir> holds shallow clones named owner_repo, for example
 wshobson_agents. The script rewrites collections.tsv with each clone's
@@ -8,7 +8,7 @@ commit, so pull.sh fetches items from the same commit that was indexed.
 
 For each collection it writes <key>.tsv with one row per skill, agent and
 command: type, name, description, path. Paths are relative to the upstream
-repo root, so .claude/shelf/pull.sh can fetch exactly that item later.
+repo root, so pull.sh can fetch exactly that item later.
 """
 import os
 import re
