@@ -28,6 +28,8 @@ Upstream sources and licenses are in `.claude/THIRD_PARTY_SKILLS.md`.
   That needs Claude Code 2.1.275 or later. On older versions run
   `/plugin marketplace add ororojas/claude-code` then `/plugin install oro-skills@claude-code-plugins`.
 
-  Plugin skills are namespaced, for example `/oro-skills:watch`.
+  Plugin skills are namespaced, for example `/oro-skills:watch`. Cloud sessions start from a fresh
+  container and may not keep the plugin; if a new session lacks these skills, run the install again.
+  Cloud sessions on this repo no longer get them from `.claude/skills/`.
 - **Plugins** (Superpowers, frontend-design, Playwright, ui-ux-pro-max and the rest) stay
   installed as plugins at user scope. Don't copy their files here.

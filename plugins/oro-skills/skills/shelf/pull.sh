@@ -12,10 +12,19 @@ set -euo pipefail
 
 shelf="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Items land in the project you are working in. Set SHELF_DEST to pull elsewhere.
-claude_dir="${SHELF_DEST:-$PWD/.claude}"
+if [ -z "${SHELF_DEST:-}" ]; then
+  # From your home folder, .claude is the user-level folder (on the laptop, a junction into
+  # the claude-code repo), so refuse rather than load the item in every project.
+  if [ "$(pwd -P)" = "$(cd "$HOME" && pwd -P)" ]; then
+    echo "Run this from a project folder, or set SHELF_DEST." >&2
+    exit 1
+  fi
+  project="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+fi
+claude_dir="${SHELF_DEST:-$project/.claude}"
 
 usage() {
-  sed -n '5,12p' "${BASH_SOURCE[0]}" | sed -E 's/^# ?//' >&2
+  sed -n '5,10p' "${BASH_SOURCE[0]}" | sed -E 's/^# ?//' >&2
   exit 2
 }
 [ $# -ge 2 ] && [ $# -le 3 ] || usage
@@ -65,7 +74,7 @@ taken=""
 if [ "$type" = skill ] && [ -e "$claude_dir/commands/$target.md" ]; then taken="$claude_dir/commands/$target.md"; fi
 if [ "$type" = command ] && [ -e "$claude_dir/skills/$target" ]; then taken="$claude_dir/skills/$target"; fi
 if [ -n "$taken" ]; then
-  echo "'$target' is taken by .claude/${taken#"$claude_dir/"}. Run again with a new name, for example: $collection-$target" >&2
+  echo "'$target' is taken by $taken. Run again with a new name, for example: $collection-$target" >&2
   exit 1
 fi
 

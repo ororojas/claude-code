@@ -21,6 +21,7 @@ Search all five indexes at once. Try two or three phrasings, because the authors
 things differently:
 
 ```bash
+SHELF="<this skill's base directory>"
 grep -i "keyword" "$SHELF"/*.tsv | cut -c1-260 | head -40
 ```
 
@@ -33,6 +34,7 @@ description. If they already named the exact item, skip straight to pulling it.
 ## Pull it
 
 ```bash
+SHELF="<this skill's base directory>"
 bash "$SHELF/pull.sh" <collection> <path> [new-name]
 ```
 
