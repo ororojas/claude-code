@@ -5,7 +5,7 @@ description: Search and pull items from the shelf, an index of 2,810 skills, age
 
 # The shelf
 
-`.claude/shelf/` indexes five large collections at the commits checked on 2 Nov 2026.
+This skill's own folder (the base directory Claude is given when the skill loads, called `$SHELF` below) indexes five large collections at the commits checked on 2 Nov 2026.
 Nothing on it loads by default. Pull single items when they're needed.
 
 | File | Holds |
@@ -21,7 +21,7 @@ Search all five indexes at once. Try two or three phrasings, because the authors
 things differently:
 
 ```bash
-grep -i "keyword" .claude/shelf/*.tsv | cut -c1-260 | head -40
+grep -i "keyword" "$SHELF"/*.tsv | cut -c1-260 | head -40
 ```
 
 The filename before the colon is the collection key. Descriptions are the authors' own words.
@@ -33,11 +33,11 @@ description. If they already named the exact item, skip straight to pulling it.
 ## Pull it
 
 ```bash
-bash .claude/shelf/pull.sh <collection> <path> [new-name]
+bash "$SHELF/pull.sh" <collection> <path> [new-name]
 ```
 
 `<path>` is the last column of the row, copied exactly. The script fetches only that item at the
-pinned commit and puts it in `.claude/skills/`, `.claude/agents/` or `.claude/commands/`. It
+pinned commit and puts it in the current project's `.claude/skills/`, `.claude/agents/` or `.claude/commands/` (set `SHELF_DEST` to change that). It
 refuses a name that's already taken. Then run it again with a new name such as
 `<collection>-<name>`.
 
@@ -56,5 +56,5 @@ refuses a name that's already taken. Then run it again with a new name such as
 ## Keep it or drop it
 
 To keep an item, commit it on a branch, open a PR, and add a line for it to
-`.claude/THIRD_PARTY_SKILLS.md` with the collection, commit and license. If the user only
+`.claude/THIRD_PARTY_SKILLS.md` in ororojas/claude-code with the collection, commit and license. If the user only
 wanted it for one job, delete it afterwards.

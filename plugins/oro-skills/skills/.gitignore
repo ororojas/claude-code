@@ -1,0 +1,8 @@
+# On the laptop, ~/.claude/skills is a junction to this folder. The Claude app and other
+# tools write their own folders here; keep them out of git.
+synced/
+.trash/
+learned/
+.staging/
+.env
+*.env
