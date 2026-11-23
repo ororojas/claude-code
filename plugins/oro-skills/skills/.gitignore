@@ -4,3 +4,5 @@ synced/
 .trash/
 learned/
 .staging/
+.env
+*.env
